@@ -1,0 +1,96 @@
+@font-face {
+    font-family: 'Youth';
+    src: url(./Youth-Black.woff2) format('woff2');
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Youth';
+    src: url(./Youth-BlackItalic.woff2) format('woff2');
+    font-weight: 900;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Youth';
+    src: url(./Youth-BoldItalic.woff2) format('woff2');
+    font-weight: bold;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Youth';
+    src: url(./Youth-Regular.woff2) format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Youth';
+    src: url(./Youth-MediumItalic.woff2) format('woff2');
+    font-weight: 500;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Youth';
+    src: url(./Youth-LightItalic.woff2) format('woff2');
+    font-weight: 300;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Youth';
+    src: url(./Youth-Bold.woff2) format('woff2');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Youth';
+    src: url(./Youth-Medium.woff2) format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Youth';
+    src: url(./Youth-ThinItalic.woff2) format('woff2');
+    font-weight: 100;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Youth';
+    src: url(./Youth-Light.woff2) format('woff2');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Youth';
+    src: url(./Youth-Italic.woff2) format('woff2');
+    font-weight: normal;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Youth';
+    src: url(./Youth-Thin.woff2) format('woff2');
+    font-weight: 100;
+    font-style: normal;
+    font-display: swap;
+}
+

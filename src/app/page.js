@@ -1,103 +1,484 @@
-import Image from "next/image";
+import Header from "../../components/Header";
+import { PiArrowRight } from "react-icons/pi";
+import Footer from "../../components/Footer";
+import ClientSwiper from "../../components/ClientSwiper";
+import FAQs from "../../components/FAQs";
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="w-full relative">
+      <div className="max-xl:fixed max-xl:z-50 w-full">
+        <Header />
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="w-full h-[600px] sm:h-[750px]  2xl:h-[900px] flex items-center relative px-5 sm:px-[45px]">
+        <div className="w-full max-w-[1290px] mx-auto pt-10 md:pt-14 lg:pt-16 xl:pt-0">
+          <h4 className="uppercase font-youth font-black text-6xl md:text-7xl lg:text-[100px] xl:text-[120px] xl:leading-[120px] text-white">
+            Do your <br /> laundry <br />
+            <span className="text-theme-darkBlue">smartly</span>
+          </h4>
+
+          <p className="w-full text-md sm:text-xl mt-6 mb-10 text-white max-w-[440px]">
+            Welcome to Bubbles Laundry Services, where we transform your laundry
+            day into a breeze!
+          </p>
+
+          <div className="w-[340px] flex items-center gap-3 font-sf bg-white rounded-2xl px-3 py-3 sm:py-4">
+            <div className="border-r-1 border-gray-400 sm:pl-2 pr-2">
+              <h6 className="text-md sm:text-[22px] font-semibold">Pickup</h6>
+              <p className="text-sm sm:text-lg text-black/60">Today</p>
+            </div>
+            <div className=" pr-3">
+              <h6 className="text-md sm:text-[22px] font-semibold">Where</h6>
+              <p className="text-sm sm:text-lg text-black/60">Add zip code</p>
+            </div>
+            <div className="size-10 sm:size-14 rounded-lg bg-theme-darkBlue flex justify-center items-center cursor-pointer ml-auto">
+              <PiArrowRight className="text-2xl sm:text-[40px]" color="white" />
+            </div>
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <video
+          autoPlay
+          muted
+          loop
+          className="w-full h-full object-cover absolute top-0 left-0 z-[-2]"
+          src="/images/landingPage/heroSectionVideo.mp4"
+        ></video>
+        <div className="absolute top-0 left-0 w-full h-full bg-black/15 z-[-1]"></div>
+      </div>
+
+      <div className="w-full py-8 sm:py-14 bg-[#DDEEFC] px-5 md:px-[45px]">
+        <div className="w-full max-w-[1290px] mx-auto flex flex-col items-center">
+          <div className="w-full ">
+            <h4 className="font-youth font-bold text-2xl sm:text-4xl 2xl:text-6xl text-center">
+              How Laundry Services Works
+            </h4>
+          </div>
+
+          <div className="w-full flex justify-center gap-4 sm:gap-x-14 xl:gap-28 mt-5 sm:mt-14 font-sf">
+            <div className="flex flex-col items-center gap-y-4 sm:gap-y-5">
+              <div className="size-14 sm:size-[100px] lg:size-[120px] flex justify-center items-center bg-white rounded-full shrink-0 shadow-theme-shadow">
+                <img
+                  className="w-8 sm:w-[50px] object-contain"
+                  src="/images/landingPage/youBook.png"
+                  alt=""
+                />
+              </div>
+
+              <p className="font-semibold text-sm md:text-xl lg:text-2xl text-theme-gray-2">
+                You Book
+              </p>
+            </div>
+            <div className="flex flex-col items-center gap-y-4 sm:gap-y-5">
+              <div className="size-14 sm:size-[100px] lg:size-[120px] flex justify-center items-center bg-white rounded-full shrink-0 shadow-theme-shadow">
+                <img
+                  className="w-8 sm:w-[50px] object-contain"
+                  src="/images/landingPage/weCollect.png"
+                  alt=""
+                />
+              </div>
+
+              <p className="font-semibold text-sm md:text-xl lg:text-2xl text-theme-gray-2">
+                We Collect
+              </p>
+            </div>
+            <div className="flex flex-col items-center gap-y-4 sm:gap-y-5">
+              <div className="size-14 sm:size-[100px] lg:size-[120px] flex justify-center items-center bg-white rounded-full shrink-0 shadow-theme-shadow">
+                <img
+                  className="w-8 sm:w-[50px] object-contain"
+                  src="/images/landingPage/weClean.png"
+                  alt=""
+                />
+              </div>
+
+              <p className="font-semibold text-sm md:text-xl lg:text-2xl text-theme-gray-2">
+                We Clean
+              </p>
+            </div>
+            <div className="flex flex-col items-center gap-y-4 sm:gap-y-5">
+              <div className="size-14 sm:size-[100px] lg:size-[120px] flex justify-center items-center bg-white rounded-full shrink-0 shadow-theme-shadow">
+                <img
+                  className="w-8 sm:w-[50px] object-contain"
+                  src="/images/landingPage/weDeliver.png"
+                  alt=""
+                />
+              </div>
+
+              <p className="font-semibold text-sm md:text-xl lg:text-2xl text-theme-gray-2">
+                We Deliver
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full pt-8 sm:pt-28 2xl:pt-60 bg-theme-gray px-5 md:px-[45px]">
+        <div className="w-full max-w-[1290px] mx-auto">
+          <div className="w-full">
+            <h4 className="font-youth font-bold text-2xl sm:text-[50px] text-center uppercase tracking-tighter">
+              Our Services
+            </h4>
+            <p className="lg:w-[695px] text-base sm:text-xl text-center text-theme-gray-3 mx-auto py-6 sm:px-5">
+              Established with the mission to simplify your life and elevate
+              your laundry experience, we bring a blend of modern technology and
+              eco-friendly practices.
+            </p>
+          </div>
+
+          <div className="w-full overflow-hidden sm:w-max mx-auto bg-black rounded-full p-2 flex gap-2 font-sf [&>div]:whitespace-nowrap [&>div]:text-sm sm:[&>div]:text-base [&>div]:px-2 [&>div]:py-2 [&>div]:rounded-full [&>div]:text-white [&>div]:cursor-pointer relative -bottom-7">
+            <div className="bg-white/35">Wash & Fold</div>
+            <div className="bg-white/35">Dry Cleaning</div>
+            <div className="bg-white/35">Ironing Service</div>
+            <div className="bg-white/35">Ironing Service</div>
+          </div>
+
+          <div className="w-full rounded-[20px] bg-white px-4 sm:px-12 pb-5 pt-14 sm:py-14 flex gap-10 font-sf">
+            <div className="font-sf flex-1">
+              <h4 className="font-youth font-black text-2xl sm:text-4xl tracking-tighter uppercase">
+                Effortless Laundry, <br /> Perfectly Folded
+              </h4>
+              <p className="text-sm sm:text-xl text-theme-gray-2 mt-4 md:leading-8">
+                Our Wash & Fold service is designed to make your life easier.
+                Simply drop off your laundry, and we’ll take care of the rest.
+                From sorting and washing to drying and folding, we handle each
+                step with precision and care.
+              </p>
+
+              <div className="rounded-xl overflow-hidden md:h-[469px] flex-1 mt-5 sm:mt-10 xl:hidden">
+                <img
+                  className="w-full h-full object-cover hover:scale-105 duration-500"
+                  src="/images/landingPage/wash.png"
+                  alt="wash cloth"
+                />
+              </div>
+              <h6 className="font-semibold uppercase text-xl mt-5 sm:mt-10 mb-5">
+                What we offer
+              </h6>
+              <div className="grid grid-cols-2 gap-3 sm:gap-x-10 ">
+                <div className="flex gap-2">
+                  <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                  <p className="text-theme-psGray text-sm sm:text-base">
+                    Comprehensive Cleaning
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                  <p className="text-theme-psGray text-sm sm:text-base">
+                    Perfect Folding
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                  <p className="text-theme-psGray text-sm sm:text-base">
+                    Attention to Detail
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                  <p className="text-theme-psGray text-sm sm:text-base">
+                    Convenient Pickup & Delivery
+                  </p>
+                </div>
+
+                <button className="bg-theme-darkBlue rounded-full flex justify-center items-center sm:w-52 h-10 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl sm:mt-4">
+                  Start Cleaning
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl overflow-hidden h-[469px] flex-1 max-xl:hidden">
+              <img
+                className="w-full h-full object-cover hover:scale-105 duration-500"
+                src="/images/landingPage/wash.png"
+                alt="wash cloth"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center py-12 sm:py-[100px] lg:gap-20 2xl:py-[200px]">
+            <div className="flex-1 rounded-xl overflow-hidden max-h-[793px] max-lg:hidden">
+              <img
+                className="w-full h-full object-cover hover:scale-105 duration-500"
+                src="/images/landingPage/whyChooseUs.png"
+                alt="why choose us"
+              />
+            </div>
+
+            <div className="flex-1 font-sf">
+              <h6 className="font-youth font-black text-2xl sm:text-4xl tracking-tighter uppercase">
+                Why Choose Us?
+              </h6>
+
+              <p className="text-sm sm:text-xl text-theme-gray-2 mt-4 lg:mb-16 sm:leading-8">
+                Experience the ultimate in convenience and quality with Bubbles
+                Laundry Services’ Wash & Fold.
+              </p>
+
+              <div className="flex-1 rounded-xl overflow-hidden max-h-[600px] lg:max-h-[793px] my-8  lg:my-0 lg:hidden">
+                <img
+                  className="w-full h-full object-cover hover:scale-105 duration-500"
+                  src="/images/landingPage/whyChooseUs.png"
+                  alt="why choose us"
+                />
+              </div>
+
+              <div className="space-y-5">
+                <div className="flex gap-x-3 bg-white rounded-[20px] p-2">
+                  <div className="bg-theme-gray size-14 shrink-0 rounded-xl flex justify-center items-center">
+                    <img src="/images/landingPage/timeSaving.png" />
+                  </div>
+
+                  <div className="sm:space-y-2 pt-1 pb-3">
+                    <h6 className="font-semibold text-lg sm:text-xl uppercase tracking-tighter">
+                      Time-Saving
+                    </h6>
+                    <p className="text-sm sm:text-base text-theme-psGray tracking-tight max-w-[450px]">
+                      Free up your valuable time for more important things while
+                      we handle your laundry.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-x-3 bg-white rounded-[20px] p-2">
+                  <div className="bg-theme-gray size-14 shrink-0 rounded-xl flex justify-center items-center">
+                    <img src="/images/landingPage/highQualityCare.png" />
+                  </div>
+
+                  <div className="sm:space-y-2 pt-1 pb-3">
+                    <h6 className="font-semibold text-lg sm:text-xl uppercase tracking-tighter">
+                      High-Quality Care
+                    </h6>
+                    <p className="text-sm sm:text-base text-theme-psGray tracking-tight max-w-[450px]">
+                      Our professional team treats your clothes with the utmost
+                      care, ensuring they look and feel their best.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-x-3 bg-white rounded-[20px] p-2">
+                  <div className="bg-theme-gray size-14 shrink-0 rounded-xl flex justify-center items-center">
+                    <img src="/images/landingPage/ecoFriendly.png" />
+                  </div>
+
+                  <div className="sm:space-y-2 pt-1 pb-3">
+                    <h6 className="font-semibold text-lg sm:text-xl uppercase tracking-tighter">
+                      Eco-Friendly Products
+                    </h6>
+                    <p className="text-sm sm:text-base text-theme-psGray tracking-tight max-w-[450px]">
+                      We use safe, environmentally friendly detergents that are
+                      tough on stains but gentle on your clothes and skin.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <button className="bg-theme-darkBlue rounded-full flex justify-center items-center w-36 sm:w-52 h-12 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl mt-6 sm:mt-10">
+                Book Now
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* swiper part  */}
+
+      <div className="w-full py-8 sm:py-14 xl:py-20 2xl:py-36 bg-white  px-5 md:px-[45px]">
+        <div className="w-full max-w-[1290px] mx-auto">
+          <ClientSwiper clients={[1, 2, 3, 4, 5]} />
+        </div>
+      </div>
+
+      {/* after swiper section  */}
+
+      <div className="w-full h-[400px] md:h-[600px] xl:h-[743px] bg-[url(/images/landingPage/readyToExperience.jpg)] bg-cover bg-center bg-no-repeat relative flex justify-center items-center  px-5 md:px-[45px]">
+        <div className="absolute top-0 left-0 w-full h-full z-1 bg-black/30 pointer-events-none"></div>
+        <div className="w-full max-w-[1290px] mx-auto relative z-10">
+          <h4 className="text-2xl sm:text-5xl md:text-6xl xl:text-7xl text-white font-youth font-black uppercase text-center xl:leading-[90px]">
+            Ready to Experience the Fresh & Clean Difference?
+          </h4>
+
+          <div className="w-max mx-auto rounded-3xl bg-[#55ACEE99] flex flex-col items-center sm:flex-row gap-5 p-6 mt-8">
+            <div className="space-y-2 sm:space-y-6 flex flex-col items-center">
+              <img className="size-14" src="/images/logo.png" alt="logo" />
+
+              <p className="text-sm sm:text-lg text-theme-gray font-sf">
+                Available on iOS and Android
+              </p>
+
+              <div className="flex gap-2 sm:gap-5 [&>img]:max-w-[120px]">
+                <img src="/images/googlePlay.png" alt="google play" />
+                <img src="/images/appStore.png" alt="app store" />
+              </div>
+            </div>
+
+            <div className="max-sm:hidden">
+              <img
+                className="max-h-[129px]"
+                src="/images/landingPage/qr.png"
+                alt=""
+              />
+              <p className="text-center text-sm text-white font-sf mt-2">
+                Or scan QR code <br /> with your device
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/*theme dark blue section  */}
+      <div className="w-full xl:h-[670px] bg-theme-darkBlue flex items-center px-5 md:px-[45px] py-8 sm:py-16 xl:py-0">
+        <div className="w-full max-w-[1290px] mx-auto grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="flex flex-col justify-center text-white">
+            <h4 className="uppercase font-youth font-black tracking-tight text-2xl sm:text-5xl">
+              pricing
+            </h4>
+
+            <p className="text-sm sm:text-xl tracking-tight py-4 font-sf md:leading-9">
+              We providing top-quality services at affordable prices. <br /> Our
+              transparent pricing structure ensures you get the <br /> best
+              value for your money without any hidden fees.
+            </p>
+          </div>
+
+          <div className="bg-white rounded-[20px] py-5 px-3 sm:p-5 flex gap-3 sm:gap-5 justify-between">
+            <div className="space-y-1 sm:space-y-3 font-sf">
+              <h6 className="font-semibold font-sf text-lg sm:text-xl tracking-tight uppercase">
+                Dry Cleaning
+              </h6>
+              <h6 className="font-black font-sf text-sm tracking-tight uppercase">
+                Includes
+              </h6>
+
+              <div className="flex gap-2">
+                <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                <p className="text-theme-psGray text-sm sm:text-base">
+                  Sorting by color and fabric type
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                <p className="text-theme-psGray text-sm sm:text-base">
+                  Eco-friendly detergent
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                <p className="text-theme-psGray text-sm sm:text-base">
+                  Washing, drying, and neatly folding
+                </p>
+              </div>
+            </div>
+
+            <div className="">
+              <div className="rounded-xl py-5 px-3 sm:p-5 text-white bg-theme-blue-2 w-[150px] sm:w-[223px]">
+                <p className="text-sm font-sf text-white">Regular Laundry</p>
+                <span className="text-[40px] font-black font-youth">
+                  $4.5
+                </span>{" "}
+                <span className="text-xs font-sf text-white">/lbs</span>
+              </div>
+
+              <button className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2">
+                Start Cleaning
+              </button>
+            </div>
+          </div>
+          <div className="bg-white rounded-[20px] py-5 px-3 sm:p-5 flex gap-3 sm:gap-5 justify-between">
+            <div className="space-y-1 sm:space-y-3 font-sf">
+              <h6 className="font-semibold font-sf text-lg sm:text-xl  tracking-tight uppercase">
+                Dry Cleaning
+              </h6>
+              <h6 className="font-black font-sf text-sm tracking-tight uppercase">
+                Includes
+              </h6>
+
+              <div className="flex gap-2">
+                <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                <p className="text-theme-psGray text-sm sm:text-base">
+                  Sorting by color and fabric type
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                <p className="text-theme-psGray text-sm sm:text-base">
+                  Eco-friendly detergent
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                <p className="text-theme-psGray text-sm sm:text-base">
+                  Washing, drying, and neatly folding
+                </p>
+              </div>
+            </div>
+
+            <div className="">
+              <div className="rounded-xl py-5 px-3 sm:p-5 text-white bg-theme-blue-2 w-[150px] sm:w-[223px]">
+                <p className="text-sm font-sf text-white">Regular Laundry</p>
+                <span className="text-[40px] font-black font-youth">
+                  $4.5
+                </span>{" "}
+                <span className="text-xs font-sf text-white">/lbs</span>
+              </div>
+
+              <button className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2">
+                Start Cleaning
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-[20px] py-5 px-3 sm:p-5 flex gap-3 sm:gap-5 justify-between">
+            <div className="space-y-1 sm:space-y-3 font-sf">
+              <h6 className="font-semibold font-sf text-lg sm:text-xl  tracking-tight uppercase">
+                Dry Cleaning
+              </h6>
+              <h6 className="font-black font-sf text-sm tracking-tight uppercase">
+                Includes
+              </h6>
+
+              <div className="flex gap-2">
+                <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                <p className="text-theme-psGray text-sm sm:text-base">
+                  Sorting by color and fabric type
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                <p className="text-theme-psGray text-sm sm:text-base">
+                  Eco-friendly detergent
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                <p className="text-theme-psGray text-sm sm:text-base">
+                  Washing, drying, and neatly folding
+                </p>
+              </div>
+            </div>
+
+            <div className="">
+              <div className="rounded-xl py-5 px-3 sm:p-5 text-white bg-theme-blue-2 w-[150px] sm:w-[223px]">
+                <p className="text-sm font-sf text-white">Regular Laundry</p>
+                <span className="text-[40px] font-black font-youth">
+                  $4.5
+                </span>{" "}
+                <span className="text-xs font-sf text-white">/lbs</span>
+              </div>
+
+              <button className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2">
+                Start Cleaning
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/*FAQs section  */}
+      <FAQs />
+
+      {/*footer section  */}
+      <Footer width="max-w-[1200px]  px-[16px] sm:px-[30px] lg:w-[95%] largeDesktop:w-[95%] extraLargeDesktop:w-[62.5%] ultraLargeDesktop:w-[71%]" />
     </div>
   );
 }

@@ -1,0 +1,161 @@
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Thin.ttf);
+  font-weight: 100;
+  font-style: normal;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Thin-Italic.ttf);
+  font-weight: 100;
+  font-style: italic;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-ExtraLight.ttf);
+  font-weight: 200;
+  font-style: normal;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-ExtraLight-Italic.ttf);
+  font-weight: 200;
+  font-style: italic;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Light.ttf);
+  font-weight: 300;
+  font-style: normal;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Light-Italic.ttf);
+  font-weight: 300;
+  font-style: italic;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Regular.ttf);
+  font-weight: 400;
+  font-style: normal;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Italic.ttf);
+  font-weight: 400;
+  font-style: italic;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Medium.ttf);
+  font-weight: 500;
+  font-style: normal;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Medium-Italic.ttf);
+  font-weight: 500;
+  font-style: italic;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-SemiBold.ttf);
+  font-weight: 600;
+  font-style: normal;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-SemiBold-Italic.ttf);
+  font-weight: 600;
+  font-style: italic;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Bold.ttf);
+  font-weight: 700;
+  font-style: normal;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Bold-Italic.ttf);
+  font-weight: 700;
+  font-style: italic;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Black.ttf);
+  font-weight: 800;
+  font-style: normal;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Black.ttf);
+  font-weight: 800;
+  font-style: italic;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Black.ttf);
+  font-weight: 900;
+  font-style: normal;
+  font-variant: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Omnes";
+  src: url(./Omnes-Black-Italic.ttf);
+  font-weight: 900;
+  font-style: italic;
+  font-variant: normal;
+  font-display: block;
+}

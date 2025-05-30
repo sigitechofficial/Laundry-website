@@ -23,7 +23,7 @@ export default function Home() {
             day into a breeze!
           </p>
 
-          <div className="w-[340px] flex items-center gap-3 font-sf bg-white rounded-2xl px-3 py-3 sm:py-4">
+          <div className="w-max sm:w-[340px] flex items-center gap-3 font-sf bg-white rounded-2xl px-3 py-3 sm:py-4">
             <div className="border-r-1 border-gray-400 sm:pl-2 pr-2">
               <h6 className="text-md sm:text-[22px] font-semibold">Pickup</h6>
               <p className="text-sm sm:text-lg text-black/60">Today</p>
@@ -126,7 +126,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="w-full overflow-hidden sm:w-max mx-auto bg-black rounded-full p-2 flex gap-2 font-sf [&>div]:whitespace-nowrap [&>div]:text-sm sm:[&>div]:text-base [&>div]:px-2 [&>div]:py-2 [&>div]:rounded-full [&>div]:text-white [&>div]:cursor-pointer relative -bottom-7">
+          <div className="w-full max-w-[468px] overflow-scroll hideScrollbar sm:w-max mx-auto bg-black rounded-full p-2 flex gap-2 font-sf [&>div]:whitespace-nowrap [&>div]:text-sm sm:[&>div]:text-base [&>div]:px-2 [&>div]:py-2 [&>div]:rounded-full [&>div]:text-white [&>div]:cursor-pointer relative -bottom-7">
             <div className="bg-white/35">Wash & Fold</div>
             <div className="bg-white/35">Dry Cleaning</div>
             <div className="bg-white/35">Ironing Service</div>

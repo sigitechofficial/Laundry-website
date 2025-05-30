@@ -8,78 +8,90 @@
 
 /* ========================= */
 .clip-diagonal {
-    clip-path: polygon(0px 80px, 100% 0%, 100% 100%, 0% 100%);
+  clip-path: polygon(0px 80px, 100% 0%, 100% 100%, 0% 100%);
 }
 
 @keyframes slideDown {
-    0% {
-        opacity: 0;
-        transform: translateY(-100%);
+  0% {
+    opacity: 0;
+    transform: translateY(-100%);
 
-    }
+  }
 
-    100% {
-        transform: translateY(0);
-        opacity: 1;
-    }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .animate-slideDown {
-    position: fixed;
-    top: 0;
-    left: 0;
-    animation: slideDown 0.5s ease-out forwards;
+  position: fixed;
+  top: 0;
+  left: 0;
+  animation: slideDown 0.5s ease-out forwards;
 }
 
 
 @media screen and (min-width:1024px) {
-    .clip-diagonal {
-        clip-path: polygon(130px 0%, 100% 0%, 100% 100%, 0% 100%);
-    }
+  .clip-diagonal {
+    clip-path: polygon(130px 0%, 100% 0%, 100% 100%, 0% 100%);
+  }
 
 }
 
 @media screen and (max-width: 840px) {
-    .dropDown {
-        max-height: 0;
-        overflow: hidden;
-        transition: 0.3s ease-in-out;
-    }
+  .dropDown {
+    max-height: 0;
+    overflow: hidden;
+    transition: 0.3s ease-in-out;
+  }
 
-    .dropDownActive {
-        margin-top: 12px;
-        max-height: 300px;
-        transition: 0.3s ease-in-out;
-    }
+  .dropDownActive {
+    margin-top: 12px;
+    max-height: 300px;
+    transition: 0.3s ease-in-out;
+  }
 }
 
 /* ===========Css for scrollbar======= */
 body::-webkit-scrollbar {
-    width: 4px;
-    height: 6px;
-  }
-  
-  body::-webkit-scrollbar-track {
-    background: #f1f1f1;
-  }
-  
-  body::-webkit-scrollbar-thumb {
-    background: gray;
-    border-radius: 10px;
-  }
+  width: 4px;
+  height: 6px;
+}
+
+body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+body::-webkit-scrollbar-thumb {
+  background: gray;
+  border-radius: 10px;
+}
 
 
-  .modal-scroll::-webkit-scrollbar {
-    width: 2px;
-    height: 6px;
-  }
+.modal-scroll::-webkit-scrollbar {
+  width: 2px;
+  height: 6px;
+}
 
-    .modal-scroll::-webkit-scrollbar-track {
-    background: #f1f1f1;
-  }
-  
-  .modal-scroll::-webkit-scrollbar-thumb {
-    background: rgba(0, 157, 0, 0.781);
-    border-radius: 10px;
-  }
-  
+.modal-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.modal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 157, 0, 0.781);
+  border-radius: 10px;
+}
+
+
+.hideScrollbar {
+  scrollbar-width: none;
+  /* Firefox */
+  -ms-overflow-style: none;
+  /* Internet Explorer 10+ */
+}
+
+.hideScrollbar::-webkit-scrollbar {
+  display: none;
+  /* Safari and Chrome */
+}

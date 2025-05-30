@@ -44,7 +44,7 @@ export default function FAQs() {
                 </div>
               }
             >
-              <div className="px-111110"> rsdsd</div>
+              <div className="px-10"> rsdsd</div>
             </AccordionItem>
             <AccordionItem
               key="2"
@@ -71,7 +71,7 @@ export default function FAQs() {
                 </div>
               }
             >
-              <div className="px-11110"> rsdsd</div>
+              <div className="px-10"> rsdsd</div>
             </AccordionItem>
             <AccordionItem
               key="3"
@@ -98,7 +98,7 @@ export default function FAQs() {
                 </div>
               }
             >
-              <div className="px-1110"> rsdsd</div>
+              <div className="px-10"> rsdsd</div>
             </AccordionItem>
             <AccordionItem
               key="4"
@@ -125,7 +125,7 @@ export default function FAQs() {
                 </div>
               }
             >
-              <div className="px-110"> rsdsd</div>
+              <div className="px-10"> rsdsd</div>
             </AccordionItem>
             <AccordionItem
               key="5"

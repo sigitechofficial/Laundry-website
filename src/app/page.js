@@ -126,7 +126,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="w-full max-w-[468px] overflow-scroll hideScrollbar sm:w-max mx-auto bg-black rounded-full p-2 flex gap-2 font-sf [&>div]:whitespace-nowrap [&>div]:text-sm sm:[&>div]:text-base [&>div]:px-2 [&>div]:py-2 [&>div]:rounded-full [&>div]:text-white [&>div]:cursor-pointer relative -bottom-7">
+          <div className="w-full max-sm:max-w-[468px] overflow-scroll hideScrollbar sm:w-max mx-auto bg-black rounded-full p-2 flex gap-2 font-sf [&>div]:whitespace-nowrap [&>div]:text-sm sm:[&>div]:text-base [&>div]:px-2 [&>div]:py-2 [&>div]:rounded-full [&>div]:text-white [&>div]:cursor-pointer relative -bottom-7">
             <div className="bg-white/35">Wash & Fold</div>
             <div className="bg-white/35">Dry Cleaning</div>
             <div className="bg-white/35">Ironing Service</div>

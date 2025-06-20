@@ -4,52 +4,93 @@ import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 export const api = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({
-    baseUrl: "https://backend.fomino.ch:3041/",
-    prepareHeaders: (headers) => {
-      const token =
-        typeof window !== "undefined"
-          ? localStorage.getItem("accessToken")
-          : null;
-
-      if (token) {
-        headers.set("accessToken", token);
-      }
-      return headers;
-    },
+    baseUrl: "https://backendlaundary.fomino.ch/",
+    credentials: "include",
   }),
   endpoints: (builder) => ({
-    getCountriesAndCities: builder.query({
-      query: () => "users/getCountriesAndCities",
-    }),
-    discoveryData: builder.query({
-      query: (city) => `users/home3?cityName=${city}`,
-    }),
-    resDetailByid: builder.query({
-      query: ({ userId, resId }) =>
-        `users/restaurantbyid?restaurantId=${resId}&userId=${userId}`,
-    }),
-    userStampsAndBanners: builder.query({
-      query: ({ userId, resId }) =>
-        `users/userStampsAndBannersForWeb?restaurantId=${resId}&userId=${userId}`,
-    }),
-    stampCardHistory: builder.query({
-      query: (userId) => `users/stampCardHistory/${userId}`,
-    }),
-    joinStampCard: builder.mutation({
+    userLogin: builder.mutation({
       query: (body) => ({
-        url: "users/joinStampCard",
+        url: "customer/loginUser",
         method: "POST",
         body,
+      }),
+    }),
+    resetPassword: builder.mutation({
+      query: (body) => ({
+        url: "customer/forgetPasswordRequest",
+        method: "POST",
+        body,
+      }),
+    }),
+    verifyOTP: builder.mutation({
+      query: (body) => ({
+        url: "customer/verifyOTPforPassword",
+        method: "POST",
+        body,
+      }),
+    }),
+    resendOTP: builder.mutation({
+      query: (body) => ({
+        url: "customer/resendOTP",
+        method: "POST",
+        body,
+      }),
+    }),
+    changePasswordReset: builder.mutation({
+      query: (body) => ({
+        url: "customer/changePasswordOTP",
+        method: "POST",
+        body,
+      }),
+    }),
+    registerUser: builder.mutation({
+      query: (body) => ({
+        url: "customer/registerCustomer",
+        method: "POST",
+        body,
+      }),
+    }),
+    verifyOTPRegister: builder.mutation({
+      query: (body) => ({
+        url: "customer/verifyOTpSignUp",
+        method: "POST",
+        body,
+      }),
+    }),
+
+    getProfile: builder.query({
+      query: () => ({
+        url: `customer/getUserProfile`,
+        method: "GET",
+      }),
+    }),
+
+    updateProfile: builder.mutation({
+      query: (body) => ({
+        url: "customer/updateUserProfile",
+        method: "PATCH",
+        body,
+      }),
+    }),
+
+    getServices: builder.query({
+      query: () => ({
+        url: "/customer/allServices",
+        method: "GET",
       }),
     }),
   }),
 });
 
 export const {
-  useGetCountriesAndCitiesQuery,
-  useDiscoveryDataQuery,
-  useResDetailByidQuery,
-  useUserStampsAndBannersQuery,
-  useStampCardHistoryQuery,
-  useJoinStampCardMutation,
+  useUserLoginMutation,
+  useResetPasswordMutation,
+  useVerifyOTPMutation,
+  useResendOTPMutation,
+  useChangePasswordResetMutation,
+  useRegisterUserMutation,
+  useVerifyOTPRegisterMutation,
+  useGetProfileQuery,
+  useUpdateProfileMutation,
+  useGetServicesQuery,
 } = api;

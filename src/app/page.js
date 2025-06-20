@@ -3,9 +3,12 @@ import { PiArrowRight } from "react-icons/pi";
 import Footer from "../../components/Footer";
 import ClientSwiper from "../../components/ClientSwiper";
 import FAQs from "../../components/FAQs";
+import HomeClientWrapper from "../../utilities/Test";
 
 export default function Home() {
   return (
+
+    <HomeClientWrapper>
     <div className="w-full relative">
       <div className="max-xl:fixed max-xl:z-50 w-full">
         <Header />
@@ -475,10 +478,13 @@ export default function Home() {
       </div>
 
       {/*FAQs section  */}
+      
       <FAQs />
 
       {/*footer section  */}
       <Footer width="max-w-[1200px]  px-[16px] sm:px-[30px] lg:w-[95%] largeDesktop:w-[95%] extraLargeDesktop:w-[62.5%] ultraLargeDesktop:w-[71%]" />
     </div>
+
+    </HomeClientWrapper>
   );
 }

@@ -95,3 +95,53 @@ body::-webkit-scrollbar-thumb {
   display: none;
   /* Safari and Chrome */
 }
+
+/* styling for autocomplete places */
+.pac-container {
+  border-radius: 0.5rem;
+  border: 1px solid #ccc;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  font-family: 'Inter', sans-serif;
+}
+
+.pac-item {
+  position: relative;
+  padding-left: 3rem;
+  height: 56px;
+
+  /* Vertically center content */
+  display: flex;
+  align-items: center;
+
+  /* Optional: add horizontal spacing between icon and text */
+  gap: 0.5rem;
+}
+
+
+/* Hide Google's default icon */
+.pac-icon {
+  display: none !important;
+}
+
+/* Custom icon that looks like your styled circle with icon */
+.pac-item::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  /* matches size-10 (2.5rem) */
+  height: 30px;
+  background-color: #f1f1f1;
+  /* same as bg-theme-gray */
+  border-radius: 50%;
+  background-image: url('/images/registration/locationMarker.png');
+  background-size: 20px 20px;
+  /* icon size */
+  background-repeat: no-repeat;
+  background-position: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

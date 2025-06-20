@@ -1,8 +1,8 @@
 import React from "react";
 
-const CustomMenuBtn = () => {
+const CustomMenuBtn = ({ onClick }) => {
   return (
-    <label className="hamburger">
+    <label onClick={onClick} className="hamburger">
       <input type="checkbox" />
       <svg viewBox="0 0 32 32">
         <path

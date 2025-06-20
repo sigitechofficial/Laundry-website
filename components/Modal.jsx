@@ -26,9 +26,8 @@ const ReusableModal = ({
   scrollBehavior = "inside",
   modalScroll = 0,
   className = "",
+  isDismissable = true,
 }) => {
-
-
   const handleClose = () => {
     if (onClose) onClose();
     if (onOpenChange) onOpenChange(false);
@@ -56,6 +55,7 @@ const ReusableModal = ({
         closeButton: "hidden",
         base: "max-h-[100vh] !my-0",
       }}
+      isDismissable={isDismissable}
       motionProps={{
         initial: { y: 50, opacity: 0 },
         animate: {

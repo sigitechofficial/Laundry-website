@@ -26,6 +26,12 @@ module.exports = {
         "theme-skyBlue": "#DDEEFC",
         "theme-darkBlue": "#000099",
         "theme-gray": "#F0F0F0",
+        "inputBg": "#E8E7E3",
+        "bgAvailable": "#55ACEE99",
+        "card-dark-orange": "#F7B587",
+        "card-light-orange": "#F7D787",
+        "card-green": "#54EA6C",
+        "card-pink": "#FFC8F3",
       },
       colors: {
         "theme-black-2": "#202125",
@@ -37,9 +43,12 @@ module.exports = {
         "theme-gray-2": "#747472",
         "theme-gray-3": "#494E57",
         "theme-psGray": "#707481",
+        "theme-brightBlue": "#3D0DEA",
+        "Available": "#55ACEE99",
       },
       boxShadow: {
         "theme-shadow": "0px 0px 6px 0px #00000029",
+        "theme-shadow-light": "0px 0px 4px 0px #00000029",
       },
       screens: {
         extraSmall: "375px",
@@ -63,7 +72,12 @@ module.exports = {
         "screen-minus-53vh": "calc(100vh - 53vh)",
         "screen-minus-60vh": "calc(100vh - 60vh)",
       },
-
+      backgroundImage: {
+        "sign-in": "url('/images/signIn.jpg')",
+        "discount": "url('/images/about-us/discount.png')",
+        "pricing": "url('/images/pricing/clothes.png')",
+        "registration": "url('/images/partner/partner.png')",
+      },
     },
   },
   darkMode: "class",

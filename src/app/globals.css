@@ -51,7 +51,16 @@
     max-height: 300px;
     transition: 0.3s ease-in-out;
   }
+
+
 }
+@media screen and (max-height: 800px) {
+  .pad-y{
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+  }
+}
+
 
 /* ===========Css for scrollbar======= */
 body::-webkit-scrollbar {
@@ -79,7 +88,7 @@ body::-webkit-scrollbar-thumb {
 }
 
 .modal-scroll::-webkit-scrollbar-thumb {
-  background: rgba(0, 157, 0, 0.781);
+  background: rgba(17, 0, 255, 0.781);
   border-radius: 10px;
 }
 

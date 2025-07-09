@@ -52,7 +52,7 @@ const Header = ({ type }) => {
           ["how", "aboutUs", "partner", "blog", "profile", "order","service"].includes(
             type
           )
-            ? "shadow-md"
+            ? "xl:shadow-md"
             : ""
         }`}
       >
@@ -73,7 +73,7 @@ const Header = ({ type }) => {
                 />
               </div>
 
-              <h4 className="font-youth font-bold text-base text-theme-blue">
+              <h4 className={`font-youth font-bold text-base text-theme-blue`}>
                 Just dry cleaners
               </h4>
             </Link>

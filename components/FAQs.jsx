@@ -5,9 +5,9 @@ import { FiPlus, FiMinus } from "react-icons/fi";
 
 export default function FAQs() {
   return (
-    <div className="w-full bg-white flex justify-center items-center px-5 md:px-[40px]">
-      <div className="shadow-theme-shadow rounded-[40px] my-16 w-full max-w-[625px] px-3 pb-4">
-        <div className="py-8 sm:py-10 space-y-4">
+    <div className="w-full bg-white flex justify-center items-center">
+      <div className="shadow-theme-shadow rounded-[40px] my-10 sm:my-16 w-full max-w-[625px] px-1 sm:px-3 pb-2">
+        <div className="py-5 sm:py-10 sm:space-y-4">
           <h4 className="font-youth font-bold text-2xl sm:text-5xl tracking-tighter uppercase text-center">
             FAQS
           </h4>

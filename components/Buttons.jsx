@@ -12,7 +12,7 @@ export function DarkBlueButton({ width, text }) {
     <button
       className={`${
         width || "w-full"
-      } bg-theme-darkBlue rounded-full flex justify-center items-center px-4 sm:px-8 h-12 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl`}
+      } bg-theme-darkBlue rounded-full flex justify-center items-center px-4 sm:px-8 h-10 sm:h-[60px] uppercase font-youth font-bold text-white text-xs sm:text-base lg:text-xl`}
     >
       {text}
     </button>
@@ -35,7 +35,7 @@ export function ButtonYouth70018({
         className ||
         `${width || "w-full"} ${
           isDisabled ? "bg-theme-darkBlue/30" : "bg-theme-darkBlue"
-        } relative rounded-full flex justify-center items-center font-bold px-4 sm:px-8 h-12 sm:h-[60px] font-youth text-white text-sm sm:text-lg`
+        } relative rounded-full flex justify-center items-center font-medium sm:font-bold px-4 sm:px-8 h-14 sm:h-[60px] font-youth text-white text-lg`
       }
     >
     {isPending?  <div className="absolute  left-[calc(50%-70px)] flex items-center h-full">
@@ -72,7 +72,7 @@ export function ButtonContinueWith({
       onClick={onClick}
       className={`${
         width || "w-full"
-      } ${bg} rounded-full flex gap-8 justify-center items-center border-black border uppercase px-4 sm:px-8 h-12 sm:h-[60px] font-youth font-bold ${color} text-sm sm:${size}`}
+      } ${bg} rounded-full flex gap-8 justify-center items-center border-black border uppercase px-4 sm:px-8 h-14 sm:h-[60px] font-youth font-bold ${color} text-sm sm:${size}`}
     >
       <img src={src} alt="" />
       {text}

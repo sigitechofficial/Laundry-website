@@ -12,11 +12,11 @@ export default function ContactUs() {
      <HomeClientWrapper>
       <div className="w-full relative">
         <div className="max-xl:fixed max-xl:z-50 w-full">
-          <Header />
+          <Header type="contactUs" />
         </div>
 
-        <div className="w-full h-[433px] bg-theme-blue flex justify-center items-center text-white">
-          <h4 className="font-youth font-bold text-7xl md:text-[96px]">
+        <div className="w-full h-[300px] sm:h-[433px] bg-theme-blue flex justify-center items-center text-white">
+          <h4 className="font-youth font-bold text-3xl sm:text-7xl md:text-[96px]">
             Contact us
           </h4>
         </div>
@@ -24,45 +24,45 @@ export default function ContactUs() {
         <div className="w-full bg-theme-gray px-[16px] sm:px-[45px]">
           <div className="w-full max-w-[1290px] mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-10 font-sf">
             <div className="bg-white p-6 space-y-2 rounded-[20px] relative -top-20 ">
-              <div className="size-[60px] bg-theme-gray rounded-[20px] flex justify-center items-center">
-                <MdLocalPhone size={35} />
+              <div className="size-10 sm:size-[60px] bg-theme-gray rounded-lg sm:rounded-[20px] flex justify-center items-center">
+                <MdLocalPhone className="text-2xl sm:text-4xl" />
               </div>
-              <h6 className="font-semibold text-2xl">Our Address</h6>
-              <p className="text-xl text-theme-psGray">Email</p>
-              <p className="text-xl font-semibold break-words">
+              <h6 className="font-semibold sm:text-2xl">Our Address</h6>
+              <p className="sm:text-xl text-theme-psGray">Email</p>
+              <p className="sm:text-xl font-semibold break-words">
                 abc123@gmail.com
               </p>
-              <p className="text-xl text-theme-psGray">Phone</p>
-              <p className="text-xl font-semibold">+92-3443543543</p>
+              <p className="sm:text-xl text-theme-psGray">Phone</p>
+              <p className="sm:text-xl font-semibold">+92-3443543543</p>
             </div>
             <div className="bg-white p-6 space-y-2 rounded-[20px] relative -top-20">
-              <div className="size-[60px] bg-theme-gray rounded-[20px] flex justify-center items-center">
-                <MdLocalPhone size={35} />
+              <div className="size-10 sm:size-[60px] bg-theme-gray rounded-lg sm:rounded-[20px] flex justify-center items-center">
+                <MdLocalPhone className="text-2xl sm:text-4xl" />
               </div>
-              <h6 className="font-semibold text-2xl">Our Address</h6>
-              <p className="text-xl text-theme-psGray">Email</p>
-              <p className="text-xl font-semibold break-words">
+              <h6 className="font-semibold sm:text-2xl">Our Address</h6>
+              <p className="sm:text-xl text-theme-psGray">Email</p>
+              <p className="sm:text-xl font-semibold break-words">
                 abc123@gmail.com
               </p>
-              <p className="text-xl text-theme-psGray">Phone</p>
-              <p className="text-xl font-semibold">+92-3443543543</p>
+              <p className="sm:text-xl text-theme-psGray">Phone</p>
+              <p className="sm:text-xl font-semibold">+92-3443543543</p>
             </div>
             <div className="bg-white p-6 space-y-2 rounded-[20px] relative -top-20 sm:col-span-2 lg:col-span-1">
-              <div className="size-[60px] bg-theme-gray rounded-[20px] flex justify-center items-center">
-                <MdLocalPhone size={35} />
+              <div className="size-10 sm:size-[60px] bg-theme-gray rounded-lg sm:rounded-[20px] flex justify-center items-center">
+                <MdLocalPhone className="text-2xl sm:text-4xl" />
               </div>
-              <h6 className="font-semibold text-2xl">Our Address</h6>
-              <p className="text-xl text-theme-psGray">Email</p>
-              <p className="text-xl font-semibold break-words">
+              <h6 className="font-semibold sm:text-2xl">Our Address</h6>
+              <p className="sm:text-xl text-theme-psGray">Email</p>
+              <p className="sm:text-xl font-semibold break-words">
                 abc123@gmail.com
               </p>
-              <p className="text-xl text-theme-psGray">Phone</p>
-              <p className="text-xl font-semibold">+92-3443543543</p>
+              <p className="sm:text-xl text-theme-psGray">Phone</p>
+              <p className="sm:text-xl font-semibold">+92-3443543543</p>
             </div>
           </div>
         </div>
 
-        <div className="w-full h-[1080px] relative flex justify-center items-center">
+        <div className="w-full h-[700px] sm:h-[1080px] relative flex justify-center items-center">
           <video
             autoPlay
             muted
@@ -71,8 +71,8 @@ export default function ContactUs() {
             src="/images/landingPage/heroSectionVideo.mp4"
           ></video>
 
-          <div className="w-[630px] rounded-[30px] p-6 bg-white mx-[45px]">
-            <h4 className="font-sf text-3xl sm:text-[40px] font-black sm:font-semibold text-center leading-10 pb-1">
+          <div className="w-[630px] rounded-[30px] p-6 bg-white mx-[16px] sm:mx-[45px]">
+            <h4 className="font-sf text-2xl sm:text-[40px] font-black sm:font-semibold text-center leading-10 pb-1">
               SEND US A MESSAGE
             </h4>
 

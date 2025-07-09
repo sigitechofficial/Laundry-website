@@ -197,8 +197,8 @@ export default function Profile() {
             <Header type="profile" />
           </div>
 
-          <div className="w-full flex gap-10 px-5">
-            <section className="font-sf pt-8 min-w-[378px]">
+          <div className="w-full flex gap-10 px-5 py-20 xl:py-0">
+            <section className="font-sf pt-8 min-w-[300px] 2xl:min-w-[378px] max-md:hidden">
               <div className="space-y-6">
                 <div className="flex items-start justify-start gap-7">
                   <label
@@ -380,7 +380,7 @@ export default function Profile() {
                 />
               </div>
             ) : currentTab === "my-account" ? (
-              <section className="w-full flex gap-28 mt-16 px-10">
+              <section className="w-full flex flex-col lg:flex-row gap-10 2xl:gap-28 mt-16 px-0 sm:px-6 2xl:px-10">
                 <div className="flex-1 font-sf">
                   <h2 className="font-youth font-medium text-[40px] mb-4">
                     Profile
@@ -418,11 +418,12 @@ export default function Profile() {
                       value={userData?.countryCode + userData?.phoneNum}
                       onChange={handlePhoneChange}
                     />
-
-                    <ButtonYouth70018
-                      text={"Update"}
-                      onClick={handleUpdateProfile}
-                    />
+                    <div className="max-lg:hidden">
+                      <ButtonYouth70018
+                        text={"Update"}
+                        onClick={handleUpdateProfile}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -452,6 +453,12 @@ export default function Profile() {
                         })
                       }
                     />
+                    <div className="lg:hidden">
+                      <ButtonYouth70018
+                        text={"Update"}
+                        onClick={handleUpdateProfile}
+                      />
+                    </div>
                   </div>
                 </div>
               </section>

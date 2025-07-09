@@ -50,7 +50,7 @@ export default function CustomDrawer({
   const [drawerScroll, setDrawerScroll] = useState(0);
   const [inviteFriend, setInviteFriend] = useState(0);
 
-  let token = data?.data?.email;
+  let token = typeof window !== "undefined" ? localStorage.getItem("loginStatus")==="true" : false;
 
   const handleDrawerScroll = (event) => {
     const scrollTop = event.target.scrollTop;
@@ -134,7 +134,7 @@ export default function CustomDrawer({
                               className="w-[120px]  h-[120px] object-cover rounded-full"
                             />
                           ) : (
-                            <span className="initials">
+                            <span className="text-gray-500">
                           {data?.data?.firstName[0] +data?.data?.lastName[0] }
                             </span>
                           )
@@ -222,7 +222,7 @@ export default function CustomDrawer({
                         text={"Country"}
                         onClick={() => {
                           router.push("/order-history");
-                          setProfileDrawer(false);
+                          // setProfileDrawer(false);
                         }}
                       />
                       <DrawerItem
@@ -230,7 +230,7 @@ export default function CustomDrawer({
                         text={"Language"}
                         onClick={() => {
                           router.push("/order-history");
-                          setProfileDrawer(false);
+                          // setProfileDrawer(false);
                         }}
                       />
                     </div>
@@ -289,7 +289,7 @@ export default function CustomDrawer({
                             Icon={GrUserAdmin}
                             onClick={() => {
                               router.push("/sign-in");
-                              setProfileDrawer(false);
+                              // setProfileDrawer(false);
                             }}
                             text="Log in"
                           />
@@ -297,7 +297,7 @@ export default function CustomDrawer({
                             Icon={FiLogOut}
                             onClick={() => {
                               router.push("/sign-up");
-                              setProfileDrawer(false);
+                              // setProfileDrawer(false);
                             }}
                             text="Sign up"
                           />

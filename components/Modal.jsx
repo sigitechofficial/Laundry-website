@@ -27,6 +27,7 @@ const ReusableModal = ({
   modalScroll = 0,
   className = "",
   isDismissable = true,
+  footerContent,
 }) => {
   const handleClose = () => {
     if (onClose) onClose();
@@ -76,16 +77,16 @@ const ReusableModal = ({
             {showHeader && (
               <ModalHeader
                 className={`absolute transition-all duration-300 ease-in-out font-sf ${
-                  modalScroll > 100
+                  modalScroll
                     ? "translate-y-0 opacity-100"
                     : "-translate-y-full opacity-0"
                 } top-0 left-0 z-20 bg-white w-full shadow-md`}
               >
-                <div className="flex justify-center items-center w-full h-8">
+                <div className="flex justify-center items-center w-full h-7">
                   <h2
-                    className={`text-lg font-semibold transition-all duration-500 ease-in-out 
+                    className={`font-youth font-bold sm:text-[22px] text-center transition-all duration-500 ease-in-out 
         ${
-          modalScroll > 100
+          modalScroll
             ? "translate-y-0 opacity-100 delay-500"
             : "-translate-y-4 opacity-0 delay-0"
         }`}
@@ -118,16 +119,7 @@ const ReusableModal = ({
             </ModalBody>
 
             {showFooter && (
-              <ModalFooter className="p-4">
-                <Button
-                  color="danger"
-                  variant="solid"
-                  onPress={handleFooterAction}
-                  className="w-full sm:w-auto"
-                >
-                  {footerButtonText}
-                </Button>
-              </ModalFooter>
+              <ModalFooter className="p-0">{footerContent}</ModalFooter>
             )}
           </>
         )}

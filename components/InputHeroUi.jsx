@@ -16,7 +16,8 @@ export default function InputField({
   errorMessage,
   isInvalid,
   isDisabled,
-  isRequired
+  isRequired,
+  endContent,
 }) {
   const isActive = value?.length > 0;
   return (
@@ -34,6 +35,7 @@ export default function InputField({
       isInvalid={isInvalid}
       isDisabled={isDisabled}
       isRequired={isRequired}
+      endContent={endContent}
       classNames={{
         label: [
           "group-data-[focus=true]:text-gray-500 text-base text-gray-400",

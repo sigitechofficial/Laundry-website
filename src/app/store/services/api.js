@@ -79,6 +79,53 @@ export const api = createApi({
         method: "GET",
       }),
     }),
+    getServiceById: builder.query({
+      query: (id) => ({
+        url: `customer/serviceDetail/${id}`,
+        method: "GET",
+      }),
+    }),
+
+    createBooking: builder.mutation({
+      query: (body) => ({
+        url: "customer/createBooking",
+        method: "POST",
+        body,
+      }),
+    }),
+    getAllAddress: builder.query({
+      query: () => ({
+        url: "customer/customerAddresses",
+        method: "GET",
+      }),
+    }),
+    getCharges: builder.query({
+      query: ({ lat, lng }) => ({
+        url: `customer/fetchZoneAndCharges?lat=31.486481351267308&lng=74.21796094626188`,
+        method: "GET",
+      }),
+    }),
+    getAllOrders: builder.query({
+      query: () => ({
+        url: "customer/allBookings",
+        method: "GET",
+      }),
+    }),
+
+    bookingDetailById: builder.query({
+      query: (id) => ({
+        url: `customer/bookingDetailsById?bookingId=${id}`,
+        method: "GET",
+      }),
+    }),
+
+    createIntent: builder.mutation({
+      query: (body) => ({
+        url: "customer/createIntentUsingStripe",
+        method: "POST",
+        body,
+      }),
+    }),
   }),
 });
 
@@ -93,4 +140,11 @@ export const {
   useGetProfileQuery,
   useUpdateProfileMutation,
   useGetServicesQuery,
+  useGetServiceByIdQuery,
+  useCreateBookingMutation,
+  useGetAllAddressQuery,
+  useGetChargesQuery,
+  useGetAllOrdersQuery,
+  useCreateIntentMutation,
+  useBookingDetailByIdQuery,
 } = api;

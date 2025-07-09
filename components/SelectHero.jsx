@@ -19,11 +19,12 @@ export const animals = [
   { key: "crocodile", label: "Crocodile" },
 ];
 
-export default function SelectHero({label, list = [] }) {
+export default function SelectHero({label, list = [] ,onChange}) {
   return (
     <div className="">
       <Select
         label={label}
+        onChange={onChange}
         classNames={{
           label: [
             "group-data-[focus=true]:text-gray-500",
@@ -51,8 +52,8 @@ export default function SelectHero({label, list = [] }) {
           ],
         }}
       >
-        {animals.map((animal) => (
-          <SelectItem key={animal.key}>{animal.label}</SelectItem>
+        {list?.map((item) => (
+          <SelectItem key={item.key}>{item.label}</SelectItem>
         ))}
       </Select>
     </div>

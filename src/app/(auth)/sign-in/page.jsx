@@ -9,7 +9,11 @@ import SelectHero from "../../../../components/SelectHero";
 import { InputOtp, Spinner } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { signInWithPopup } from "firebase/auth";
-import { auth, googleProvider,facebookProvider } from "../../../../utilities/firebase"; 
+import {
+  auth,
+  googleProvider,
+  facebookProvider,
+} from "../../../../utilities/firebase";
 import {
   useChangePasswordResetMutation,
   useRegisterUserMutation,
@@ -26,9 +30,14 @@ import PhoneInputComp from "../../../../components/PhoneInputComp";
 import HomeClientWrapper from "../../../../utilities/Test";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { BASE_URL } from "../../../../utilities/URL";
+import { CountDown } from "../../../../utilities/CountDown";
+import Link from "next/link";
+import { useDispatch } from "react-redux";
+import { setPage } from "@/app/store/slices/cartItemSlice";
 
 export default function page() {
   const router = useRouter();
+  const dispatch = useDispatch();
   const [userLogin, { isLoading, isError, isSuccess }] = useUserLoginMutation();
   const [resetPassword] = useResetPasswordMutation();
   const [verifyOTP] = useVerifyOTPMutation();
@@ -36,7 +45,7 @@ export default function page() {
   const [changePasswordReset] = useChangePasswordResetMutation();
   const [registerUser] = useRegisterUserMutation();
   const [verifyOTPRegister] = useVerifyOTPRegisterMutation();
-
+  const { secondsLeft, isActive, startCountdown } = CountDown(60);
   const [step, setStep] = useState("sign-in");
   const [otp, setOtp] = useState("");
   const [userData, setUserData] = useState({
@@ -124,6 +133,7 @@ export default function page() {
           localStorage.removeItem("otpId");
           localStorage.removeItem("type");
           localStorage.setItem("loginStatus", "true");
+          localStorage.setItem("stripeCustomerId", res.data.stripeCustomerId);
           localStorage.setItem("userId", res.data.userId);
           localStorage.setItem("email", res.data.email);
           localStorage.setItem("phoneNum", res?.data?.phoneNum);
@@ -143,7 +153,7 @@ export default function page() {
         } else if (res?.message === "Pending email verification") {
           localStorage.setItem("userId", res?.data?.userId);
           localStorage.setItem("otpId", res?.data?.otpId);
-          localStorage.setItem("email", res.data.email);
+          localStorage.setItem("email", res?.data?.email);
           localStorage.setItem("type", "register");
           setUserData({ ...userData, verficationPending: true });
           addToast({
@@ -161,7 +171,7 @@ export default function page() {
       } catch (err) {
         addToast({
           title: "Login Failed",
-          description: err?.data?.message,
+          description: err?.error,
           color: "danger",
         });
       }
@@ -196,6 +206,7 @@ export default function page() {
           color: "success",
         });
         setStep("otp");
+        startCountdown();
       } else {
         addToast({
           title: "Reset Password",
@@ -206,7 +217,8 @@ export default function page() {
     }
   };
 
-  const VerifyOtp = async () => {
+  const VerifyOtp = async (e) => {
+    e.preventDefault();
     let res = await verifyOTP({
       OTP: otp,
       otpId: localStorage.getItem("otpId"),
@@ -241,6 +253,7 @@ export default function page() {
         color: "success",
       });
       setStep("otp");
+      startCountdown();
     } else {
       addToast({
         title: "Resend OTP",
@@ -250,20 +263,29 @@ export default function page() {
     }
   };
 
-  const handleVerifyOtpRegister = async () => {
+  const handleVerifyOtpRegister = async (e) => {
+    e.preventDefault();
     let res = await verifyOTPRegister({
       userId: localStorage.getItem("userId"),
       otpId: localStorage.getItem("otpId"),
       OTP: otp,
+      dvToken: "",
     }).unwrap();
 
     if (res?.status === "1") {
+      localStorage.setItem("loginStatus", true);
+      localStorage.setItem("userId", res?.data?.userId);
+      localStorage.setItem("email", res?.data?.email);
+      localStorage.removeItem("type");
+      localStorage.removeItem("otpId");
       clearAll();
       addToast({
         title: "Resend OTP",
         description: res?.message,
         color: "success",
       });
+      dispatch(setPage(true));
+      router.push("/");
       setStep("sign-in");
     } else {
       addToast({
@@ -365,7 +387,9 @@ export default function page() {
     } else if (!register?.password || !register?.confirmPassword) {
       addToast({
         title: "User Registration",
-        description: !register?.password ? "Enter password" :"Enter confirm password",
+        description: !register?.password
+          ? "Enter password"
+          : "Enter confirm password",
         color: "danger",
       });
     } else if (register?.password !== register?.confirmPassword) {
@@ -399,6 +423,7 @@ export default function page() {
           description: res?.message,
           color: "success",
         });
+        startCountdown();
       } else {
         addToast({
           title: "User Registration",
@@ -423,23 +448,25 @@ export default function page() {
     }
   };
 
-
- const handleGoogleLogin = async () => {
+  const handleGoogleLogin = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
 
-  
       const idToken = await user.getIdToken();
-      console.log("🚀 ~ handleGoogleLogin ~ idToken:", idToken)
+      console.log("🚀 ~ handleGoogleLogin ~ user:", user);
 
-  
-      const response = await fetch(BASE_URL+"customer/loginUser", {
+      const response = await fetch(BASE_URL + "customer/loginUser", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ idToken }),
+        body: JSON.stringify({
+          email: user?.email,
+          password: "",
+          signedFrom: "google",
+          dvToken: "",
+        }),
       });
 
       if (!response.ok) {
@@ -455,31 +482,70 @@ export default function page() {
     }
   };
 
-const handleFacebookLogin = async () => {
-  try {
-    const result = await signInWithPopup(auth, facebookProvider);
-    console.log("User Info:", result?.user);
-  } catch (error) {
-    if (error.code === "auth/popup-closed-by-user") {
-      console.warn("❗ User closed the login popup.");
-    } else {
-      console.error("❌ Facebook Sign-In error:", error);
+  const handleFacebookLogin = async () => {
+    try {
+      const result = await signInWithPopup(auth, facebookProvider);
+      console.log("User Info:", result?.user);
+    } catch (error) {
+      if (error.code === "auth/popup-closed-by-user") {
+        console.warn("❗ User closed the login popup.");
+      } else {
+        console.error("❌ Facebook Sign-In error:", error);
+      }
     }
-  }
-};
+  };
 
   return (
     <>
       <HomeClientWrapper>
-        <div className="grid grid-cols-2">
-          <div className="h-screen w-full bg-sign-in bg-cover bg-center bg-no-repeat"></div>
+        <div className="grid lg:grid-cols-2">
+          <div className="h-[300px] sm:h-[600px] lg:h-screen w-full lg:bg-sign-in bg-cover bg-center bg-no-repeat relative">
+            <video
+              autoPlay
+              muted
+              loop
+              className="w-full h-full object-cover object-center lg:hidden"
+              src="/images/signInVideo.mp4"
+            ></video>
 
-          <div className="w-full flex justify-center items-center">
+            <div className="w-full max-w-[565px] mx-auto my-auto absolute bottom-5 left-1/2 -translate-x-1/2 lg:hidden">
+              <div className="mx-auto w-max pb-1 sm:pb-4">
+                <p className="font-sf sm:text-xl font-medium text-theme-blue">
+                  Welcome to
+                </p>
+                <h4 className="font-youth font-bold text-2xl sm:text-[40px] leading-8 text-theme-blue">
+                  Just Dry Cleaners
+                </h4>
+              </div>
+              <Link onClick={() => dispatch(setPage(true))} href="/">
+                <img
+                  className="mx-auto w-12 sm:w-auto"
+                  src="/images/logo.png"
+                  alt="logo"
+                />
+              </Link>
+            </div>
+
+            <div className="w-full h-14 flex justify-center items-center absolute -bottom-14 left-0 px-8 bg-theme-gray lg:hidden">
+              <p className="max-w-[565px] font-sf text-xs sm:text-base">
+                Create an account and start enjoying cleaner clothes with zero
+                effort!
+              </p>
+            </div>
+          </div>
+
+          <div className="w-full h-screen lg:overflow-auto flex justify-center lg:items-center px-5 sm:px-8 pad-y">
             {step === "sign-in" ? (
-              <div className="w-full max-w-[565px] mx-auto">
-                <img className="mx-auto" src="/images/logo.png" alt="logo" />
+              <div className="w-full max-w-[565px] mx-auto sm:my-auto sm:py-10">
+                <Link onClick={() => dispatch(setPage(true))} href="/">
+                  <img
+                    className="mx-auto max-lg:hidden"
+                    src="/images/logo.png"
+                    alt="logo"
+                  />
+                </Link>
 
-                <div className="mx-auto w-max pt-3">
+                <div className="mx-auto w-max pt-3 max-lg:hidden">
                   <p className="font-sf text-xl font-medium text-theme-blue">
                     Welcome to
                   </p>
@@ -488,7 +554,7 @@ const handleFacebookLogin = async () => {
                   </h4>
                 </div>
 
-                <form className="space-y-5 pt-12 font-sf">
+                <form className="space-y-5 lg:pt-12 font-sf">
                   <InputHeroUi
                     type="email"
                     label="Email Address"
@@ -536,7 +602,7 @@ const handleFacebookLogin = async () => {
                   />
                 </form>
 
-                <div className="font-sf my-10 flex flex-col items-center">
+                <div className="font-sf my-8 sm:my-10 flex flex-col items-center">
                   <p
                     onClick={() => setStep("forgot")}
                     className="text-base font-semibold text-theme-brightBlue text-center cursor-pointer"
@@ -558,7 +624,7 @@ const handleFacebookLogin = async () => {
                   <p className="bg-theme-gray-2/25 w-full h-[2px]"></p>
                 </div>
 
-                <div className="space-y-5 pt-12">
+                <div className="w-full space-y-5 pt-8 sm:pt-12 max-sm:pb-10">
                   <ButtonContinueWith
                     text="Continue with google"
                     size="18px"
@@ -579,10 +645,14 @@ const handleFacebookLogin = async () => {
                 </div>
               </div>
             ) : step === "forgot" ? (
-              <div className="w-full max-w-[565px] mx-auto">
-                <img className="mx-auto" src="/images/logo.png" alt="logo" />
+              <div className="w-full max-w-[565px] mx-auto sm:my-auto">
+                <img
+                  className="mx-auto max-lg:hidden"
+                  src="/images/logo.png"
+                  alt="logo"
+                />
 
-                <div className="mx-auto w-max pt-3">
+                <div className="mx-auto w-max pt-3 max-lg:hidden">
                   <p className="font-sf text-xl font-medium text-theme-blue">
                     Welcome to
                   </p>
@@ -591,11 +661,11 @@ const handleFacebookLogin = async () => {
                   </h4>
                 </div>
 
-                <form className="space-y-5 pt-12 font-sf">
-                  <h4 className="font-semibold text-[32px] pb-4">
+                <form className="space-y-3 sm:space-y-5 sm:pt-12 font-sf">
+                  <h4 className="font-semibold text-2xl sm:text-[32px] sm:pb-4">
                     Forgot your password?
                   </h4>
-                  <p className="font-sf text-lg font-medium text-theme-gray-2/65 leading-tight">
+                  <p className="font-sf text-lg sm:font-medium text-theme-gray-2/65 leading-tight">
                     Enter your email and we’ll send you instructions for
                     creating a new password
                   </p>
@@ -630,10 +700,14 @@ const handleFacebookLogin = async () => {
                 </form>
               </div>
             ) : step === "sign-up" ? (
-              <div className="w-full max-w-[565px] mx-auto">
-                <img className="mx-auto" src="/images/logo.png" alt="logo" />
+              <div className="w-full max-w-[565px] mx-auto my-auto">
+                <img
+                  className="mx-auto max-lg:hidden"
+                  src="/images/logo.png"
+                  alt="logo"
+                />
 
-                <div className="mx-auto w-max pt-3">
+                <div className="mx-auto w-max pt-3 max-lg:hidden">
                   <p className="font-sf text-xl font-medium text-theme-blue">
                     Welcome to
                   </p>
@@ -642,8 +716,8 @@ const handleFacebookLogin = async () => {
                   </h4>
                 </div>
 
-                <div className="space-y-5 pt-12 font-sf">
-                  <p className="font-sf text-base text-theme-gray-2/75">
+                <div className="space-y-5 sm:pt-12 font-sf">
+                  <p className="font-sf text-base text-theme-gray-2/75 max-lg:hidden">
                     Create an account and start enjoying cleaner clothes with
                     zero effort!
                   </p>
@@ -671,7 +745,7 @@ const handleFacebookLogin = async () => {
                       onChange={handleRegisterChange}
                       validate={(value) => {
                         if (value.length < 3) {
-                          return "Last name must be at least 6 characters long";
+                          return "Last name must be at least 3 characters long";
                         }
 
                         return value === "admin" ? "Nice try!" : null;
@@ -743,7 +817,7 @@ const handleFacebookLogin = async () => {
                     and Privacy Policy.
                   </p>
 
-                  <div className="space-y-3 flex flex-col items-center">
+                  <div className="space-y-3 flex flex-col items-center max-lg:pb-8">
                     <p className="font-sf text-base text-theme-gray-2 text-center leading-tight">
                       Already have an <br /> account?
                     </p>
@@ -757,12 +831,12 @@ const handleFacebookLogin = async () => {
                 </div>
               </div>
             ) : step === "otp" ? (
-              <div className="w-full max-w-[565px] mx-auto">
-                <div className="mx-auto w-max">
-                  <h4 className="font-youth font-bold text-[32px] text-center">
+              <div className="w-full max-w-[565px] mx-auto sm:my-auto overflow-x-hidden">
+                <div className="mx-auto w-full">
+                  <h4 className="font-youth font-bold text-2xl sm:text-[32px] text-center">
                     Verify your email
                   </h4>
-                  <p className="font-sf text-2xl text-theme-gray-2 text-center leading-tight py-5">
+                  <p className="font-sf sm:text-2xl text-theme-gray-2 text-center leading-tight py-3 sm:py-5">
                     Please enter the 4 digit code <br /> sent to{" "}
                     {localStorage.getItem("email") || ""}
                   </p>
@@ -791,31 +865,43 @@ const handleFacebookLogin = async () => {
                   />
                 </div>
 
-                <div className="space-y-4  font-sf">
+                <div className="space-y-4 w-full font-sf">
                   <div className="pt-2">
                     <ButtonYouth70018
                       text="Continue"
-                      onClick={() =>
+                      onClick={(e) =>
                         localStorage.getItem("type") === "register"
-                          ? handleVerifyOtpRegister()
-                          : VerifyOtp()
+                          ? handleVerifyOtpRegister(e)
+                          : VerifyOtp(e)
                       }
                     />
                   </div>
 
-                  <h6
-                    onClick={handleResendOtp}
-                    className="font-sf text-lg font-semibold text-theme-blue text-center"
-                  >
-                    Resend code in 00:30
-                  </h6>
+                  {isActive ? (
+                    <h6 className="font-sf text-lg font-semibold text-gray-500 text-center">
+                      Resend code in {secondsLeft}
+                    </h6>
+                  ) : (
+                    <h6
+                      onClick={handleResendOtp}
+                      className="font-sf text-lg font-semibold text-theme-blue text-center cursor-pointer"
+                    >
+                      Resend code
+                    </h6>
+                  )}
                 </div>
               </div>
             ) : step === "password" ? (
-              <div className="w-full max-w-[565px] mx-auto">
-                <img className="mx-auto" src="/images/logo.png" alt="logo" />
+              <div className="w-full max-w-[565px] mx-auto sm:my-auto">
+                <Link
+                  className="max-lg:hidden"
+                  onClick={() => dispatch(setPage(true))}
+                  href="/"
+                >
+                  <img className="mx-auto" src="/images/logo.png" alt="logo" />
+                </Link>
 
-                <div className="mx-auto w-max pt-3">
+                <div className="mx-auto w-max pt-3 max-lg:hidden">
                   <p className="font-sf text-xl font-medium text-theme-blue">
                     Welcome to
                   </p>
@@ -824,7 +910,7 @@ const handleFacebookLogin = async () => {
                   </h4>
                 </div>
 
-                <form className="space-y-5 pt-12 font-sf">
+                <form className="space-y-5 sm:pt-12 font-sf">
                   <p className="font-sf text-base text-theme-gray-2/75">
                     Create an account and start enjoying cleaner clothes with
                     zero effort!

@@ -3,7 +3,7 @@ import { GoArrowUp, GoClock } from "react-icons/go";
 
 export default function Notifications() {
   return (
-    <section className="w-full mt-16 px-10">
+    <section className="w-full mt-16 sm:px-6 lg:px-10">
       <h2 className="font-youth font-medium text-[40px] mb-4">
         Activity Alerts
       </h2>

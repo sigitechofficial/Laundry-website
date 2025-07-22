@@ -44,13 +44,16 @@ export default function CustomDrawer({
   onActionClick,
 }) {
   const dispatch = useDispatch();
-   const searchParams = useSearchParams();
-   const currentTab = searchParams.get("tab");
+  const searchParams = useSearchParams();
+  const currentTab = searchParams.get("tab");
   const router = useRouter();
   const [drawerScroll, setDrawerScroll] = useState(0);
   const [inviteFriend, setInviteFriend] = useState(0);
 
-  let token = typeof window !== "undefined" ? localStorage.getItem("loginStatus")==="true" : false;
+  let token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("loginStatus") === "true"
+      : false;
 
   const handleDrawerScroll = (event) => {
     const scrollTop = event.target.scrollTop;
@@ -64,15 +67,13 @@ export default function CustomDrawer({
       description: "Logout successfully",
       color: "success",
     });
-      // dispatch(setPage(true));
-      router.push("/");
+    // dispatch(setPage(true));
+    router.push("/");
     onActionClick?.();
     onClose?.();
   };
 
   const handleNavigate = (val) => {
-
-
     if (!val?.includes(currentTab)) {
       dispatch(setPage(true));
       router.push(val);
@@ -135,7 +136,8 @@ export default function CustomDrawer({
                             />
                           ) : (
                             <span className="text-gray-500">
-                          {data?.data?.firstName[0] +data?.data?.lastName[0] }
+                              {data?.data?.firstName[0] +
+                                data?.data?.lastName[0]}
                             </span>
                           )
                         ) : (
@@ -144,11 +146,20 @@ export default function CustomDrawer({
                       </div>
                       <div className="flex flex-col gap-2 text-theme-black-2">
                         <h2 className="text-2xl font-semibold font-omnes mt-3 capitalize line-clamp-1">
-                          Hi,{" "} 
-                          {data?.data?.firstName ? data?.data?.firstName + " " + data?.data?.lastName  : "User"}
+                          Hi,{" "}
+                          {data?.data?.firstName
+                            ? data?.data?.firstName + " " + data?.data?.lastName
+                            : "User"}
                         </h2>
                         <p className="font-sf  text-sm font-normal text-theme-black-2 text-opacity-60">
-                          {data?.data?.phoneNum ? <>{data?.data?.countryCode +data?.data?.phoneNum ?? ""}</> : <></>}
+                          {data?.data?.phoneNum ? (
+                            <>
+                              {data?.data?.countryCode + data?.data?.phoneNum ??
+                                ""}
+                            </>
+                          ) : (
+                            <></>
+                          )}
                         </p>
                         <p className="font-sf  text-sm font-normal text-theme-black-2 text-opacity-60">
                           {data?.data?.email ?? "user@gmail.com"}
@@ -240,6 +251,17 @@ export default function CustomDrawer({
                         {"Quick links"}
                       </div>
 
+                      <div>
+                        <DrawerItem
+                          Icon={RxCounterClockwiseClock}
+                          text={"Pricing"}
+                          onClick={() => {
+                            router.push("/pricing");
+                            // setProfileDrawer(false);
+                          }}
+                        />
+                      </div>
+
                       {/* <div className="">
                         <DrawerItem
                           Icon={LiaUserFriendsSolid}
@@ -295,8 +317,8 @@ export default function CustomDrawer({
                           />
                           <DrawerItem
                             Icon={FiLogOut}
-                            onClick={() => {
-                              router.push("/sign-up");
+                             onClick={() => {
+                              router.push("/sign-in");
                               // setProfileDrawer(false);
                             }}
                             text="Sign up"

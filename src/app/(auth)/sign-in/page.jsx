@@ -34,6 +34,7 @@ import { CountDown } from "../../../../utilities/CountDown";
 import Link from "next/link";
 import { useDispatch } from "react-redux";
 import { setPage } from "@/app/store/slices/cartItemSlice";
+import Header from "../../../../components/Header";
 
 export default function page() {
   const router = useRouter();
@@ -66,6 +67,7 @@ export default function page() {
     email: "",
     profileImage: null,
   });
+  console.log("🚀 ~ page ~ register:", register);
 
   const clearAll = () => {
     setUserData({
@@ -89,7 +91,9 @@ export default function page() {
   };
 
   const handlePhoneChange = (value, data) => {
-    console.log(value, data, "value, datavalue, datavalue, data");
+    console.log(data?.format, "value");
+    console.log(data?.format?.match(/\./g)?.length, "value");
+
     setRegister({
       ...register,
       countryCode: data.dialCode,
@@ -499,7 +503,7 @@ export default function page() {
     <>
       <HomeClientWrapper>
         <div className="grid lg:grid-cols-2">
-          <div className="h-[300px] sm:h-[600px] lg:h-screen w-full lg:bg-sign-in bg-cover bg-center bg-no-repeat relative">
+          <div className="h-[300px] max-sm:hidden sm:h-[600px] lg:h-screen w-full lg:bg-sign-in bg-cover bg-center bg-no-repeat relative">
             <video
               autoPlay
               muted
@@ -533,13 +537,16 @@ export default function page() {
               </p>
             </div>
           </div>
+          <div className="w-full sm:hidden">
+            <Header type="sign-in" />
+          </div>
 
-          <div className="w-full h-screen lg:overflow-auto flex justify-center lg:items-center px-5 sm:px-8 pad-y">
+          <div className="w-full h-screen lg:overflow-auto flex justify-center lg:items-center px-5 sm:px-8 sm:pad-y">
             {step === "sign-in" ? (
               <div className="w-full max-w-[565px] mx-auto sm:my-auto sm:py-10">
                 <Link onClick={() => dispatch(setPage(true))} href="/">
                   <img
-                    className="mx-auto max-lg:hidden"
+                    className="mx-auto cursor-pointer max-lg:hidden"
                     src="/images/logo.png"
                     alt="logo"
                   />
@@ -553,6 +560,10 @@ export default function page() {
                     Just Dry Cleaners
                   </h4>
                 </div>
+
+                <h4 className="font-youth font-bold text-2xl pt-5 pb-6 text-theme-blue sm:hidden">
+                  Welcome Back!
+                </h4>
 
                 <form className="space-y-5 lg:pt-12 font-sf">
                   <InputHeroUi
@@ -602,7 +613,7 @@ export default function page() {
                   />
                 </form>
 
-                <div className="font-sf my-8 sm:my-10 flex flex-col items-center">
+                <div className="font-sf my-6 space-y-2 sm:my-10 flex flex-col items-center">
                   <p
                     onClick={() => setStep("forgot")}
                     className="text-base font-semibold text-theme-brightBlue text-center cursor-pointer"
@@ -661,7 +672,7 @@ export default function page() {
                   </h4>
                 </div>
 
-                <form className="space-y-3 sm:space-y-5 sm:pt-12 font-sf">
+                <form className="space-y-3 sm:space-y-5 pt-12 font-sf">
                   <h4 className="font-semibold text-2xl sm:text-[32px] sm:pb-4">
                     Forgot your password?
                   </h4>
@@ -701,11 +712,13 @@ export default function page() {
               </div>
             ) : step === "sign-up" ? (
               <div className="w-full max-w-[565px] mx-auto my-auto">
-                <img
-                  className="mx-auto max-lg:hidden"
-                  src="/images/logo.png"
-                  alt="logo"
-                />
+                <Link onClick={() => dispatch(setPage(true))} href="/">
+                  <img
+                    className="mx-auto cursor-pointer max-lg:hidden"
+                    src="/images/logo.png"
+                    alt="logo"
+                  />
+                </Link>
 
                 <div className="mx-auto w-max pt-3 max-lg:hidden">
                   <p className="font-sf text-xl font-medium text-theme-blue">
@@ -819,7 +832,7 @@ export default function page() {
 
                   <div className="space-y-3 flex flex-col items-center max-lg:pb-8">
                     <p className="font-sf text-base text-theme-gray-2 text-center leading-tight">
-                      Already have an <br /> account?
+                      Already have an account?
                     </p>
                     <h6
                       onClick={() => setStep("sign-in")}
@@ -831,7 +844,7 @@ export default function page() {
                 </div>
               </div>
             ) : step === "otp" ? (
-              <div className="w-full max-w-[565px] mx-auto sm:my-auto overflow-x-hidden">
+              <div className="w-full max-w-[565px] mx-auto pt-8 sm:my-auto overflow-x-hidden">
                 <div className="mx-auto w-full">
                   <h4 className="font-youth font-bold text-2xl sm:text-[32px] text-center">
                     Verify your email

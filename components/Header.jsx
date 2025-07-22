@@ -35,7 +35,7 @@ const Header = ({ type }) => {
   }, []);
 
   const handleNavigate = (val) => {
-    if (!pathname?.includes(val)||(pathname !== "/"&&val==="/")) {
+    if (!pathname?.includes(val) || (pathname !== "/" && val === "/")) {
       dispatch(setPage(true));
     }
   };
@@ -49,9 +49,15 @@ const Header = ({ type }) => {
       ></div>
       <div
         className={`w-full h-[70px] 2xl:h-[80px] flex justify-center items-center px-5 md:px-[45px] relative ${
-          ["how", "aboutUs", "partner", "blog", "profile", "order","service"].includes(
-            type
-          )
+          [
+            "how",
+            "aboutUs",
+            "partner",
+            "blog",
+            "profile",
+            "order",
+            "service",
+          ].includes(type)
             ? "xl:shadow-md"
             : ""
         }`}
@@ -150,9 +156,9 @@ const Header = ({ type }) => {
               </div>
             ) : (
               <Link
-                  onClick={() => {
-                handleNavigate("/sign-in");
-              }}
+                onClick={() => {
+                  handleNavigate("/sign-in");
+                }}
                 href="/sign-in"
                 className="w-48 2xl:w-52 h-[50px] 2xl:h-[60px] rounded-full font-youth font-bold text-xl flex justify-center items-center border-black border-[2px]"
               >
@@ -162,15 +168,15 @@ const Header = ({ type }) => {
           </div>
         </div>
 
-        <div className="absolute top-5 left-4 text-theme-blue sm:left-12 xl:hidden">
+        <div className={`absolute top-5 left-4 text-theme-blue sm:left-12 xl:hidden ${[["sign-in"].includes(type) ? "hidden":""]} `}>
           <HiOutlineMenuAlt2 onClick={() => setIsDrawerOpen(true)} size={30} />
           {/* <CustomMenuBtn onClick={() => setIsDrawerOpen(true)} /> */}
         </div>
       </div>
 
       <CustomDrawer
-      data={data}
-      loading={isLoading}
+        data={data}
+        loading={isLoading}
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         title=""

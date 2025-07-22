@@ -1,5 +1,5 @@
 "use client";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import InputHeroUi from "../../../components/InputHeroUi";
 import {
   ButtonContinueWith,
@@ -15,10 +15,12 @@ import { TbLocation } from "react-icons/tb";
 import { Autocomplete } from "@react-google-maps/api";
 import { useRouter } from "next/navigation";
 import { generateCollectionSlots } from "../../../utilities/generateSlots";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { setOrderData, setPage } from "../store/slices/cartItemSlice";
 import { useGetAllAddressQuery } from "../store/services/api";
 import Link from "next/link";
+import Header from "../../../components/Header";
+import HomeClientWrapper from "../../../utilities/Test";
 
 const collection = [
   { key: "Collect from me in person", label: "Collect from me in person" },
@@ -31,12 +33,13 @@ const delivery = [
 
 export default function orderRegistration() {
   const router = useRouter();
+  const orderData = useSelector((state) => state.cart.orderData);
   const state = history.state?.customData?.step || null;
   const dispatch = useDispatch();
   const { data } = useGetAllAddressQuery();
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const autocompleteRef = useRef(null);
-  const [step, setStep] = useState(state ?? "new-order");
+  const [step, setStep] = useState(state ?? "get-started");
   const [modal, setModal] = useState({
     modType: "",
   });
@@ -56,9 +59,7 @@ export default function orderRegistration() {
     startAfterHours: 24, // default: 1 hour ahead (for collection)
   });
 
-  const [registrationData, setRegistrationData] = useState({
-    driverInstruction: "",
-  });
+  const [driverInstruction, setDriverInstruction] = useState("");
   const [collectionData, setCollectionData] = useState({
     collectionDate: "",
     collectionTimeTo: "",
@@ -81,6 +82,7 @@ export default function orderRegistration() {
     addressType: "pickUp",
     save: false,
   });
+  console.log("🚀 ~ orderRegistration ~ collectionData:", collectionData);
 
   const [deliveryData, setDeliveryData] = useState({
     deliveryDate: "",
@@ -277,10 +279,24 @@ export default function orderRegistration() {
     });
   }
 
+  useEffect(() => {
+    if (orderData) {
+      if (orderData.collectionData) {
+        setCollectionData(orderData.collectionData);
+      }
+      if (orderData.deliveryData) {
+        setDeliveryData(orderData.deliveryData);
+      }
+      if (orderData.driverInstruction) {
+        setDriverInstruction(orderData.driverInstruction);
+      }
+    }
+  }, [orderData]);
+
   return (
-    <>
+    <HomeClientWrapper>
       <div className="w-full grid lg:grid-cols-2">
-        <div className="h-[300px] sm:h-[600px] lg:h-screen w-full bg-sign-in bg-cover bg-center bg-no-repeat relative">
+        <div className="h-[300px] max-sm:hidden sm:h-[600px] lg:h-screen w-full bg-sign-in bg-cover bg-center bg-no-repeat relative">
           <video
             autoPlay
             muted
@@ -313,6 +329,10 @@ export default function orderRegistration() {
               effort!
             </p>
           </div>
+        </div>
+
+        <div className="max-xl:fixed max-xl:z-50 w-full sm:hidden">
+          <Header type="" />
         </div>
 
         <div className="w-full flex justify-center items-center">
@@ -356,7 +376,13 @@ export default function orderRegistration() {
           ) : step === "get-started" ? (
             <div className="w-full h-screen flex justify-center 2xl:items-center overflow-auto px-5 sm:px-8 py-20 ">
               <div className="w-full max-w-[565px] mx-auto">
-                <img className="mx-auto max-lg:hidden" src="/images/logo.png" alt="logo" />
+                <Link onClick={() => dispatch(setPage(true))} href="/">
+                  <img
+                    className="mx-auto cursor-pointer max-lg:hidden"
+                    src="/images/logo.png"
+                    alt="logo"
+                  />
+                </Link>
 
                 <div className="mx-auto w-max pt-3 max-lg:hidden">
                   <p className="font-sf text-xl font-medium text-theme-blue">
@@ -412,6 +438,7 @@ export default function orderRegistration() {
                   <SelectHero
                     label="Select collection method"
                     list={collection}
+                    value={collectionData?.driverInstructionOptions}
                     onChange={(e) =>
                       setCollectionData({
                         ...collectionData,
@@ -446,6 +473,7 @@ export default function orderRegistration() {
                   <SelectHero
                     label="Select delivery method"
                     list={delivery}
+                    value={deliveryData?.driverInstructionOptions1 }
                     onChange={(e) =>
                       setDeliveryData({
                         ...deliveryData,
@@ -464,8 +492,9 @@ export default function orderRegistration() {
                     <div className="">
                       <h6>Driver instruction</h6>
                       <p className="line-clamp-1">
-                        {collectionData?.driverInstruction ??
-                          "Instructions for the driver"}
+                        {driverInstruction
+                          ? driverInstruction
+                          : "Instructions for the driver"}
                       </p>
                     </div>
 
@@ -489,12 +518,9 @@ export default function orderRegistration() {
                         const orderData = {
                           collectionData,
                           deliveryData,
-                          driverInstruction: collectionData?.driverInstruction,
+                          driverInstruction: driverInstruction,
                         };
-                        // localStorage.setItem(
-                        //   "orderData",
-                        //   JSON.stringify(orderData)
-                        // );
+
                         dispatch(setOrderData(orderData));
 
                         setStep("");
@@ -991,12 +1017,9 @@ export default function orderRegistration() {
                   type="text"
                   name=""
                   id=""
-                  value={collectionData?.driverInstruction}
+                  value={driverInstruction}
                   onChange={(e) => {
-                    setCollectionData({
-                      ...collectionData,
-                      driverInstruction: e.target.value,
-                    });
+                    setDriverInstruction(e.target.value);
                   }}
                 />
               </div>
@@ -1016,6 +1039,6 @@ export default function orderRegistration() {
           ""
         )}
       </ReusableModal>
-    </>
+    </HomeClientWrapper>
   );
 }

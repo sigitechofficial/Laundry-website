@@ -57,7 +57,7 @@ export default function Pricing() {
           </div>
 
           <div className="w-full max-w-[1290px] mx-auto px-[16px] sm:px-[45px] py-12 lg:py-[100px]">
-            <div className="w-full grid lg:grid-cols-2 gap-10">
+            <div className="w-full grid lg:grid-cols-2 gap-5 sm:gap-10">
               {/* <CategoryCard
               bg="1"
               h="Dry Cleaning"

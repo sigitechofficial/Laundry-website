@@ -22,7 +22,7 @@ export default function CategoryCard({
     <>
       <div
         onClick={onClick}
-        className={`rounded-xl w-full h-[200px] sm:h-[264px] flex relative overflow-hidden cursor-pointer ${
+        className={`rounded-xl w-full h-[160px] sm:h-[264px] flex relative overflow-hidden cursor-pointer ${
           bg === "1"
             ? "bg-bgAvailable"
             : bg === "2"
@@ -36,16 +36,16 @@ export default function CategoryCard({
             : bg
         }`}
       >
-        <div className="pl-5 pr-40 py-4 h-full">
+        <div className="pl-3 sm:pl-5 pr-28 sm:pr-40 py-4 h-full">
           <div className="flex items-center gap-x-3">
-            <div className="bg-white rounded-full shrink-0 size-10 flex justify-center items-center">
-              <Icon size="25" />
+            <div className="bg-white rounded-full shrink-0 size-8 sm:size-10 flex justify-center items-center">
+              <Icon className="text-xl sm:text-2xl" />
             </div>
 
-            <p className="font-youth font-bold text-2xl whitespace-nowrap">{h}</p>
+            <p className="font-youth font-bold sm:text-2xl whitespace-nowrap">{h}</p>
           </div>
 
-          <p className="font-sf text-sm sm:text-base pt-[22px] max-w-[342px] line-clamp-5">
+          <p className="font-sf text-sm sm:text-base pt-2 sm:pt-[22px] max-w-[342px] line-clamp-4 sm:line-clamp-5">
             From delicate fabrics to everyday wear, our washing service ensures
             your clothes stay fresh and vibrant
           </p>

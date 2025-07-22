@@ -37,15 +37,15 @@ export default function Home() {
                 <p className="text-sm sm:text-lg text-black/60">Add zip code</p>
               </div>
               <ClientBtn>
-                <Link
-                  href="/order-registration"
+                <p
+                  //  href="/place-order"
                   className="size-10 sm:size-14 rounded-lg bg-theme-darkBlue flex justify-center items-center cursor-pointer ml-auto"
                 >
                   <PiArrowRight
                     className="text-2xl sm:text-[40px]"
                     color="white"
                   />
-                </Link>
+                </p>
               </ClientBtn>
             </div>
           </div>
@@ -193,12 +193,12 @@ export default function Home() {
                     </p>
                   </div>
                   <ClientBtn>
-                    <Link
-                      href="/order-registration"
+                    <p
+                      //  href="/place-order"
                       className="bg-theme-darkBlue rounded-full flex justify-center items-center sm:w-52 h-10 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl sm:mt-4"
                     >
                       Start Cleaning
-                    </Link>
+                    </p>
                   </ClientBtn>
                 </div>
               </div>
@@ -289,12 +289,12 @@ export default function Home() {
                   </div>
                 </div>
                 <ClientBtn>
-                  <Link
-                    href="/order-registration"
+                  <p
+                    // href="/place-order"
                     className="bg-theme-darkBlue rounded-full flex justify-center items-center w-36 sm:w-52 h-12 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl mt-6 sm:mt-10"
                   >
                     Book Now
-                  </Link>
+                  </p>
                 </ClientBtn>
               </div>
             </div>
@@ -400,12 +400,12 @@ export default function Home() {
                 </div>
 
                 <ClientBtn>
-                  <Link
-                    href="/order-registration"
+                  <p
+                    // href="/place-order"
                     className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2"
                   >
                     Start Cleaning
-                  </Link>
+                  </p>
                 </ClientBtn>
               </div>
             </div>
@@ -447,12 +447,12 @@ export default function Home() {
                   <span className="text-xs font-sf text-white">/lbs</span>
                 </div>
                 <ClientBtn>
-                  <Link
-                    href="/order-registration"
+                  <p
+              // href="/place-order"
                     className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2"
                   >
                     Start Cleaning
-                  </Link>
+                  </p>
                 </ClientBtn>
               </div>
             </div>
@@ -496,12 +496,12 @@ export default function Home() {
                 </div>
 
                 <ClientBtn>
-                  <Link
-                    href="/order-registration"
+                  <p
+                  // href="/place-order"
                     className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2"
                   >
                     Start Cleaning
-                  </Link>
+                  </p>
                 </ClientBtn>
               </div>
             </div>

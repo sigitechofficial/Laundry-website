@@ -333,7 +333,7 @@ export default function Order() {
                                 { customData: { step: "get-started" } },
                                 ""
                               );
-                              router.push("/order-registration");
+                              router.push("/place-order");
                             }}
                             className="uppercase cursor-pointer text-theme-blue font-sf font-normal px-2 py-1 border border-black rounded-full shrink-0 text-sm"
                           >
@@ -365,7 +365,7 @@ export default function Order() {
                             }}
                             className="text-white font-sf font-normal px-3 capitalize py-1 bg-black rounded-full shrink-0 text-sm cursor-pointer"
                           >
-                            add
+                            {orderData?.driverInstruction ? "update" : "add"}
                           </p>
                         </div>
                       </div>

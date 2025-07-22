@@ -1,4 +1,4 @@
-import { Geist, Geist_Mono} from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "./store/Providers";
@@ -132,18 +132,16 @@ const youth = localFont({
   variable: "--font-youth",
 });
 
-
 export const metadata = {
   title: "Laundry Service",
   description: "Do your laundry smartly",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`${sfPro.variable} ${youth.variable} antialiased`}
-      >
+      <body className={`${sfPro.variable} ${youth.variable} antialiased`}>
         <Providers>
           <HeroUIProviders>
             <GoogleMapsProvider>{children}</GoogleMapsProvider>

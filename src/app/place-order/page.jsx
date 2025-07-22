@@ -2,7 +2,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import InputHeroUi from "../../../components/InputHeroUi";
 import {
-  ButtonContinueWith,
   ButtonYouth70018,
 } from "../../../components/Buttons";
 import { PiArrowRight } from "react-icons/pi";
@@ -21,6 +20,8 @@ import { useGetAllAddressQuery } from "../store/services/api";
 import Link from "next/link";
 import Header from "../../../components/Header";
 import HomeClientWrapper from "../../../utilities/Test";
+import GoogleMapsProvider from "../../../utilities/GoogeMapsProvider";
+import { MiniLoader } from "../../../components/Loader";
 
 const collection = [
   { key: "Collect from me in person", label: "Collect from me in person" },
@@ -295,6 +296,7 @@ export default function orderRegistration() {
 
   return (
     <HomeClientWrapper>
+       <GoogleMapsProvider>
       <div className="w-full grid lg:grid-cols-2">
         <div className="h-[300px] max-sm:hidden sm:h-[600px] lg:h-screen w-full bg-sign-in bg-cover bg-center bg-no-repeat relative">
           <video
@@ -323,7 +325,7 @@ export default function orderRegistration() {
             </Link>
           </div>
 
-          <div className="w-full h-14 flex justify-center items-center absolute -bottom-14 left-0 px-8 bg-theme-gray lg:hidden">
+          <div className="w-full h-14 flex justify-center items-center absolute z-20 -bottom-14 left-0 px-8 bg-theme-gray lg:hidden">
             <p className="max-w-[565px] font-sf text-xs sm:text-base">
               Create an account and start enjoying cleaner clothes with zero
               effort!
@@ -533,12 +535,14 @@ export default function orderRegistration() {
               </div>
             </div>
           ) : (
-            <Spinner
-              classNames={{ label: "text-foreground mt-4" }}
-              size="lg"
-              label="Loading..."
-              variant="wave"
-            />
+            // <Spinner
+            //   classNames={{ label: "text-foreground mt-4" }}
+            //   size="lg"
+            //   label="Loading..."
+            //   variant="wave"
+            // />
+
+            <MiniLoader/>
           )}
         </div>
       </div>
@@ -1039,6 +1043,7 @@ export default function orderRegistration() {
           ""
         )}
       </ReusableModal>
+      </GoogleMapsProvider>
     </HomeClientWrapper>
   );
 }

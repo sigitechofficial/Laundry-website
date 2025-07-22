@@ -10,6 +10,10 @@ import { BASE_URL } from "../utilities/URL";
 import { useDispatch } from "react-redux";
 import { setPage } from "@/app/store/slices/cartItemSlice";
 import { usePathname } from "next/navigation";
+import { onMessage } from "firebase/messaging";
+import { requestDeviceToken } from "../utilities/requestFCMToken";
+import { messaging } from "../utilities/firebase";
+import { addToast } from "@heroui/react";
 
 const Header = ({ type }) => {
   const dispatch = useDispatch();
@@ -23,6 +27,8 @@ const Header = ({ type }) => {
   }
 
   useEffect(() => {
+    requestDeviceToken();
+
     const handleScroll = () => {
       const scrollThreshold = 100;
       setIsScrolled(window.scrollY > scrollThreshold);
@@ -39,6 +45,19 @@ const Header = ({ type }) => {
       dispatch(setPage(true));
     }
   };
+
+  if (messaging) {
+    onMessage(messaging, (payload) => {
+      console.log("📩 Foreground message:", payload);
+      // You can show a toast or UI notification here
+
+      addToast({
+        title: "Firebase Notification",
+        description: payload?.notification?.title,
+        color: "success",
+      });
+    });
+  }
 
   return (
     <>
@@ -168,7 +187,11 @@ const Header = ({ type }) => {
           </div>
         </div>
 
-        <div className={`absolute top-5 left-4 text-theme-blue sm:left-12 xl:hidden ${[["sign-in"].includes(type) ? "hidden":""]} `}>
+        <div
+          className={`absolute top-5 left-4 text-theme-blue sm:left-12 xl:hidden ${[
+            ["sign-in"].includes(type) ? "hidden" : "",
+          ]} `}
+        >
           <HiOutlineMenuAlt2 onClick={() => setIsDrawerOpen(true)} size={30} />
           {/* <CustomMenuBtn onClick={() => setIsDrawerOpen(true)} /> */}
         </div>

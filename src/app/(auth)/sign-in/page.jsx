@@ -35,6 +35,7 @@ import Link from "next/link";
 import { useDispatch } from "react-redux";
 import { setPage } from "@/app/store/slices/cartItemSlice";
 import Header from "../../../../components/Header";
+import { MiniLoader } from "../../../../components/Loader";
 
 export default function page() {
   const router = useRouter();
@@ -67,7 +68,11 @@ export default function page() {
     email: "",
     profileImage: null,
   });
-  console.log("🚀 ~ page ~ register:", register);
+
+  let devToken = "";
+  if (typeof window !== "undefined") {
+    devToken = localStorage.getItem("devToken");
+  }
 
   const clearAll = () => {
     setUserData({
@@ -91,7 +96,7 @@ export default function page() {
   };
 
   const handlePhoneChange = (value, data) => {
-    console.log(data?.format, "value");
+    // console.log(data?.format, "value");
     console.log(data?.format?.match(/\./g)?.length, "value");
 
     setRegister({
@@ -130,7 +135,7 @@ export default function page() {
           email: userData?.email,
           password: userData?.password,
           signedFrom: "",
-          dvToken: "gfgfdgbgfhg",
+          dvToken: devToken,
         }).unwrap();
 
         if (res?.status === "1") {
@@ -273,7 +278,7 @@ export default function page() {
       userId: localStorage.getItem("userId"),
       otpId: localStorage.getItem("otpId"),
       OTP: otp,
-      dvToken: "",
+      dvToken: devToken,
     }).unwrap();
 
     if (res?.status === "1") {
@@ -408,7 +413,7 @@ export default function page() {
         lastName: register?.lastName,
         password: register?.password,
         confirmPassword: register?.confirmPassword,
-        dvToken: "dfdfdfdfdfd",
+        dvToken: devToken,
         phoneNum: register?.phoneNum,
         countryCode: register?.countryCode?.includes("+")
           ? register?.countryCode
@@ -469,7 +474,7 @@ export default function page() {
           email: user?.email,
           password: "",
           signedFrom: "google",
-          dvToken: "",
+          dvToken: devToken,
         }),
       });
 
@@ -992,12 +997,14 @@ export default function page() {
                 </form>
               </div>
             ) : step === "new-order" ? (
-              <Spinner
-                classNames={{ label: "text-foreground mt-4" }}
-                size="lg"
-                label="Loading..."
-                variant="wave"
-              />
+              // <Spinner
+              //   classNames={{ label: "text-foreground mt-4" }}
+              //   size="lg"
+              //   label="Loading..."
+              //   variant="wave"
+              // />
+
+              <MiniLoader/>
             ) : (
               ""
             )}

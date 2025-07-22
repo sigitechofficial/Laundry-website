@@ -1,19 +1,15 @@
-import { Geist, Geist_Mono } from "next/font/google";
+
 import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "./store/Providers";
 import { HeroUIProviders } from "../../utilities/HeroUIProviders";
-import GoogleMapsProvider from "../../utilities/GoogeMapsProvider";
+// import GoogleMapsProvider from "../../utilities/GoogeMapsProvider";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// const geistSans = Geist({
+//   variable: "--font-geist-sans",
+//   subsets: ["latin"],
+// });
 
 const sfPro = localFont({
   src: [
@@ -135,7 +131,13 @@ const youth = localFont({
 export const metadata = {
   title: "Laundry Service",
   description: "Do your laundry smartly",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  userScalable: "no",
+  maximumScale: 1,
 };
 
 export default function RootLayout({ children }) {
@@ -144,7 +146,11 @@ export default function RootLayout({ children }) {
       <body className={`${sfPro.variable} ${youth.variable} antialiased`}>
         <Providers>
           <HeroUIProviders>
-            <GoogleMapsProvider>{children}</GoogleMapsProvider>
+            {/* <GoogleMapsProvider> */}
+              
+              {children}
+              
+              {/* </GoogleMapsProvider> */}
           </HeroUIProviders>
         </Providers>
       </body>

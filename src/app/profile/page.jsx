@@ -26,6 +26,7 @@ import Invite from "../../../components/chunks/Invite";
 import HomeClientWrapper from "../../../utilities/Test";
 import { setPage } from "../store/slices/cartItemSlice";
 import { useDispatch } from "react-redux";
+import OnHoldbookings from "../../../components/chunks/OnHoldbookings";
 
 export default function Profile() {
   const router = useRouter();
@@ -270,6 +271,11 @@ export default function Profile() {
                     text={"Order history"}
                     onClick={() => handleTabChange("order-history")}
                   />
+                  <DrawerItem
+                    Icon={RxCounterClockwiseClock}
+                    text={"On Hold Bookings"}
+                    onClick={() => handleTabChange("on-hold-bookings")}
+                  />
 
                   <DrawerItem
                     Icon={TbUserCircle}
@@ -282,9 +288,11 @@ export default function Profile() {
                   <DrawerItem
                     Icon={RxCounterClockwiseClock}
                     text={"Notifications"}
-                    onClick={() => {
-                      router.push("/profile?tab=notifications");
-                    }}
+                    // onClick={() => {
+                    //   router.push("/profile?tab=notifications");
+                    // }}
+
+                    onClick={() => handleTabChange("notifications")}
                   />
                   <DrawerItem
                     Icon={RxCounterClockwiseClock}
@@ -468,6 +476,8 @@ export default function Profile() {
               <Notifications />
             ) : currentTab === "invite-friend" ? (
               <Invite />
+            ) : currentTab === "on-hold-bookings" ? (
+              <OnHoldbookings />
             ) : (
               ""
             )}

@@ -207,6 +207,13 @@ export default function CustomDrawer({
                           handleNavigate("/profile?tab=order-history");
                         }}
                       />
+                      <DrawerItem
+                        Icon={RxCounterClockwiseClock}
+                        text={"On Hold Bookings"}
+                        onClick={() => {
+                          handleNavigate("/profile?tab=on-hold-bookings");
+                        }}
+                      />
 
                       <DrawerItem
                         Icon={TbUserCircle}

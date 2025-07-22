@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { GoArrowUp, GoClock } from "react-icons/go";
 import { IoBagCheck, IoLocation } from "react-icons/io5";
-import { ButtonYouth70018, PurpleButton } from "../Buttons";
+import {  PurpleButton } from "../Buttons";
 import { MdKeyboardArrowRight } from "react-icons/md";
 import {
   useBookingDetailByIdQuery,

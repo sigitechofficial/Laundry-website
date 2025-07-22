@@ -118,6 +118,12 @@ export const api = createApi({
         method: "GET",
       }),
     }),
+    getOnHoldBookings: builder.query({
+      query: () => ({
+        url: `/customer/getOnHoldBookingsForCustomer`,
+        method: "GET",
+      }),
+    }),
 
     createIntent: builder.mutation({
       query: (body) => ({
@@ -147,4 +153,5 @@ export const {
   useGetAllOrdersQuery,
   useCreateIntentMutation,
   useBookingDetailByIdQuery,
+  useGetOnHoldBookingsQuery,
 } = api;

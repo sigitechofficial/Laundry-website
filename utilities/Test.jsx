@@ -11,10 +11,9 @@ export default function HomeClientWrapper({ children }) {
   const pathname = usePathname();
   const dispatch = useDispatch();
   const searchParams = useSearchParams();
-  // const currentTab = searchParams.get("tab");
 
   useEffect(() => {
-    // After render, reset the loader state
+
     dispatch(setPage(false));
   }, [pathname, searchParams.toString()]);
 

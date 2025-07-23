@@ -6,7 +6,7 @@ import {
   ButtonYouth70018,
 } from "../../../../components/Buttons";
 import SelectHero from "../../../../components/SelectHero";
-import { InputOtp, Spinner } from "@heroui/react";
+import { InputOtp } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import { signInWithPopup } from "firebase/auth";
 import {
@@ -997,12 +997,7 @@ export default function page() {
                 </form>
               </div>
             ) : step === "new-order" ? (
-              // <Spinner
-              //   classNames={{ label: "text-foreground mt-4" }}
-              //   size="lg"
-              //   label="Loading..."
-              //   variant="wave"
-              // />
+          
 
               <MiniLoader/>
             ) : (

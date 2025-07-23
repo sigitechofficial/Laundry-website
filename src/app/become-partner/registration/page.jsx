@@ -6,7 +6,8 @@ import SelectHero from "../../../../components/SelectHero";
 import { ButtonContinueWith } from "../../../../components/Buttons";
 import Footer from "../../../../components/Footer";
 import RadioBtn from "../../../../components/RadioBtn";
-import { Spinner, Switch } from "@heroui/react";
+import { Switch } from "@heroui/react";
+import { MiniLoader } from "../../../../components/Loader";
 
 export default function PartnerRegistration() {
   const [step, setStep] = useState(1);
@@ -637,12 +638,7 @@ export default function PartnerRegistration() {
           </div>
         ) : (
           <div className="mx-auto h-96 flex justify-center items-center">
-            <Spinner
-              classNames={{ label: "text-foreground mt-4" }}
-              size="lg"
-              label="Loading..."
-              variant="wave"
-            />
+          <MiniLoader/>
           </div>
         )}
       </div>

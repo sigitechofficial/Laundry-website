@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useDispatch } from "react-redux";
 import { setPage } from "@/app/store/slices/cartItemSlice";
 import { useGetServiceByIdQuery } from "@/app/store/services/api";
-import { Spinner } from "@heroui/react";
+import { MiniLoader } from "../../../../components/Loader";
 export const dynamic = "force-dynamic";
 
 export default function ServiceDetail() {
@@ -42,12 +42,7 @@ export default function ServiceDetail() {
       <HomeClientWrapper>
         {isLoading ? (
           <div className="w-full h-screen flex justify-center items-center">
-            <Spinner
-              classNames={{ label: "text-foreground mt-4" }}
-              size="lg"
-              label="Loading..."
-              variant="wave"
-            />
+             <MiniLoader/>
           </div>
         ) : (
           <div className="w-full">

@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import HomeClientWrapper from "../../../utilities/Test";
 import { useDispatch } from "react-redux";
 import { setPage } from "../store/slices/cartItemSlice";
-import { Spinner } from "@heroui/react";
+import { MiniLoader } from "../../../components/Loader";
 
 export default function Pricing() {
   const { data, isLoading } = useGetServicesQuery();
@@ -147,15 +147,7 @@ export default function Pricing() {
                 })
               ) : (
                 <div className="col-span-2 text-xl font-semibold animate-pulse w-max mx-auto">
-                  <Spinner
-                    classNames={{
-                      label:
-                        "text-foreground mt-4 font-youth font-semibold text-theme-blue",
-                    }}
-                    size="lg"
-                    label="Loading..."
-                    variant="wave"
-                  />
+                <MiniLoader/>
                 </div>
               )}
             </div>

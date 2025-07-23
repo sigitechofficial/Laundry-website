@@ -27,6 +27,7 @@ import HomeClientWrapper from "../../../utilities/Test";
 import { setPage } from "../store/slices/cartItemSlice";
 import { useDispatch } from "react-redux";
 import OnHoldbookings from "../../../components/chunks/OnHoldbookings";
+import { MiniLoader } from "../../../components/Loader";
 
 export default function Profile() {
   const router = useRouter();
@@ -379,13 +380,7 @@ export default function Profile() {
 
             {isLoadingUpdateProfile ? (
               <div className="w-full flex justify-center items-center">
-                {" "}
-                <Spinner
-                  classNames={{ label: "text-foreground mt-4" }}
-                  size="lg"
-                  label="Loading..."
-                  variant="wave"
-                />
+                <MiniLoader />
               </div>
             ) : currentTab === "my-account" ? (
               <section className="w-full flex flex-col lg:flex-row gap-10 2xl:gap-28 mt-16 px-0 sm:px-6 2xl:px-10">

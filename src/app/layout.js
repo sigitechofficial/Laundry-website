@@ -1,10 +1,8 @@
-
 import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "./store/Providers";
 import { HeroUIProviders } from "../../utilities/HeroUIProviders";
-// import GoogleMapsProvider from "../../utilities/GoogeMapsProvider";
-
+import GoogleMapsProvider from "../../utilities/GoogeMapsProvider";
 
 // const geistSans = Geist({
 //   variable: "--font-geist-sans",
@@ -146,11 +144,7 @@ export default function RootLayout({ children }) {
       <body className={`${sfPro.variable} ${youth.variable} antialiased`}>
         <Providers>
           <HeroUIProviders>
-            {/* <GoogleMapsProvider> */}
-              
-              {children}
-              
-              {/* </GoogleMapsProvider> */}
+            <GoogleMapsProvider>{children}</GoogleMapsProvider>
           </HeroUIProviders>
         </Providers>
       </body>

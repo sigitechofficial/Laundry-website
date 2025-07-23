@@ -27,6 +27,19 @@ const Header = ({ type }) => {
   }
 
   useEffect(() => {
+    if (messaging) {
+      onMessage(messaging, (payload) => {
+        console.log("📩 Foreground message:", payload);
+        // You can show a toast or UI notification here
+
+        addToast({
+          title: "Firebase Notification",
+          description: payload?.notification?.title,
+          color: "success",
+        });
+      });
+    }
+
     requestDeviceToken();
 
     const handleScroll = () => {
@@ -45,19 +58,6 @@ const Header = ({ type }) => {
       dispatch(setPage(true));
     }
   };
-
-  if (messaging) {
-    onMessage(messaging, (payload) => {
-      console.log("📩 Foreground message:", payload);
-      // You can show a toast or UI notification here
-
-      addToast({
-        title: "Firebase Notification",
-        description: payload?.notification?.title,
-        color: "success",
-      });
-    });
-  }
 
   return (
     <>

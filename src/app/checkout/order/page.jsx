@@ -8,7 +8,7 @@ import { AiOutlinePercentage } from "react-icons/ai";
 import { ButtonYouth70018, PurpleButton } from "../../../../components/Buttons";
 import { IoBagCheck, IoLocation, IoShirt } from "react-icons/io5";
 import { useGetServicesQuery } from "@/app/store/services/api";
-import { Spinner, useDisclosure } from "@heroui/react";
+import { useDisclosure } from "@heroui/react";
 import ReusableModal from "../../../../components/Modal";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -24,6 +24,7 @@ import Footer from "../../../../components/Footer";
 import { useRouter } from "next/navigation";
 import HomeClientWrapper from "../../../../utilities/Test";
 import InputField from "../../../../components/InputHeroUi";
+import { MiniLoader } from "../../../../components/Loader";
 
 export default function Order() {
   const dispatch = useDispatch();
@@ -213,15 +214,7 @@ export default function Order() {
                     })
                   ) : (
                     <div className="col-span-2 text-xl font-semibold w-max mx-auto">
-                      <Spinner
-                        classNames={{
-                          label:
-                            "text-foreground mt-4 font-youth font-semibold text-theme-blue animate-pulse",
-                        }}
-                        size="lg"
-                        label="Loading..."
-                        variant="wave"
-                      />
+                      <MiniLoader/>
                     </div>
                   )}
                 </div>

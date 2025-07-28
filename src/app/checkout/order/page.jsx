@@ -29,7 +29,7 @@ import { MiniLoader } from "../../../../components/Loader";
 export default function Order() {
   const dispatch = useDispatch();
   const orderData = useSelector((state) => state.cart.orderData);
-  const preferencesData = useSelector((state) => state.cart.preferences);
+  const preferencesData = useSelector((state) => state.cart.preferences) || [];
   const router = useRouter();
   const { data, isLoading } = useGetServicesQuery();
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
@@ -138,6 +138,7 @@ export default function Order() {
                           src="/images/pricing/c2.png"
                           right="right-0"
                           type={
+                            Array.isArray(preferencesData) &&
                             preferencesData?.some(
                               (elem) => elem?.serviceId === 1
                             )
@@ -172,6 +173,7 @@ export default function Order() {
                           src="/images/pricing/c4.png"
                           right="-right-10"
                           type={
+                            Array.isArray(preferencesData) &&
                             preferencesData?.some(
                               (elem) => elem?.serviceId === 3
                             )
@@ -214,7 +216,7 @@ export default function Order() {
                     })
                   ) : (
                     <div className="col-span-2 text-xl font-semibold w-max mx-auto">
-                      <MiniLoader/>
+                      <MiniLoader />
                     </div>
                   )}
                 </div>
@@ -528,7 +530,7 @@ export default function Order() {
                     <div className="py-3">
                       <ButtonYouth70018
                         isDisabled={
-                          preferencesData?.length > 0 &&
+                          Array.isArray(preferencesData) &&
                           orderData?.collectionData?.streetAddress
                             ? false
                             : true

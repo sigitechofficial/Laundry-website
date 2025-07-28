@@ -8,7 +8,7 @@ import {
   DrawerFooter,
   Button,
 } from "@heroui/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { IoNotificationsOutline } from "react-icons/io5";
 import DrawerItem from "./DrawerItem";
 import { LiaUserFriendsSolid } from "react-icons/lia";
@@ -39,7 +39,7 @@ export default function CustomDrawer({
   isOpen,
   onClose,
   title = "",
-  bodyContent,
+  bodyContent = "",
   actionLabel = "",
   onActionClick,
 }) {
@@ -49,10 +49,11 @@ export default function CustomDrawer({
   const router = useRouter();
   const [drawerScroll, setDrawerScroll] = useState(0);
   const [inviteFriend, setInviteFriend] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
   let token =
     typeof window !== "undefined"
-      ? localStorage.getItem("loginStatus") === "true"
+      ? JSON.parse(localStorage.getItem("loginStatus")) || false
       : false;
 
   const handleDrawerScroll = (event) => {
@@ -82,6 +83,8 @@ export default function CustomDrawer({
     }
   };
 
+  useEffect(()=>{setMounted(true)},[])
+  if(!mounted) return null
   return (
     <Drawer
       radius="none"
@@ -117,7 +120,7 @@ export default function CustomDrawer({
 
                     <h1 className="font-omnes font-bold text-[32px] capitalize text-theme-black-2 ">
                       <span className="me-2">Howdy</span>
-                      {data?.data?.firstName ?? "User"}
+                      {data?.data?.firstName || "User"}
                     </h1>
                     <div className="flex items-start justify-start gap-7">
                       <div
@@ -136,8 +139,8 @@ export default function CustomDrawer({
                             />
                           ) : (
                             <span className="text-gray-500">
-                              {data?.data?.firstName[0] +
-                                data?.data?.lastName[0]}
+                              {data?.data?.firstName?.[0] +
+                                data?.data?.lastName?.[0]}
                             </span>
                           )
                         ) : (
@@ -154,34 +157,15 @@ export default function CustomDrawer({
                         <p className="font-sf  text-sm font-normal text-theme-black-2 text-opacity-60">
                           {data?.data?.phoneNum ? (
                             <>
-                              {data?.data?.countryCode + data?.data?.phoneNum ??
-                                ""}
+                              {data?.data?.countryCode + data?.data?.phoneNum}
                             </>
                           ) : (
-                            <></>
+                            "+1 234 567 890"
                           )}
                         </p>
                         <p className="font-sf  text-sm font-normal text-theme-black-2 text-opacity-60">
-                          {data?.data?.email ?? "user@gmail.com"}
+                          {data?.data?.email ?? "abc@gmail.com"}
                         </p>
-                        <div className="flex gap-10">
-                          {/* <div>
-                              <p className="text-base font-bold  font-sf  capitalize">
-                                {5}
-                              </p>
-                              <p className="text-theme-black-2 text-opacity-60 font-normal">
-                                Orders
-                              </p>
-                            </div> */}
-                          {/* <div>
-                              <p className="text-base font-bold font-sf  capitalize">
-                                {19}
-                              </p>
-                              <p className="text-theme-black-2 text-opacity-60 font-normal">
-                                Tokens
-                              </p>
-                            </div> */}
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -240,7 +224,6 @@ export default function CustomDrawer({
                         text={"Country"}
                         onClick={() => {
                           router.push("/order-history");
-                          // setProfileDrawer(false);
                         }}
                       />
                       <DrawerItem
@@ -248,7 +231,6 @@ export default function CustomDrawer({
                         text={"Language"}
                         onClick={() => {
                           router.push("/order-history");
-                          // setProfileDrawer(false);
                         }}
                       />
                     </div>
@@ -264,45 +246,9 @@ export default function CustomDrawer({
                           text={"Pricing"}
                           onClick={() => {
                             router.push("/pricing");
-                            // setProfileDrawer(false);
                           }}
                         />
                       </div>
-
-                      {/* <div className="">
-                        <DrawerItem
-                          Icon={LiaUserFriendsSolid}
-                          text={"Payment details"}
-                          onClick={() => {
-                            router.push("/profile/payment-details");
-                            setProfileDrawer(false);
-                          }}
-                        />
-                        <DrawerItem
-                          Icon={LiaUserFriendsSolid}
-                          text={"Personal details"}
-                          onClick={() => {
-                            router.push("/profile/personal-details");
-                            setProfileDrawer(false);
-                          }}
-                        />
-                        <DrawerItem
-                          Icon={LiaUserFriendsSolid}
-                          text={"Preferences"}
-                          onClick={() => {
-                            router.push("/profile/preferences");
-                            setProfileDrawer(false);
-                          }}
-                        />
-                        <DrawerItem
-                          Icon={LiaUserFriendsSolid}
-                          text={"Security"}
-                          onClick={() => {
-                            router.push("/profile/security");
-                            setProfileDrawer(false);
-                          }}
-                        />
-                      </div> */}
 
                       {token ? (
                         <>
@@ -318,15 +264,13 @@ export default function CustomDrawer({
                             Icon={GrUserAdmin}
                             onClick={() => {
                               router.push("/sign-in");
-                              // setProfileDrawer(false);
                             }}
                             text="Log in"
                           />
                           <DrawerItem
                             Icon={FiLogOut}
-                             onClick={() => {
+                            onClick={() => {
                               router.push("/sign-in");
-                              // setProfileDrawer(false);
                             }}
                             text="Sign up"
                           />
@@ -335,128 +279,12 @@ export default function CustomDrawer({
                     </div>
                   </div>
                 </section>
-              ) : inviteFriend === 1 ? (
-                <div className="py-2 space-y-6 font-tt ">
-                  <div className="font-black font-tt text-2xl">
-                    <h5>Invite friends, get fomino credits</h5>
-                  </div>
-                  <div className="space-y-7">
-                    <div className="flex gap-x-4">
-                      <div>
-                        <div className="min-w-[40px] min-h-[40px] bg-theme-red bg-opacity-20 text-theme-red font-bold text-xl flex justify-center items-center rounded-fullest">
-                          1
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <h6 className="font-bold text-xl">Share your code</h6>
-                        <p className="font-normal text-base text-black text-opacity-60 leading-tight">
-                          Your friends will get $ 4 in Fomino credits for eachof
-                          their first 3 delivery orders when they use your code
-                          to sign up for Fomino.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-x-4">
-                      <div>
-                        <div className="min-w-[40px] min-h-[40px] bg-theme-red bg-opacity-20 text-theme-red font-bold text-xl flex justify-center items-center rounded-fullest">
-                          2
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <h6 className="font-bold text-xl">Earn credits</h6>
-                        <p className="font-normal text-base text-black text-opacity-60 leading-tight">
-                          You'll get $ 2 Fomino credits every time a friend
-                          completes one of their first 3 delivery orders. <br />
-                          <br />
-                          You can earn a maximum of $ 18 in credits by inviting
-                          your friends to join Fomino.
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-y-3 items-center">
-                      <div className="py-3 px-5 w-full flex justify-center uppercase bg-theme-gray-10 rounded font-extrabold text-base">
-                        {getProfile?.data?.data?.referalCode}
-                      </div>
-                      <button
-                        onClick={() => {
-                          info_toaster("Copied to clipboard");
-                        }}
-                        className="py-3 px-5 w-full bg-theme-red text-white rounded font-bold text-base"
-                      >
-                        Share your code
-                      </button>
-                      <button
-                        onClick={() => setInviteFriend(2)}
-                        className="font-medium text-base text-theme-red"
-                      >
-                        How does this work?
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : inviteFriend === 2 ? (
-                <div className="py-2 space-y-6 font-tt">
-                  <div className="font-extrabold text-2xl">
-                    <h5>How does this work?</h5>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <h6 className="font-bold text-xl">Share your code</h6>
-                      <p className="font-normal text-base text-black text-opacity-60 leading-tight">
-                        Your friends will get $ 4 in Fomino credits for eachof
-                        their first 3 delivery orders when they use your code to
-                        sign up for Fomino.
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <h6 className="font-bold text-xl">Earn credits</h6>
-                      <p className="font-normal text-base text-black text-opacity-60 leading-tight">
-                        You'll get $ 2 Fomino credits every time a friend
-                        completes one of their first 3 delivery orders. <br />
-                        <br />
-                        You can earn a maximum of $ 18 in credits by inviting
-                        your friends to join Fomino.
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <h6 className="font-bold text-xl">Please note</h6>
-                      <p className="font-normal text-base text-black text-opacity-60 leading-tight">
-                        Credit can be used for delivery orders only. When your
-                        friends gets credits, they'll expire 30 days after
-                        signing up to Fomino. Your credits will expire30 days
-                        after your friend makes their first order. <br />
-                        <br />
-                        Stay tuned! Happy sharing!
-                      </p>
-                    </div>
-                    <div className="flex justify-center">
-                      <button className="font-medium text-base text-theme-red">
-                        Terms and Conditions
-                      </button>
-                    </div>
-                  </div>
-                </div>
               ) : (
                 <></>
               )}
             </div>
           )}
         </DrawerBody>
-
-        {/* <DrawerFooter>
-          <Button color="danger" variant="light" onPress={onClose}>
-            Close
-          </Button>
-          <Button
-            color="primary"
-            onPress={() => {
-              onActionClick?.();
-              onClose?.();
-            }}
-          >
-            {actionLabel}
-          </Button>
-        </DrawerFooter> */}
       </DrawerContent>
     </Drawer>
   );

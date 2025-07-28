@@ -19,13 +19,14 @@ export const animals = [
   { key: "crocodile", label: "Crocodile" },
 ];
 
-export default function SelectHero({label, list = [] ,onChange,value}) {
+export default function SelectHero({ label, list = [], onChange, value }) {
   return (
     <div className="">
       <Select
         label={label}
+        defaultSelectedKeys={value}
         onChange={onChange}
-        value={value}
+        // value={value}
         classNames={{
           label: [
             "group-data-[focus=true]:text-gray-500",

@@ -510,11 +510,15 @@ export default function page() {
         <div className="grid lg:grid-cols-2">
           <div className="h-[300px] max-sm:hidden sm:h-[600px] lg:h-screen w-full lg:bg-sign-in bg-cover bg-center bg-no-repeat relative">
             <video
+              src="/images/signInVideo.mp4"
               autoPlay
               muted
               loop
+              playsInline
+              controls={false}
+              disablePictureInPicture
+              controlsList="nodownload nofullscreen noremoteplayback"
               className="w-full h-full object-cover object-center lg:hidden"
-              src="/images/signInVideo.mp4"
             ></video>
 
             <div className="w-full max-w-[565px] mx-auto my-auto absolute bottom-5 left-1/2 -translate-x-1/2 lg:hidden">
@@ -566,11 +570,11 @@ export default function page() {
                   </h4>
                 </div>
 
-                <h4 className="font-youth font-bold text-2xl pt-5 pb-6 text-theme-blue sm:hidden">
+                <h4 className="font-youth font-bold text-2xl pt-5 text-theme-blue sm:hidden">
                   Welcome Back!
                 </h4>
 
-                <form className="space-y-5 lg:pt-12 font-sf">
+                <form className="space-y-5 pt-12 font-sf">
                   <InputHeroUi
                     type="email"
                     label="Email Address"
@@ -661,7 +665,7 @@ export default function page() {
                 </div>
               </div>
             ) : step === "forgot" ? (
-              <div className="w-full max-w-[565px] mx-auto sm:my-auto">
+              <div className="w-full h-max max-w-[565px] mx-auto py-10 overflow-y-auto sm:my-auto">
                 <img
                   className="mx-auto max-lg:hidden"
                   src="/images/logo.png"
@@ -716,7 +720,7 @@ export default function page() {
                 </form>
               </div>
             ) : step === "sign-up" ? (
-              <div className="w-full max-w-[565px] mx-auto my-auto">
+              <div className="w-full max-w-[565px] mx-auto py-10 overflow-y-auto my-auto">
                 <Link onClick={() => dispatch(setPage(true))} href="/">
                   <img
                     className="mx-auto cursor-pointer max-lg:hidden"
@@ -910,7 +914,7 @@ export default function page() {
                 </div>
               </div>
             ) : step === "password" ? (
-              <div className="w-full max-w-[565px] mx-auto sm:my-auto">
+              <div className="w-full max-w-[565px] mx-auto sm:my-auto pt-12">
                 <Link
                   className="max-lg:hidden"
                   onClick={() => dispatch(setPage(true))}
@@ -997,9 +1001,7 @@ export default function page() {
                 </form>
               </div>
             ) : step === "new-order" ? (
-          
-
-              <MiniLoader/>
+              <MiniLoader />
             ) : (
               ""
             )}

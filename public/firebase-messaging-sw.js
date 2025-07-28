@@ -1,4 +1,4 @@
-// public/firebase-messaging-sw.js
+
 
 // This is required for Firebase Messaging to work in the background
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js");
@@ -19,7 +19,6 @@ const messaging = firebase.messaging();
 
 // Optional: Handle background messages
 messaging.onBackgroundMessage(function (payload) {
-  console.log("[firebase-messaging-sw.js] Received background message: ", payload);
 
   const notificationTitle = payload.notification.title;
   const notificationOptions = {

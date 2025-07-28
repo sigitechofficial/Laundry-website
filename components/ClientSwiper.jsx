@@ -4,21 +4,35 @@ import { FaArrowLeftLong } from "react-icons/fa6";
 import { Autoplay, Navigation } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
-import { BASE_URL } from "../utilities/URL";
+import { useEffect, useRef } from "react";
 
 const ClientSwiper = ({ clients = [] }) => {
+  // const prevRef = useRef(null);
+  // const nextRef = useRef(null);
+  // const swiperRef = useRef(null);
+
+  // useEffect(() => {
+  //   if (
+  //     swiperRef.current &&
+  //     swiperRef.current.swiper &&
+  //     prevRef.current &&
+  //     nextRef.current
+  //   ) {
+  //     swiperRef.current.swiper.params.navigation.prevEl = prevRef.current;
+  //     swiperRef.current.swiper.params.navigation.nextEl = nextRef.current;
+  //     swiperRef.current.swiper.navigation.destroy(); // reset
+  //     swiperRef.current.swiper.navigation.init(); // reinit
+  //     swiperRef.current.swiper.navigation.update();
+  //   }
+  // }, []);
+
   return (
     <div className="relative">
-      <Swiper
-        slidesPerView={1} // default for screens > 640px
-        navigation={{
-          nextEl: ".dis-custom-swiper-button-next",
-          prevEl: ".dis-custom-swiper-button-prev",
-        }}
+      {/* <Swiper
+        ref={swiperRef}
+        slidesPerView={1}
         spaceBetween={15}
-        pagination={{
-          clickable: true,
-        }}
+        pagination={{ clickable: true }}
         loop={true}
         autoplay={{
           delay: 4000,
@@ -27,8 +41,8 @@ const ClientSwiper = ({ clients = [] }) => {
         modules={[Navigation, Autoplay]}
         className="mySwiper"
       >
-        {clients?.map((item) => (
-          <SwiperSlide>
+        {clients?.map((item, i) => (
+          <SwiperSlide key={i}>
             <div className="w-full">
               <div className="flex justify-between items-center">
                 <p className="text-base text-theme-darkBlue font-sf">
@@ -53,7 +67,6 @@ const ClientSwiper = ({ clients = [] }) => {
                       alt="client image"
                     />
                   </div>
-
                   <p className="font-semibold text-sm sm:text-xl font-sf">
                     Samantha Johnson
                   </p>
@@ -62,22 +75,23 @@ const ClientSwiper = ({ clients = [] }) => {
             </div>
           </SwiperSlide>
         ))}
-      </Swiper>
+      </Swiper> */}
 
-      <div className="mySwiper-btn">
-        <div className="dis-custom-swiper-button-prev">
+      {/* Custom Navigation */}
+      {/* <div className="mySwiper-btn">
+        <div ref={prevRef}>
           <FaArrowLeftLong
             size={10}
             className="absolute -bottom-2 right-12 z-10 transform -translate-y-1/2 text-theme-red p-2.5 cursor-pointer bg-white size-10 rounded-full border-gray-400 border-1"
           />
         </div>
-        <div className="dis-custom-swiper-button-next">
+        <div ref={nextRef}>
           <FaArrowLeftLong
             size={10}
             className="absolute -bottom-2 -right-0 z-10 rotate-180 transform -translate-y-1/2 text-theme-red p-2.5 cursor-pointer bg-white size-10 rounded-full border-gray-400 border-1"
           />
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

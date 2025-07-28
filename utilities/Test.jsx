@@ -15,7 +15,7 @@ export default function HomeClientWrapper({ children }) {
   useEffect(() => {
 
     dispatch(setPage(false));
-  }, [pathname, searchParams.toString()]);
+  }, [pathname, searchParams]);
 
   return (
     <div className="relative">

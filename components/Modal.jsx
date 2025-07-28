@@ -54,7 +54,7 @@ const ReusableModal = ({
       className={className}
       classNames={{
         closeButton: "hidden",
-        base: "max-h-[100vh] !my-0",
+        base: "max-h-[100vh] !my-0 mx-0 max-sm:rounded-b-none",
       }}
       isDismissable={isDismissable}
       motionProps={{

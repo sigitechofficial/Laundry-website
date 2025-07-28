@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { HiOutlineMenuAlt2 } from "react-icons/hi";
 import CustomMenuBtn from "./CustomMenuBtn";
 import Link from "next/link";
@@ -12,39 +12,87 @@ import { setPage } from "@/app/store/slices/cartItemSlice";
 import { usePathname } from "next/navigation";
 import { onMessage } from "firebase/messaging";
 import { requestDeviceToken } from "../utilities/requestFCMToken";
-import { messaging } from "../utilities/firebase";
+import { getMessagingInstance } from "../utilities/firebase";
 import { addToast } from "@heroui/react";
 
 const Header = ({ type }) => {
   const dispatch = useDispatch();
   const pathname = usePathname();
-  const { data, error, isLoading } = useGetProfileQuery();
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  let token = null;
-  if (typeof window !== "undefined") {
-    token = localStorage.getItem("loginStatus");
+  const { data, isLoading } = useGetProfileQuery();
+  const initialState = {
+    isScrolled: false,
+    isDrawerOpen: false,
+    headerData: {
+      token: false,
+      mounted: false,
+    },
+  };
+
+  const [state, dispatchState] = useReducer(changeState, initialState);
+  //function to update state
+  function changeState(state, action) {
+    switch (action.type) {
+      case "set_scroll":
+        return { ...state, isScrolled: action.payload };
+      case "set_drawer":
+        return { ...state, isDrawerOpen: action.payload };
+      case "set_headerData":
+        return {
+          ...state,
+          headerData: { ...state.headerData, ...action.payload },
+        };
+      default:
+        return state;
+    }
   }
 
-  useEffect(() => {
-    if (messaging) {
-      onMessage(messaging, (payload) => {
-        console.log("📩 Foreground message:", payload);
-        // You can show a toast or UI notification here
+  const showShadow = [
+    "how",
+    "aboutUs",
+    "partner",
+    "blog",
+    "profile",
+    "order",
+    "service",
+  ].includes(type);
 
-        addToast({
-          title: "Firebase Notification",
-          description: payload?.notification?.title,
-          color: "success",
-        });
-      });
+  const handleNavigate = (val) => {
+    if (!pathname?.includes(val) || (pathname !== "/" && val === "/")) {
+      dispatch(setPage(true));
     }
+  };
 
-    requestDeviceToken();
+  useEffect(() => {
+    // Set header data (token and mounted flag)
+    dispatchState({
+      type: "set_headerData",
+      payload: { token: localStorage.getItem("loginStatus"), mounted: true },
+    });
 
+    // getMessagingInstance().then((messaging) => {
+    //   if (messaging) {
+    //     onMessage(messaging, (payload) => {
+    //       console.log("📩 Foreground message:", payload);
+
+    //       addToast({
+    //         title: "Firebase Notification",
+    //         description: payload?.notification?.title,
+    //         color: "success",
+    //       });
+    //     });
+    //   }
+    // });
+
+    // Request Device Token
+    // requestDeviceToken();
+
+    // Handle Scroll
     const handleScroll = () => {
       const scrollThreshold = 100;
-      setIsScrolled(window.scrollY > scrollThreshold);
+      dispatchState({
+        type: "set_scroll",
+        payload: window.scrollY > scrollThreshold,
+      });
     };
 
     window.addEventListener("scroll", handleScroll);
@@ -53,32 +101,20 @@ const Header = ({ type }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleNavigate = (val) => {
-    if (!pathname?.includes(val) || (pathname !== "/" && val === "/")) {
-      dispatch(setPage(true));
-    }
-  };
+  if (!state.headerData.mounted) return null;
 
   return (
     <>
       <div
         className={`xl:hidden fixed w-full h-[70px] 2xl:h-[80px] shadow-md duration-500  ${
-          isScrolled ? "top-0 " : "top-[-100px] "
+          !["sign-in"].includes(type) && state.isScrolled
+            ? "top-0 "
+            : "top-[-100px] "
         } left-0 bg-white`}
       ></div>
       <div
         className={`w-full h-[70px] 2xl:h-[80px] flex justify-center items-center px-5 md:px-[45px] relative ${
-          [
-            "how",
-            "aboutUs",
-            "partner",
-            "blog",
-            "profile",
-            "order",
-            "service",
-          ].includes(type)
-            ? "xl:shadow-md"
-            : ""
+          showShadow ? "xl:shadow-md" : ""
         }`}
       >
         <div className="w-full max-w-[1290px] flex justify-center xl:justify-between items-center">
@@ -150,9 +186,14 @@ const Header = ({ type }) => {
           </div>
 
           <div className="max-xl:hidden">
-            {token ? (
+            {state.headerData?.token ? (
               <div
-                onClick={() => setIsDrawerOpen(true)}
+                onClick={() =>
+                  dispatchState({
+                    type: "set_drawer",
+                    payload: true,
+                  })
+                }
                 className="flex flex-col items-center cursor-pointer"
               >
                 {data?.data?.image ? (
@@ -188,24 +229,37 @@ const Header = ({ type }) => {
         </div>
 
         <div
-          className={`absolute top-5 left-4 text-theme-blue sm:left-12 xl:hidden ${[
-            ["sign-in"].includes(type) ? "hidden" : "",
-          ]} `}
+          className={`absolute top-5 left-4 text-theme-blue sm:left-12 xl:hidden ${
+            ["sign-in"].includes(type) ? "hidden" : ""
+          }`}
         >
-          <HiOutlineMenuAlt2 onClick={() => setIsDrawerOpen(true)} size={30} />
+          <HiOutlineMenuAlt2
+            onClick={() =>
+              dispatchState({
+                type: "set_drawer",
+                payload: true,
+              })
+            }
+            size={30}
+          />
           {/* <CustomMenuBtn onClick={() => setIsDrawerOpen(true)} /> */}
         </div>
       </div>
 
-      <CustomDrawer
-        data={data}
+      {/* <CustomDrawer
+        data={data ? data : {}}
         loading={isLoading}
-        isOpen={isDrawerOpen}
-        onClose={() => setIsDrawerOpen(false)}
+        isOpen={state.isDrawerOpen}
+        onClose={() =>
+          dispatchState({
+            type: "set_drawer",
+            payload: false,
+          })
+        }
         title=""
         // actionLabel="Submit"
         // onActionClick={() => console.log("Submit clicked")}
-      />
+      /> */}
     </>
   );
 };

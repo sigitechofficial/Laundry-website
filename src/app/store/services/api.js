@@ -1,10 +1,11 @@
 "use client";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { BASE_URL } from "../../../../utilities/URL";
 
 export const api = createApi({
   reducerPath: "api",
   baseQuery: fetchBaseQuery({
-    baseUrl: "https://backendlaundary.fomino.ch/",
+    baseUrl: BASE_URL,
     credentials: "include",
   }),
   endpoints: (builder) => ({
@@ -125,6 +126,20 @@ export const api = createApi({
       }),
     }),
 
+    getOnHoldBookingById: builder.query({
+      query: (id) => ({
+        url: `customer/getOnHoldBookings/${id}`,
+        method: "GET",
+      }),
+    }),
+    updateOnHoldBooking: builder.mutation({
+      query: (body) => ({
+        url: `customer/updateCustomerResponseForOnHoldBooking`,
+        method: "PATCH",
+        body,
+      }),
+    }),
+
     createIntent: builder.mutation({
       query: (body) => ({
         url: "customer/createIntentUsingStripe",
@@ -154,4 +169,6 @@ export const {
   useCreateIntentMutation,
   useBookingDetailByIdQuery,
   useGetOnHoldBookingsQuery,
+  useGetOnHoldBookingByIdQuery,
+  useUpdateOnHoldBookingMutation,
 } = api;

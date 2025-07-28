@@ -56,6 +56,10 @@ export default function Home() {
             loop
             className="w-full h-full object-cover absolute top-0 left-0 z-[-2]"
             src="/images/landingPage/heroSectionVideo.mp4"
+            playsInline
+            controls={false}
+            disablePictureInPicture
+            controlsList="nodownload nofullscreen noremoteplayback"
           ></video>
           <div className="absolute top-0 left-0 w-full h-full bg-black/15 z-[-1]"></div>
         </div>
@@ -448,7 +452,7 @@ export default function Home() {
                 </div>
                 <ClientBtn>
                   <p
-              // href="/place-order"
+                    // href="/place-order"
                     className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2"
                   >
                     Start Cleaning
@@ -497,7 +501,7 @@ export default function Home() {
 
                 <ClientBtn>
                   <p
-                  // href="/place-order"
+                    // href="/place-order"
                     className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2"
                   >
                     Start Cleaning

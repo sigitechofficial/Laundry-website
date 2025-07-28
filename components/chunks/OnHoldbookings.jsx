@@ -1,18 +1,42 @@
 "use client";
-import { useGetOnHoldBookingsQuery } from "@/app/store/services/api";
+import {
+  useGetOnHoldBookingByIdQuery,
+  useGetOnHoldBookingsQuery,
+  useUpdateOnHoldBookingMutation,
+} from "@/app/store/services/api";
 import React, { useState } from "react";
 import Loader, { MiniLoader } from "../Loader";
 import ReusableModal from "../Modal";
 import { useDisclosure } from "@heroui/react";
+import { ButtonYouth70018 } from "../Buttons";
+import { BASE_URL } from "../../utilities/URL";
 
 export default function OnHoldbookings() {
   const { data, isLoading } = useGetOnHoldBookingsQuery();
+  const [
+    updateOnHoldBooking,
+    { isLoading: updateBookingLoading, isSuccess, error },
+  ] = useUpdateOnHoldBookingMutation();
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const [modalScroll, setModalScroll] = useState(false);
   const [manageOrder, setManageOrder] = useState({
     modType: "hold",
     orderId: "",
   });
+
+  const [customerResponse, setCustomerResponse] = useState([
+    {
+      bookingId: "",
+      onHoldId: "",
+      customerResponse: true,
+    },
+  ]);
+
+  const { data: onHoldBookingById, isLoading: OnHoldBookingLoading } =
+    useGetOnHoldBookingByIdQuery(manageOrder?.orderId, {
+      skip: !manageOrder?.orderId,
+    });
+  console.log("🚀 ~ OnHoldbookings ~ onHoldBookingById:", onHoldBookingById);
 
   function handleModalScroll(e) {
     const isScrolled = e.target.scrollTop > 50;
@@ -34,7 +58,10 @@ export default function OnHoldbookings() {
         {data?.data?.onHoldBookings?.map((item, idx) => {
           return (
             <div
-              onClick={onOpen}
+              onClick={() => {
+                setManageOrder({ ...manageOrder, orderId: item?.id });
+                onOpen();
+              }}
               className="flex justify-between items-center border-b pb-4 px-4"
             >
               <div className="flex items-center gap-5">
@@ -76,21 +103,21 @@ export default function OnHoldbookings() {
         modalScroll={modalScroll}
         onBack={false}
         onClose={false}
-        showFooter={false}
-        // footerContent={
-        //   <div className="w-full flex items-center gap-5 pt-2 mx-6 mb-6">
-        //     <ButtonYouth70018 text="continue" />
-        //   </div>
-        // }
+        showFooter={true}
+        footerContent={
+          <div className="w-full flex items-center gap-5 pt-2 mx-6 mb-6">
+            <ButtonYouth70018 text="continue" />
+          </div>
+        }
         onFooterAction={() => false}
         size="xl"
         backdrop="blur"
         className="custom-modal-class max-h-[90vh] overflow-auto"
       >
-        {manageOrder?.modType === "hold" ? (
+        {manageOrder?.modType === "hold" && !OnHoldBookingLoading ? (
           <div
             onScroll={handleModalScroll}
-            className="modal-scroll overflow-auto"
+            className="modal-scroll overflow-auto font-sf"
           >
             <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
               <h4 className="font-youth font-bold sm:text-[22px] text-center">
@@ -113,63 +140,50 @@ export default function OnHoldbookings() {
                 hgjhgjhh
               </button>
             </div>
+            {data?.data?.onHoldBookings?.map((item, idx) => {
+              return (
+                <div key={idx} className="w-full px-6 space-y-4 pb-2">
+                  <div className="w-full grid grid-cols-3 gap-3">
+                    {item?.OnHoldConfirmations?.map((elem, i) => {
+                      return (
+                        <div
+                          key={i}
+                          className="h-36 rounded-lg overflow-hidden bg-gray-200"
+                        >
+                          <img
+                            className="w-full h-full object-cover"
+                            src={BASE_URL + elem?.onHoldImg}
+                            alt="item image"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
 
-            <div className="w-full px-6 py-2 font-sf">
-              <p className="text-theme-psGray text-sm w-max ml-auto">
-                02-13-2025, 12:40
-              </p>
-              <div className="flex items-center gap-5">
-                <div>
-                  <img src="/images/statuses/image1.png" alt="status image" />
+                  <div className="">
+                    <div className="flex gap-2 items-center">
+                      <input type="radio" />
+                      <p>Yes i accept and proceed</p>
+                    </div>
+                    <div className="flex gap-2 items-center">
+                      <input type="radio" />
+                      <p>No i want a recheck</p>
+                    </div>
+                  </div>
+                  <textarea
+                    className="w-full h-40 bg-theme-gray rounded-lg p-5 text-base text-theme-gray-2 resize-none outline-none"
+                    type="text"
+                    name=""
+                    id=""
+                  />
                 </div>
-
-                <div>
-                  <h6 className="font-semibold">Order Created</h6>
-                  <p className="text-theme-psGray text-sm">
-                    Your Order has been created
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="w-full px-6 py-2 font-sf">
-              <p className="text-theme-psGray text-sm w-max ml-auto">
-                02-13-2025, 12:40
-              </p>
-              <div className="flex items-center gap-5">
-                <div>
-                  <img src="/images/statuses/image2.png" alt="status image" />
-                </div>
-
-                <div>
-                  <h6 className="font-semibold">Order Confirmed</h6>
-                  <p className="text-theme-psGray text-sm line-clamp-2">
-                    The booking has been confirmed and is ready for co...
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="w-full px-6 py-2 font-sf mb-5">
-              <p className="text-theme-psGray text-sm w-max ml-auto">
-                02-13-2025, 12:40
-              </p>
-              <div className="flex items-center gap-5">
-                <div>
-                  <img src="/images/statuses/image3.png" alt="status image" />
-                </div>
-
-                <div>
-                  <h6 className="font-semibold">Driver Out for PickUp</h6>
-                  <p className="text-theme-psGray text-sm line-clamp-2">
-                    Driver accepted the booking and coming for lau...
-                  </p>
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
         ) : (
-          <MiniLoader />
+          <div className="flex justify-center items-center h-80">
+            <MiniLoader />
+          </div>
         )}
       </ReusableModal>
     </section>

@@ -106,16 +106,14 @@ const Header = ({ type }) => {
   return (
     <>
       <div
-        className={`xl:hidden fixed w-full h-[70px] 2xl:h-[80px] shadow-md duration-500  ${
-          !["sign-in"].includes(type) && state.isScrolled
+        className={`xl:hidden fixed w-full h-[70px] 2xl:h-[80px] shadow-md duration-500  ${!["sign-in"].includes(type) && state.isScrolled
             ? "top-0 "
             : "top-[-100px] "
-        } left-0 bg-white`}
+          } left-0 bg-white`}
       ></div>
       <div
-        className={`w-full h-[70px] 2xl:h-[80px] flex justify-center items-center px-5 md:px-[45px] relative ${
-          showShadow ? "xl:shadow-md" : ""
-        }`}
+        className={`w-full h-[70px] 2xl:h-[80px] flex justify-center items-center px-5 md:px-[45px] relative ${showShadow ? "xl:shadow-md" : ""
+          }`}
       >
         <div className="w-full max-w-[1290px] flex justify-center xl:justify-between items-center">
           <div className="flex items-center justify-center gap-14">
@@ -229,9 +227,8 @@ const Header = ({ type }) => {
         </div>
 
         <div
-          className={`absolute top-5 left-4 text-theme-blue sm:left-12 xl:hidden ${
-            ["sign-in"].includes(type) ? "hidden" : ""
-          }`}
+          className={`absolute top-5 left-4 text-theme-blue sm:left-12 xl:hidden ${["sign-in"].includes(type) ? "hidden" : ""
+            }`}
         >
           <HiOutlineMenuAlt2
             onClick={() =>
@@ -246,7 +243,7 @@ const Header = ({ type }) => {
         </div>
       </div>
 
-      {/* <CustomDrawer
+      <CustomDrawer
         data={data ? data : {}}
         loading={isLoading}
         isOpen={state.isDrawerOpen}
@@ -257,9 +254,9 @@ const Header = ({ type }) => {
           })
         }
         title=""
-        // actionLabel="Submit"
-        // onActionClick={() => console.log("Submit clicked")}
-      /> */}
+      // actionLabel="Submit"
+      // onActionClick={() => console.log("Submit clicked")}
+      />
     </>
   );
 };

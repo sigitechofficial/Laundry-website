@@ -135,7 +135,7 @@ export default function page() {
           email: userData?.email,
           password: userData?.password,
           signedFrom: "",
-          dvToken: devToken,
+          dvToken: devToken||"",
         }).unwrap();
 
         if (res?.status === "1") {

@@ -69,22 +69,22 @@ const Header = ({ type }) => {
       payload: { token: localStorage.getItem("loginStatus"), mounted: true },
     });
 
-    // getMessagingInstance().then((messaging) => {
-    //   if (messaging) {
-    //     onMessage(messaging, (payload) => {
-    //       console.log("📩 Foreground message:", payload);
+    getMessagingInstance().then((messaging) => {
+      if (messaging) {
+        onMessage(messaging, (payload) => {
+          console.log("📩 Foreground message:", payload);
 
-    //       addToast({
-    //         title: "Firebase Notification",
-    //         description: payload?.notification?.title,
-    //         color: "success",
-    //       });
-    //     });
-    //   }
-    // });
+          addToast({
+            title: "Firebase Notification",
+            description: payload?.notification?.title,
+            color: "success",
+          });
+        });
+      }
+    });
 
     // Request Device Token
-    // requestDeviceToken();
+    requestDeviceToken();
 
     // Handle Scroll
     const handleScroll = () => {

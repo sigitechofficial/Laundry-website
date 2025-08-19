@@ -1,4 +1,3 @@
-// utilities/firebase.js
 import { initializeApp } from "firebase/app";
 import {
   getAuth,
@@ -46,21 +45,25 @@ if (typeof window !== "undefined") {
   getAnalytics(app);
 }
 
-// ✅ instead of exporting messaging directly
+let messaging = null;
+
 const getMessagingInstance = async () => {
-  const supported = await isSupported();
-  if (!supported) {
-    console.warn("Firebase Messaging not supported in this browser.");
-    return null;
+  if (typeof window !== "undefined") {
+    const supported = await isSupported();
+    if (supported) {
+      messaging = getMessaging(app);
+      return messaging;
+    } else {
+      console.warn("Firebase Messaging not supported in this browser.");
+    }
   }
-  return getMessaging(app);
+  return null;
 };
 
 export {
   auth,
   googleProvider,
   facebookProvider,
-  messaging,
   getToken,
   onMessage,
   getMessagingInstance,

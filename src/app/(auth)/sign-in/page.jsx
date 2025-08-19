@@ -135,7 +135,7 @@ export default function page() {
           email: userData?.email,
           password: userData?.password,
           signedFrom: "",
-          dvToken: devToken||"",
+          dvToken: devToken || "",
         }).unwrap();
 
         if (res?.status === "1") {
@@ -285,6 +285,7 @@ export default function page() {
       localStorage.setItem("loginStatus", true);
       localStorage.setItem("userId", res?.data?.userId);
       localStorage.setItem("email", res?.data?.email);
+      localStorage.setItem("stripeCustomerId", res?.data?.stripeCustomerId);
       localStorage.removeItem("type");
       localStorage.removeItem("otpId");
       clearAll();
@@ -787,12 +788,12 @@ export default function page() {
                     onChange={handlePhoneChange}
                     error={
                       register.countryCode &&
-                      register.phoneNum &&
-                      !validatePhone(
-                        register.countryCode?.includes("+")
-                          ? register.countryCode
-                          : "+" + register.countryCode + register.phoneNum
-                      )
+                        register.phoneNum &&
+                        !validatePhone(
+                          register.countryCode?.includes("+")
+                            ? register.countryCode
+                            : "+" + register.countryCode + register.phoneNum
+                        )
                         ? "Invalid phone number"
                         : ""
                     }

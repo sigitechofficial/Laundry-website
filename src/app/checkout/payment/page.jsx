@@ -133,22 +133,9 @@ export default function Payment() {
       dropOffSamePickUp: true,
       dropOffAddressId: null,
       pickUpAddressId: null,
-      preferencesArray: [
-        {
-          type: "Mixed", //Mixed','White Separate','Dark Seprate','White + Light mixed'
-          chooseTemperature: "30 C", //'30 C','40 C','60 C','90 C'
-          serviceId: 1,
-          preferencesServiceNameId: 1,
-          numberOfBags: 1,
-        },
-        {
-          type: "Mixed", //Mixed','White Separate','Dark Seprate','White + Light mixed'
-          chooseTemperature: "30 C", //'30 C','40 C','60 C','90 C'
-          serviceId: 2,
-          preferencesServiceNameId: 1,
-          numberOfBags: 1,
-        },
-      ],
+      preferencesArray: preferencesData
+        ?.filter((item) => item?.preferencesArray && Array.isArray(item.preferencesArray))
+        ?.flatMap((item) => item.preferencesArray) || [],
       services: preferencesData
         ?.filter((item) => item?.serviceId)
         ?.map((item) => ({ serviceId: item.serviceId })),

@@ -87,6 +87,13 @@ export const api = createApi({
       }),
     }),
 
+    getServiceWithPreferenceDetails: builder.query({
+      query: (serviceId) => ({
+        url: `customer/getAllServiceWithPreferenceDetails/${serviceId}`,
+        method: "GET",
+      }),
+    }),
+
     createBooking: builder.mutation({
       query: (body) => ({
         url: "customer/createBooking",
@@ -162,6 +169,7 @@ export const {
   useUpdateProfileMutation,
   useGetServicesQuery,
   useGetServiceByIdQuery,
+  useGetServiceWithPreferenceDetailsQuery,
   useCreateBookingMutation,
   useGetAllAddressQuery,
   useGetChargesQuery,

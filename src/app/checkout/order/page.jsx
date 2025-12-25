@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "../../../../components/Header";
 import CategoryCard from "../../../../components/CategoryCard";
 import { MdKeyboardArrowRight, MdOutlineDryCleaning } from "react-icons/md";
@@ -7,7 +7,7 @@ import { TbIroning, TbWash, TbIroningSteam } from "react-icons/tb";
 import { AiOutlinePercentage } from "react-icons/ai";
 import { ButtonYouth70018, PurpleButton } from "../../../../components/Buttons";
 import { IoBagCheck, IoLocation, IoShirt } from "react-icons/io5";
-import { useGetServicesQuery } from "@/app/store/services/api";
+import { useGetServicesQuery, useGetServiceWithPreferenceDetailsQuery } from "@/app/store/services/api";
 import { useDisclosure } from "@heroui/react";
 import ReusableModal from "../../../../components/Modal";
 import { useDispatch, useSelector } from "react-redux";
@@ -34,22 +34,53 @@ export default function Order() {
   const { data, isLoading } = useGetServicesQuery();
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const [modalScroll, setModalScroll] = useState(false);
+  const [currentServiceId, setCurrentServiceId] = useState(null);
+  const [servicePreferencesData, setServicePreferencesData] = useState(null);
   const [modal, setModal] = useState({
     modType: "wash",
     step: "",
   });
-  const [preferences, setPreferences] = useState({
-    detergent: "scented",
-    fabricSoftener: true,
-    oxiClean: true,
-    washService: "mixed",
-    temperature: "30 C",
-    additionalInstructions: "",
-    //for ironing
-    ironingAfter: "hung", // or "folded"
-    ironingTemperature: "30 C",
-    additionalInstructionsIroning: "",
-  });
+  
+  // Fetch preferences when serviceId is set
+  const { data: preferencesResponse, isLoading: isLoadingPreferences } = 
+    useGetServiceWithPreferenceDetailsQuery(currentServiceId, {
+      skip: !currentServiceId,
+    });
+
+  // Update service preferences data when API response changes
+  useEffect(() => {
+    if (preferencesResponse?.data?.preferencesData) {
+      setServicePreferencesData(preferencesResponse.data.preferencesData);
+    } else if (preferencesResponse && !preferencesResponse?.data?.preferencesData) {
+      // Reset if response doesn't have preferencesData
+      setServicePreferencesData([]);
+    }
+  }, [preferencesResponse]);
+
+  // Initialize preferences state based on fetched data
+  const [preferences, setPreferences] = useState({});
+  
+  // Initialize preferences when service preferences data is loaded
+  useEffect(() => {
+    if (servicePreferencesData && servicePreferencesData.length > 0) {
+      const initialPrefs = {};
+      servicePreferencesData.forEach((pref) => {
+        const prefName = pref.preferenceType?.name?.toLowerCase();
+        const prefValues = pref.preferenceType?.preferenceValues || [];
+        if (prefName && prefValues.length > 0) {
+          // Set first value as default
+          initialPrefs[prefName] = {
+            preferenceTypeId: pref.preferenceTypeId,
+            preferenceValueId: prefValues[0].id,
+            value: prefValues[0].value,
+          };
+        }
+      });
+      // Add additional instructions field
+      initialPrefs.additionalInstructions = "";
+      setPreferences(initialPrefs);
+    }
+  }, [servicePreferencesData]);
 
   function handleModalScroll(e) {
     const isScrolled = e.target.scrollTop > 50;
@@ -60,49 +91,38 @@ export default function Order() {
   }
 
   function closePreferenceModal() {
-    if (modal.modType === "wash") {
-      // Only pick wash-related preferences
-      const washPrefs = {
-        serviceName: "Wash",
-        detergent: preferences.detergent,
-        fabricSoftener: preferences.fabricSoftener,
-        oxiClean: preferences.oxiClean,
-        washService: preferences.washService,
-        temperature: preferences.temperature,
-        additionalInstructions: preferences.additionalInstructions,
+    if (currentServiceId) {
+      // Build preferences array with preferenceTypeId and preferenceValueId
+      const preferencesArray = [];
+      Object.keys(preferences).forEach((key) => {
+        if (key !== "additionalInstructions" && preferences[key]?.preferenceTypeId) {
+          preferencesArray.push({
+            preferenceTypeId: preferences[key].preferenceTypeId,
+            preferenceValueId: preferences[key].preferenceValueId,
+            serviceId: currentServiceId,
+          });
+        }
+      });
+
+      // Get service name from services data
+      const serviceName = data?.data?.serviceData?.find(
+        (s) => s.id === currentServiceId
+      )?.name || "";
+
+      const prefsData = {
+        serviceName,
+        preferencesArray,
+        additionalInstructions: preferences.additionalInstructions || "",
       };
+
       // Dispatch to redux
-      dispatch(updatePreference({ serviceId: 3, data: washPrefs }));
-      // Reset only wash-related keys in local state
-      setPreferences((prev) => ({
-        ...prev,
-        detergent: "scented",
-        fabricSoftener: true,
-        oxiClean: true,
-        washService: "mixed",
-        temperature: "30 C",
-        additionalInstructions: "",
-      }));
-    } else if (modal.modType === "iron") {
-      // Only pick ironing-related preferences
-      const ironPrefs = {
-        serviceName: "iron",
-        ironingAfter: preferences.ironingAfter,
-        ironingTemperature: preferences.ironingTemperature,
-        additionalInstructionsIroning:
-          preferences.additionalInstructionsIroning,
-      };
-      // Dispatch to redux
-      dispatch(updatePreference({ serviceId: 1, data: ironPrefs }));
-      // Reset only ironing-related keys in local state
-      setPreferences((prev) => ({
-        ...prev,
-        ironingAfter: "hung",
-        ironingTemperature: "30 C",
-        additionalInstructionsIroning: "",
-      }));
+      dispatch(updatePreference({ serviceId: currentServiceId, data: prefsData }));
+      
+      // Reset state
+      setPreferences({});
+      setCurrentServiceId(null);
+      setServicePreferencesData(null);
     }
-    // You can add similar logic for iron or other services if needed
     setModal({ ...modal, modType: "" });
     onClose();
   }
@@ -129,6 +149,7 @@ export default function Order() {
                       return item?.id === 1 ? (
                         <CategoryCard
                           onClick={() => {
+                            setCurrentServiceId(item?.id);
                             setModal({ ...modal, modType: "iron" });
                             onOpen();
                           }}
@@ -150,6 +171,7 @@ export default function Order() {
                       ) : item?.id === 2 ? (
                         <CategoryCard
                           onClick={() => {
+                            setCurrentServiceId(item?.id);
                             setModal({ ...modal, modType: "dry cleaning" });
                             onOpen();
                           }}
@@ -164,6 +186,7 @@ export default function Order() {
                       ) : item?.id === 3 ? (
                         <CategoryCard
                           onClick={() => {
+                            setCurrentServiceId(item?.id);
                             setModal({ ...modal, modType: "wash" });
                             onOpen();
                           }}
@@ -185,6 +208,7 @@ export default function Order() {
                       ) : item?.id === 4 ? (
                         <CategoryCard
                           onClick={() => {
+                            setCurrentServiceId(item?.id);
                             setModal({ ...modal, modType: "" });
                             onOpen();
                           }}
@@ -199,6 +223,7 @@ export default function Order() {
                       ) : item?.id === 5 ? (
                         <CategoryCard
                           onClick={() => {
+                            setCurrentServiceId(item?.id);
                             setModal({ ...modal, modType: "" });
                             onOpen();
                           }}
@@ -564,7 +589,16 @@ export default function Order() {
       <ReusableModal
         isDismissable={true}
         isOpen={isOpen}
-        onOpenChange={onOpenChange}
+        onOpenChange={(open) => {
+          onOpenChange(open);
+          if (!open) {
+            // Reset state when modal closes
+            setCurrentServiceId(null);
+            setServicePreferencesData(null);
+            setPreferences({});
+            setModal({ ...modal, modType: "" });
+          }
+        }}
         showHeader={true}
         headerTitle="Service Preferences"
         modalScroll={modalScroll}
@@ -586,7 +620,7 @@ export default function Order() {
         backdrop="blur"
         className="custom-modal-class max-h-[90vh] overflow-auto"
       >
-        {modal?.modType === "wash" ? (
+        {(modal?.modType === "wash" || modal?.modType === "iron" || modal?.modType === "dry cleaning") && currentServiceId ? (
           <div
             onScroll={handleModalScroll}
             className="modal-scroll overflow-auto"
@@ -604,334 +638,94 @@ export default function Order() {
               </p>
             </div>
 
-            <div className="w-full px-6 py-6 font-sf">
-              <div className="space-y-2">
-                <p className="font-sf text-lg">Detergent</p>
-                <div className="grid grid-cols-2 h-[53px]">
-                  <div
-                    onClick={() =>
-                      setPreferences((prev) => ({
-                        ...prev,
-                        detergent: "scented",
-                      }))
-                    }
-                    className={`flex justify-center items-center cursor-pointer ${
-                      preferences.detergent === "scented"
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                    }`}
-                  >
-                    Scented
-                  </div>
-                  <div
-                    onClick={() =>
-                      setPreferences((prev) => ({
-                        ...prev,
-                        detergent: "hypoallergenic",
-                      }))
-                    }
-                    className={`flex justify-center items-center cursor-pointer ${
-                      preferences.detergent === "hypoallergenic"
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                    }`}
-                  >
-                    Hypoallergenic
-                  </div>
+            {isLoadingPreferences ? (
+              <div className="w-full px-6 py-6 font-sf flex justify-center items-center min-h-[200px]">
+                <MiniLoader />
+              </div>
+            ) : servicePreferencesData && servicePreferencesData.length > 0 ? (
+              <div className="w-full px-6 py-6 font-sf">
+                <div className="space-y-4">
+                  {servicePreferencesData.map((pref) => {
+                    const prefName = pref.preferenceType?.name?.toLowerCase();
+                    const prefKey = prefName || `pref_${pref.preferenceTypeId}`;
+                    const currentPref = preferences[prefKey];
+                    const values = pref.preferenceType?.preferenceValues || [];
+                    const getGridClass = (count) => {
+                      if (count <= 2) return "grid-cols-2";
+                      if (count <= 4) return "grid-cols-4";
+                      return "grid-cols-2";
+                    };
+
+                    return (
+                      <div key={pref.id} className="space-y-2">
+                        <p className="font-sf text-lg capitalize">
+                          {pref.preferenceType?.name || "Preference"}
+                        </p>
+                        <div className={`grid ${getGridClass(values.length)} gap-2`}>
+                          {values.map((value) => {
+                            const isSelected = currentPref?.preferenceValueId === value.id;
+                            return (
+                              <div
+                                key={value.id}
+                                onClick={() =>
+                                  setPreferences((prev) => ({
+                                    ...prev,
+                                    [prefKey]: {
+                                      preferenceTypeId: pref.preferenceTypeId,
+                                      preferenceValueId: value.id,
+                                      value: value.value,
+                                    },
+                                  }))
+                                }
+                                className={`h-[53px] flex justify-center items-center cursor-pointer ${
+                                  isSelected
+                                    ? "bg-theme-blue text-white"
+                                    : "bg-theme-gray"
+                                }`}
+                              >
+                                {value.value}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                <div className="flex items-center gap-5">
-                  <div className="space-y-2 w-full">
-                    <p className="font-sf text-lg">Fabric Softener</p>
-                    <div className="grid grid-cols-2 h-[53px]">
-                      <div
-                        onClick={() =>
-                          setPreferences((prev) => ({
-                            ...prev,
-                            fabricSoftener: true,
-                          }))
-                        }
-                        className={`flex justify-center items-center cursor-pointer ${
-                          preferences.fabricSoftener === true
-                            ? "bg-theme-blue text-white"
-                            : "bg-theme-gray"
-                        }`}
-                      >
-                        Yes
-                      </div>
-                      <div
-                        onClick={() =>
-                          setPreferences((prev) => ({
-                            ...prev,
-                            fabricSoftener: false,
-                          }))
-                        }
-                        className={`flex justify-center items-center cursor-pointer ${
-                          preferences.fabricSoftener === false
-                            ? "bg-theme-blue text-white"
-                            : "bg-theme-gray"
-                        }`}
-                      >
-                        No
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2 w-full">
-                    <p className="font-sf text-lg">Oxi Clean</p>
-                    <div className="grid grid-cols-2 h-[53px]">
-                      <div
-                        onClick={() =>
-                          setPreferences((prev) => ({
-                            ...prev,
-                            oxiClean: true,
-                          }))
-                        }
-                        className={`flex justify-center items-center cursor-pointer ${
-                          preferences.oxiClean === true
-                            ? "bg-theme-blue text-white"
-                            : "bg-theme-gray"
-                        }`}
-                      >
-                        Yes
-                      </div>
-                      <div
-                        onClick={() =>
-                          setPreferences((prev) => ({
-                            ...prev,
-                            oxiClean: false,
-                          }))
-                        }
-                        className={`flex justify-center items-center cursor-pointer ${
-                          preferences.oxiClean === false
-                            ? "bg-theme-blue text-white"
-                            : "bg-theme-gray"
-                        }`}
-                      >
-                        No
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <div className="pt-3">
+                  <p className="font-sf text-lg pb-3">
+                    Additional Service instructions
+                  </p>
 
-                <p className="font-sf text-lg">Wash Service</p>
-                <div className="grid grid-cols-2 h-[53px]">
-                  <div
-                    onClick={() =>
+                  <textarea
+                    className="w-full h-40 bg-theme-gray rounded-lg p-5 text-base text-theme-gray-2 resize-none outline-none"
+                    type="text"
+                    name=""
+                    id=""
+                    placeholder="Enter your instructions"
+                    value={preferences.additionalInstructions || ""}
+                    onChange={(e) =>
                       setPreferences((prev) => ({
                         ...prev,
-                        washService: "mixed",
+                        additionalInstructions: e.target.value,
                       }))
                     }
-                    className={`flex justify-center items-center cursor-pointer ${
-                      preferences.washService === "mixed"
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                    }`}
-                  >
-                    Mixed
-                  </div>
-                  <div
-                    onClick={() =>
-                      setPreferences((prev) => ({
-                        ...prev,
-                        washService: "white separate",
-                      }))
-                    }
-                    className={`flex justify-center items-center cursor-pointer ${
-                      preferences.washService === "white separate"
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                    }`}
-                  >
-                    White separate
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 h-[53px]">
-                  <div
-                    onClick={() =>
-                      setPreferences((prev) => ({
-                        ...prev,
-                        washService: "dark separate",
-                      }))
-                    }
-                    className={`flex justify-center items-center cursor-pointer ${
-                      preferences.washService === "dark separate"
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                    }`}
-                  >
-                    Dark separate
-                  </div>
-                  <div
-                    onClick={() =>
-                      setPreferences((prev) => ({
-                        ...prev,
-                        washService: "white + light mixed",
-                      }))
-                    }
-                    className={`flex justify-center items-center cursor-pointer ${
-                      preferences.washService === "white + light mixed"
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                    }`}
-                  >
-                    White + light mixed
-                  </div>
-                </div>
+                  />
 
-                <p className="font-sf text-lg">Choose Temperature</p>
-                <div className="grid grid-cols-4 h-[53px]">
-                  {["30 C", "40 C", "50 C", "60 C"].map((temp) => (
-                    <div
-                      key={temp}
-                      onClick={() =>
-                        setPreferences((prev) => ({
-                          ...prev,
-                          temperature: temp,
-                        }))
-                      }
-                      className={`flex justify-center items-center cursor-pointer ${
-                        preferences.temperature === temp
-                          ? "bg-theme-blue text-white"
-                          : "bg-theme-gray"
-                      }`}
-                    >
-                      {temp}
-                    </div>
-                  ))}
+                  <p className="font-sf pb-5 text-sm text-theme-psGray">
+                    The user is responsible if the clothes color bleeds due to the
+                    selected wash settings and temperature.
+                  </p>
                 </div>
               </div>
-
-              <div className="pt-3">
-                <p className="font-sf text-lg pb-3">
-                  Additional Service instructions
-                </p>
-
-                <textarea
-                  className="w-full h-40 bg-theme-gray rounded-lg p-5 text-base text-theme-gray-2 resize-none outline-none"
-                  type="text"
-                  name=""
-                  id=""
-                  placeholder="Enter your instructions"
-                  value={preferences.additionalInstructions}
-                  onChange={(e) =>
-                    setPreferences((prev) => ({
-                      ...prev,
-                      additionalInstructions: e.target.value,
-                    }))
-                  }
-                />
-
-                <p className="font-sf pb-5 text-sm text-theme-psGray">
-                  The user is responsible if the clothes color bleeds due to the
-                  selected wash settings and temperature.
+            ) : (
+              <div className="w-full px-6 py-6 font-sf">
+                <p className="text-center text-theme-psGray">
+                  No preferences available for this service.
                 </p>
               </div>
-            </div>
-          </div>
-        ) : modal?.modType === "iron" ? (
-          <div
-            onScroll={handleModalScroll}
-            className="modal-scroll overflow-auto"
-          >
-            <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
-              <h4 className="font-youth font-bold text-[22px] text-center">
-                Service Preferences
-              </h4>
-
-              <p
-                onClick={() => onClose()}
-                className="font-sf text-base absolute top-4 right-4 cursor-pointer"
-              >
-                Cancel
-              </p>
-            </div>
-
-            <div className="w-full px-6 py-6 font-sf">
-              <div className="space-y-2">
-                <p className="font-sf text-lg">After ironing:</p>
-                <div className="grid grid-cols-2 h-[53px]">
-                  <div
-                    onClick={() =>
-                      setPreferences((prev) => ({
-                        ...prev,
-                        ironingAfter: "hung",
-                      }))
-                    }
-                    className={`flex justify-center items-center cursor-pointer ${
-                      preferences.ironingAfter === "hung"
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                    }`}
-                  >
-                    Hung
-                  </div>
-                  <div
-                    onClick={() =>
-                      setPreferences((prev) => ({
-                        ...prev,
-                        ironingAfter: "folded",
-                      }))
-                    }
-                    className={`flex justify-center items-center cursor-pointer ${
-                      preferences.ironingAfter === "folded"
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                    }`}
-                  >
-                    Folded
-                  </div>
-                </div>
-
-                <p className="font-sf text-lg">Choose Iron Temperature</p>
-                <div className="grid grid-cols-4 h-[53px]">
-                  {["30 C", "40 C", "50 C", "60 C"].map((temp) => (
-                    <div
-                      key={temp}
-                      onClick={() =>
-                        setPreferences((prev) => ({
-                          ...prev,
-                          ironingTemperature: temp,
-                        }))
-                      }
-                      className={`flex justify-center items-center cursor-pointer ${
-                        preferences.ironingTemperature === temp
-                          ? "bg-theme-blue text-white"
-                          : "bg-theme-gray"
-                      }`}
-                    >
-                      {temp}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-3">
-                <p className="font-sf text-lg pb-3">
-                  Additional Service instructions
-                </p>
-
-                <textarea
-                  className="w-full h-40 bg-theme-gray rounded-lg p-5 text-base text-theme-gray-2 resize-none outline-none"
-                  type="text"
-                  name=""
-                  id=""
-                  placeholder="Enter your instructions"
-                  value={preferences.additionalInstructionsIroning}
-                  onChange={(e) =>
-                    setPreferences((prev) => ({
-                      ...prev,
-                      additionalInstructionsIroning: e.target.value,
-                    }))
-                  }
-                />
-
-                <p className="font-sf pb-5 text-sm text-theme-psGray">
-                  The user is responsible if the clothes color bleeds due to the
-                  selected wash settings and temperature.
-                </p>
-              </div>
-            </div>
+            )}
           </div>
         ) : modal.modType === "dry cleaning" ? (
           "Dry cleaning preferences will be added soon."

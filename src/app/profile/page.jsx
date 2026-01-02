@@ -67,12 +67,19 @@ export default function Profile() {
   const logoutFunc = () => {
     dispatch(setPage(true));
     localStorage.clear();
+    
+    // Dispatch custom event to notify other components (like Header)
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("userLogout"));
+    }
+    
     addToast({
       title: "Logout",
       description: "logged out successfully!",
       color: "success",
     });
     router.replace("/");
+    router.refresh(); // Force refresh to update all components
   };
 
   const handlePhoneChange = (value, data) => {

@@ -50,11 +50,11 @@ export default function CustomDrawer({
   const [drawerScroll, setDrawerScroll] = useState(0);
   const [inviteFriend, setInviteFriend] = useState(0);
   const [mounted, setMounted] = useState(false);
-
-  let token =
+  const [token, setToken] = useState(
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("loginStatus")) || false
-      : false;
+      : false
+  );
 
   const handleDrawerScroll = (event) => {
     const scrollTop = event.target.scrollTop;
@@ -63,15 +63,23 @@ export default function CustomDrawer({
 
   const logoutFunc = () => {
     localStorage.clear();
+    setToken(false); // Update token state immediately
+    
+    // Dispatch custom event to notify other components (like Header)
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("userLogout"));
+    }
+    
     addToast({
       title: "User Logout",
       description: "Logout successfully",
       color: "success",
     });
     // dispatch(setPage(true));
+    onClose?.(); // Close drawer first
     router.push("/");
+    router.refresh(); // Force refresh to update all components
     onActionClick?.();
-    onClose?.();
   };
 
   const handleNavigate = (val) => {
@@ -83,8 +91,36 @@ export default function CustomDrawer({
     }
   };
 
-  useEffect(()=>{setMounted(true)},[])
-  if(!mounted) return null
+  useEffect(() => {
+    setMounted(true);
+    // Update token when localStorage changes
+    const updateToken = () => {
+      if (typeof window !== "undefined") {
+        const currentToken = JSON.parse(localStorage.getItem("loginStatus")) || false;
+        setToken(currentToken);
+      }
+    };
+    
+    // Check token on mount and when drawer opens
+    updateToken();
+    
+    // Listen for storage changes (in case logout happens in another tab/window)
+    window.addEventListener("storage", updateToken);
+    
+    return () => {
+      window.removeEventListener("storage", updateToken);
+    };
+  }, [isOpen]); // Re-check when drawer opens/closes
+  
+  useEffect(() => {
+    // Also update token when drawer opens to catch logout from same tab
+    if (isOpen && typeof window !== "undefined") {
+      const currentToken = JSON.parse(localStorage.getItem("loginStatus")) || false;
+      setToken(currentToken);
+    }
+  }, [isOpen]);
+  
+  if (!mounted) return null;
   return (
     <Drawer
       radius="none"
@@ -120,29 +156,58 @@ export default function CustomDrawer({
 
                     <h1 className="font-omnes font-bold text-[32px] capitalize text-theme-black-2 ">
                       <span className="me-2">Howdy</span>
-                      {data?.data?.firstName || "User"}
+                      {(() => {
+                        // Get first name from API data first, then localStorage
+                        const firstName = data?.data?.firstName || "";
+                        const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : "";
+                        const firstNameFromStorage = userName?.split(" ")[0] || "";
+                        
+                        return firstName || firstNameFromStorage || "User";
+                      })()}
                     </h1>
                     <div className="flex items-start justify-start gap-7">
                       <div
                         className={` h-[120px] uppercase font-bold text-3xl shrink-0 rounded-full w-[120px] md:h-[120px] flex justify-center items-center ${
                           false
                             ? "bg-theme-red bg-opacity-20 text-theme-red"
-                            : "bg-theme-gray-6 bg-opacity-60 text-white"
+                            : "bg-theme-blue text-white"
                         }`}
                       >
                         {token ? (
-                          data?.data?.image ? (
-                            <img
-                              src={BASE_URL + data?.data?.image}
-                              alt={data?.data?.firstName}
-                              className="w-[120px]  h-[120px] object-cover rounded-full"
-                            />
-                          ) : (
-                            <span className="text-gray-500">
-                              {data?.data?.firstName?.[0] +
-                                data?.data?.lastName?.[0]}
-                            </span>
-                          )
+                          (() => {
+                            // Check for profile image from localStorage (Google/Facebook) first
+                            const profileImageFromStorage = typeof window !== "undefined" ? localStorage.getItem("profileImage") : null;
+                            // Then check API data
+                            const profileImageFromAPI = data?.data?.image ? BASE_URL + data?.data?.image : null;
+                            const profileImage = profileImageFromStorage || profileImageFromAPI;
+                            
+                            // Get user initials for fallback
+                            const firstName = data?.data?.firstName || "";
+                            const lastName = data?.data?.lastName || "";
+                            const initials = (firstName?.[0] || "") + (lastName?.[0] || "");
+
+                            if (profileImage) {
+                              return (
+                                <img
+                                  src={profileImage}
+                                  alt={firstName}
+                                  className="w-[120px] h-[120px] object-cover rounded-full"
+                                />
+                              );
+                            } else if (initials) {
+                              return (
+                                <span className="text-white">
+                                  {initials}
+                                </span>
+                              );
+                            } else {
+                              return (
+                                <span className="text-white">
+                                  {firstName?.[0] || "U"}
+                                </span>
+                              );
+                            }
+                          })()
                         ) : (
                           <FaUser />
                         )}
@@ -150,21 +215,45 @@ export default function CustomDrawer({
                       <div className="flex flex-col gap-2 text-theme-black-2">
                         <h2 className="text-2xl font-semibold font-omnes mt-3 capitalize line-clamp-1">
                           Hi,{" "}
-                          {data?.data?.firstName
-                            ? data?.data?.firstName + " " + data?.data?.lastName
-                            : "User"}
+                          {(() => {
+                            // Get name from API data first, then localStorage
+                            const firstName = data?.data?.firstName || "";
+                            const lastName = data?.data?.lastName || "";
+                            const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : "";
+                            
+                            if (firstName && lastName) {
+                              return firstName + " " + lastName;
+                            } else if (userName) {
+                              return userName;
+                            } else {
+                              return "User";
+                            }
+                          })()}
                         </h2>
                         <p className="font-sf  text-sm font-normal text-theme-black-2 text-opacity-60">
-                          {data?.data?.phoneNum ? (
-                            <>
-                              {data?.data?.countryCode + data?.data?.phoneNum}
-                            </>
-                          ) : (
-                            "+1 234 567 890"
-                          )}
+                          {(() => {
+                            // Get phone from API data first, then localStorage
+                            const phoneNum = data?.data?.phoneNum || "";
+                            const countryCode = data?.data?.countryCode || "";
+                            const phoneFromStorage = typeof window !== "undefined" ? localStorage.getItem("phoneNum") : "";
+                            
+                            if (phoneNum && countryCode) {
+                              return countryCode + phoneNum;
+                            } else if (phoneFromStorage) {
+                              return phoneFromStorage;
+                            } else {
+                              return "+1 234 567 890";
+                            }
+                          })()}
                         </p>
                         <p className="font-sf  text-sm font-normal text-theme-black-2 text-opacity-60">
-                          {data?.data?.email ?? "abc@gmail.com"}
+                          {(() => {
+                            // Get email from API data first, then localStorage
+                            const email = data?.data?.email || "";
+                            const emailFromStorage = typeof window !== "undefined" ? localStorage.getItem("email") : "";
+                            
+                            return email || emailFromStorage || "abc@gmail.com";
+                          })()}
                         </p>
                       </div>
                     </div>

@@ -64,10 +64,27 @@ const Header = ({ type }) => {
 
   useEffect(() => {
     // Set header data (token and mounted flag)
-    dispatchState({
-      type: "set_headerData",
-      payload: { token: localStorage.getItem("loginStatus"), mounted: true },
-    });
+    const updateToken = () => {
+      dispatchState({
+        type: "set_headerData",
+        payload: { 
+          token: localStorage.getItem("loginStatus"), 
+          mounted: true 
+        },
+      });
+    };
+    
+    updateToken();
+
+    // Listen for storage changes (logout from same tab or other tabs)
+    const handleStorageChange = () => {
+      updateToken();
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+    
+    // Also listen for custom logout event
+    window.addEventListener("userLogout", handleStorageChange);
 
     getMessagingInstance().then((messaging) => {
       if (messaging) {
@@ -97,8 +114,12 @@ const Header = ({ type }) => {
 
     window.addEventListener("scroll", handleScroll);
 
-    // Clean up the event listener on unmount
-    return () => window.removeEventListener("scroll", handleScroll);
+    // Clean up the event listeners on unmount
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("userLogout", handleStorageChange);
+    };
   }, []);
 
   if (!state.headerData.mounted) return null;
@@ -194,22 +215,53 @@ const Header = ({ type }) => {
                 }
                 className="flex flex-col items-center cursor-pointer"
               >
-                {data?.data?.image ? (
-                  <div className="size-[35px] rounded-full border border-gray-500 shrink-0 flex justify-center items-center overflow-hidden">
-                    <img
-                      className="w-full h-full object-cover"
-                      src={BASE_URL + data?.data?.image}
-                      alt={data?.data?.firstName}
-                    />
-                  </div>
-                ) : (
-                  <div className="size-[35px] rounded-full border border-gray-500 shrink-0 flex justify-center items-center">
-                    <FaUser size="20" color="lightGray" />
-                  </div>
-                )}
+                {(() => {
+                  // Check for profile image from localStorage (Google/Facebook) first
+                  const profileImageFromStorage = typeof window !== "undefined" ? localStorage.getItem("profileImage") : null;
+                  // Then check API data
+                  const profileImageFromAPI = data?.data?.image ? BASE_URL + data?.data?.image : null;
+                  const profileImage = profileImageFromStorage || profileImageFromAPI;
+                  
+                  // Get user initials for fallback
+                  const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : "";
+                  const firstName = data?.data?.firstName || userName?.split(" ")[0] || "";
+                  const lastName = data?.data?.lastName || userName?.split(" ")[1] || "";
+                  const initials = (firstName?.[0] || "") + (lastName?.[0] || "");
+
+                  if (profileImage) {
+                    return (
+                      <div className="size-[35px] rounded-full border border-gray-500 shrink-0 flex justify-center items-center overflow-hidden">
+                        <img
+                          className="w-full h-full object-cover"
+                          src={profileImage}
+                          alt={firstName}
+                        />
+                      </div>
+                    );
+                  } else if (initials) {
+                    return (
+                      <div className="size-[35px] rounded-full border border-gray-500 shrink-0 flex justify-center items-center bg-theme-blue text-white font-semibold text-sm">
+                        {initials.toUpperCase()}
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="size-[35px] rounded-full border border-gray-500 shrink-0 flex justify-center items-center">
+                        <FaUser size="20" color="lightGray" />
+                      </div>
+                    );
+                  }
+                })()}
                 <p className="text-center font-sf text-base">
                   Hi,{" "}
-                  {localStorage?.getItem("userName")?.split(" ")[0] || "User"}
+                  {(() => {
+                    // Prioritize API data, then localStorage
+                    const firstName = data?.data?.firstName || "";
+                    const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : "";
+                    const firstNameFromStorage = userName?.split(" ")[0] || "";
+                    
+                    return firstName || firstNameFromStorage || "User";
+                  })()}
                 </p>
               </div>
             ) : (

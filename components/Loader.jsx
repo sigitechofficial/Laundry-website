@@ -34,3 +34,45 @@ export function MiniLoader() {
     </div>
   );
 }
+
+export function BouncingBallsLoader() {
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes bounce-ball {
+            0%, 100% {
+              transform: translateY(0);
+            }
+            50% {
+              transform: translateY(-10px);
+            }
+          }
+        `
+      }} />
+      <div className="flex items-center justify-center gap-1.5">
+        <div 
+          className="w-2.5 h-2.5 bg-white rounded-full"
+          style={{
+            animation: 'bounce-ball 0.6s ease-in-out infinite',
+            animationDelay: '0s'
+          }}
+        ></div>
+        <div 
+          className="w-2.5 h-2.5 bg-white rounded-full"
+          style={{
+            animation: 'bounce-ball 0.6s ease-in-out infinite',
+            animationDelay: '0.2s'
+          }}
+        ></div>
+        <div 
+          className="w-2.5 h-2.5 bg-white rounded-full"
+          style={{
+            animation: 'bounce-ball 0.6s ease-in-out infinite',
+            animationDelay: '0.4s'
+          }}
+        ></div>
+      </div>
+    </>
+  );
+}

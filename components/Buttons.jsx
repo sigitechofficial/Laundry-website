@@ -2,6 +2,7 @@
 "use client"
 import { Spinner } from "@heroui/react";
 import React from "react";
+import { BouncingBallsLoader } from "./Loader";
 
 export default function Buttons() {
   return <div>Buttons</div>;
@@ -38,10 +39,11 @@ export function ButtonYouth70018({
         } relative rounded-full flex justify-center items-center font-medium sm:font-bold px-4 sm:px-8 h-14 sm:h-[60px] font-youth text-white text-lg`
       }
     >
-    {isPending?  <div className="absolute  left-[calc(50%-70px)] flex items-center h-full">
-        <Spinner classNames={{ label: "text-foreground" }} variant="simple" />
-      </div>:""}
-      {text}
+      {isPending ? (
+        <BouncingBallsLoader />
+      ) : (
+        text
+      )}
     </button>
   );
 }
@@ -66,13 +68,15 @@ export function ButtonContinueWith({
   text,
   src,
   onClick,
+  disabled,
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       className={`${
         width || "w-full"
-      } ${bg} rounded-full flex gap-8 justify-center items-center border-black border uppercase px-4 sm:px-8 h-14 sm:h-[60px] font-youth font-bold ${color} text-sm sm:${size}`}
+      } ${bg} ${disabled ? "opacity-50 cursor-not-allowed" : ""} rounded-full flex gap-8 justify-center items-center border-black border uppercase px-4 sm:px-8 h-14 sm:h-[60px] font-youth font-bold ${color} text-sm sm:${size}`}
     >
       <img src={src} alt="" />
       {text}

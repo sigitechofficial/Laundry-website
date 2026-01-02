@@ -3,6 +3,7 @@ import {
   getAuth,
   GoogleAuthProvider,
   FacebookAuthProvider,
+  OAuthProvider,
 } from "firebase/auth";
 import {
   getMessaging,
@@ -29,6 +30,9 @@ const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
 facebookProvider.addScope("email");
 facebookProvider.setCustomParameters({ display: "popup" });
+const appleProvider = new OAuthProvider("apple.com");
+appleProvider.addScope("email");
+appleProvider.addScope("name");
 
 // let messaging = null;
 // if (typeof window !== "undefined") {
@@ -64,6 +68,7 @@ export {
   auth,
   googleProvider,
   facebookProvider,
+  appleProvider,
   getToken,
   onMessage,
   getMessagingInstance,

@@ -251,6 +251,11 @@ export default function page() {
             res.data.firstName + " " + res.data.lastName
           );
 
+          // Dispatch custom event to notify Header component
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("userLogin"));
+          }
+
           setStep("new-order");
           router.replace("/");
 
@@ -387,7 +392,7 @@ export default function page() {
       if (res?.status === "1") {
         localStorage.setItem("userId", res?.data?.userId);
         localStorage.setItem("type", "forgot");
-        localStorage.setItem("otpId", res?.data?.otpid);
+        localStorage.setItem("otpId", res?.data?.otpId);
         localStorage.setItem("email", userData?.resetPassword);
         addToast({
           title: "Reset Password",
@@ -421,23 +426,23 @@ export default function page() {
   const VerifyOtp = async (e) => {
     e.preventDefault();
     try {
-      let res = await verifyOTP({
-        OTP: otp,
-        otpId: localStorage.getItem("otpId"),
-      }).unwrap();
+    let res = await verifyOTP({
+      OTP: otp,
+      otpId: localStorage.getItem("otpId"),
+    }).unwrap();
 
-      if (res?.status === "1") {
-        clearAll();
-        addToast({
-          title: "Verify OTP",
-          description: res?.message,
-          color: "success",
-        });
-        setStep("password");
-      } else {
-        addToast({
-          title: "Verify OTP",
-          description: res?.error || res?.message || "Invalid OTP. Please try again.",
+    if (res?.status === "1") {
+      clearAll();
+      addToast({
+        title: "Verify OTP",
+          description: "OTP verified successfully",
+        color: "success",
+      });
+      setStep("password");
+    } else {
+      addToast({
+        title: "Verify OTP",
+          description: "OTP is incorrect",
           color: "danger",
         });
       }
@@ -445,12 +450,10 @@ export default function page() {
       console.log("🔴 Verify OTP Error:", err);
       console.log("🔴 Error Data:", err?.data);
       const errorData = err?.data || {};
-      // Check if there's a specific message in the data field
-      const errorMessage = errorData?.data || errorData?.error || errorData?.message || "Invalid OTP. Please try again.";
       
       addToast({
         title: "Verify OTP Failed",
-        description: errorMessage,
+        description: "OTP is incorrect",
         color: "danger",
       });
     }
@@ -481,18 +484,18 @@ export default function page() {
   const handleVerifyOtpRegister = async (e) => {
     e.preventDefault();
     try {
-      let res = await verifyOTPRegister({
-        userId: localStorage.getItem("userId"),
-        otpId: localStorage.getItem("otpId"),
-        OTP: otp,
-        dvToken: devToken,
-      }).unwrap();
+    let res = await verifyOTPRegister({
+      userId: localStorage.getItem("userId"),
+      otpId: localStorage.getItem("otpId"),
+      OTP: otp,
+      dvToken: devToken,
+    }).unwrap();
 
-      if (res?.status === "1") {
-        localStorage.setItem("loginStatus", true);
-        localStorage.setItem("userId", res?.data?.userId);
-        localStorage.setItem("email", res?.data?.email);
-        localStorage.setItem("stripeCustomerId", res?.data?.stripeCustomerId);
+    if (res?.status === "1") {
+      localStorage.setItem("loginStatus", true);
+      localStorage.setItem("userId", res?.data?.userId);
+      localStorage.setItem("email", res?.data?.email);
+      localStorage.setItem("stripeCustomerId", res?.data?.stripeCustomerId);
         // Set userName from API response or register state
         const firstName = res?.data?.firstName || register?.firstName || "";
         const lastName = res?.data?.lastName || register?.lastName || "";
@@ -500,19 +503,25 @@ export default function page() {
           localStorage.setItem("userName", `${firstName} ${lastName}`.trim());
         }
         localStorage.setItem("phoneNum", res?.data?.phoneNum || register?.phoneNum || "");
-        localStorage.removeItem("type");
-        localStorage.removeItem("otpId");
-        clearAll();
-        addToast({
+      localStorage.removeItem("type");
+      localStorage.removeItem("otpId");
+        
+        // Dispatch custom event to notify Header component
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("userLogin"));
+        }
+        
+      clearAll();
+      addToast({
           title: "Verify OTP",
-          description: res?.message,
-          color: "success",
-        });
-        dispatch(setPage(true));
-        router.push("/");
-        setStep("sign-in");
-      } else {
-        addToast({
+        description: res?.message,
+        color: "success",
+      });
+      dispatch(setPage(true));
+      router.push("/");
+      setStep("sign-in");
+    } else {
+      addToast({
           title: "Verify OTP",
           description: res?.error || res?.message || "Invalid OTP. Please try again.",
           color: "danger",
@@ -555,7 +564,7 @@ export default function page() {
       let res = await changePasswordReset({
         password: userData?.resetPassword,
         otpId: localStorage.getItem("otpId"),
-        userId: localStorage.getItem("userId"),
+        userId: parseInt(localStorage.getItem("userId"), 10),
       }).unwrap();
 
       if (res?.status === "1") {
@@ -652,6 +661,11 @@ export default function page() {
             "userName",
             loginRes.data.firstName + " " + loginRes.data.lastName
           );
+
+          // Dispatch custom event to notify Header component
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("userLogin"));
+          }
 
           addToast({
             title: "Registration & Login Successful",
@@ -1161,6 +1175,11 @@ export default function page() {
             localStorage.setItem("profileImage", user.photoURL);
           }
 
+          // Dispatch custom event to notify Header component
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("userLogin"));
+          }
+
           addToast({
             title: "Login Successful",
             description: "Logged in with Google successfully",
@@ -1473,6 +1492,11 @@ export default function page() {
             localStorage.setItem("profileImage", user.photoURL);
           }
 
+          // Dispatch custom event to notify Header component
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("userLogin"));
+          }
+
           addToast({
             title: "Login Successful",
             description: "Logged in with Facebook successfully",
@@ -1773,6 +1797,11 @@ export default function page() {
             localStorage.setItem("profileImage", user.photoURL);
           }
 
+          // Dispatch custom event to notify Header component
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(new Event("userLogin"));
+          }
+
           addToast({
             title: "Login Successful",
             description: "Logged in with Apple successfully",
@@ -1865,6 +1894,11 @@ export default function page() {
         // Store profile image from Apple if available
         if (user.photoURL) {
           localStorage.setItem("profileImage", user.photoURL);
+        }
+
+        // Dispatch custom event to notify Header component
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("userLogin"));
         }
 
         addToast({
@@ -2426,8 +2460,9 @@ export default function page() {
 
                 <form className="space-y-5 sm:pt-12 font-sf">
                   <p className="font-sf text-base text-theme-gray-2/75">
-                    Create an account and start enjoying cleaner clothes with
-                    zero effort!
+                    {typeof window !== "undefined" && localStorage.getItem("type") === "forgot" 
+                      ? "Enter your new password to reset your account password."
+                      : "Create an account and start enjoying cleaner clothes with zero effort!"}
                   </p>
 
                   <InputHeroUi
@@ -2467,7 +2502,7 @@ export default function page() {
 
                   <div className="pt-2">
                     <ButtonYouth70018
-                      text="Register"
+                      text={typeof window !== "undefined" && localStorage.getItem("type") === "forgot" ? "Update Password" : "Register"}
                       onClick={handleChangepasswordReset}
                     />
                   </div>

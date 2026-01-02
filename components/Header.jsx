@@ -18,7 +18,7 @@ import { addToast } from "@heroui/react";
 const Header = ({ type }) => {
   const dispatch = useDispatch();
   const pathname = usePathname();
-  const { data, isLoading } = useGetProfileQuery();
+  const { data, isLoading, refetch } = useGetProfileQuery();
   const initialState = {
     isScrolled: false,
     isDrawerOpen: false,
@@ -65,13 +65,19 @@ const Header = ({ type }) => {
   useEffect(() => {
     // Set header data (token and mounted flag)
     const updateToken = () => {
+      const currentToken = localStorage.getItem("loginStatus");
       dispatchState({
         type: "set_headerData",
         payload: { 
-          token: localStorage.getItem("loginStatus"), 
+          token: currentToken, 
           mounted: true 
         },
       });
+      
+      // If user is logged in, refetch profile to get latest user data
+      if (currentToken) {
+        refetch();
+      }
     };
     
     updateToken();
@@ -83,8 +89,15 @@ const Header = ({ type }) => {
     
     window.addEventListener("storage", handleStorageChange);
     
-    // Also listen for custom logout event
+    // Also listen for custom logout/login events
     window.addEventListener("userLogout", handleStorageChange);
+    window.addEventListener("userLogin", () => {
+      updateToken();
+      // Refetch profile when user logs in
+      if (localStorage.getItem("loginStatus")) {
+        refetch();
+      }
+    });
 
     getMessagingInstance().then((messaging) => {
       if (messaging) {
@@ -119,8 +132,9 @@ const Header = ({ type }) => {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("userLogout", handleStorageChange);
+      window.removeEventListener("userLogin", handleStorageChange);
     };
-  }, []);
+  }, [refetch]);
 
   if (!state.headerData.mounted) return null;
 

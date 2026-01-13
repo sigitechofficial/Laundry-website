@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useState, useRef } from "react";
 import { HiOutlineMenuAlt2 } from "react-icons/hi";
 import CustomMenuBtn from "./CustomMenuBtn";
 import Link from "next/link";
@@ -18,7 +18,19 @@ import { addToast } from "@heroui/react";
 const Header = ({ type }) => {
   const dispatch = useDispatch();
   const pathname = usePathname();
-  const { data, isLoading, refetch } = useGetProfileQuery();
+  const [currentUserId, setCurrentUserId] = useState(
+    typeof window !== "undefined" ? localStorage.getItem("userId") : null
+  );
+  const [isLoggedIn, setIsLoggedIn] = useState(
+    typeof window !== "undefined" ? !!localStorage.getItem("loginStatus") : false
+  );
+
+  // Use userId to force fresh query when user changes
+  // Skip query if no userId or if user is not logged in
+  const { data, isLoading } = useGetProfileQuery(currentUserId, {
+    skip: !currentUserId || !isLoggedIn, // Skip if no userId or not logged in
+    refetchOnMountOrArgChange: true, // Always refetch when userId changes
+  });
   const initialState = {
     isScrolled: false,
     isDrawerOpen: false,
@@ -62,42 +74,78 @@ const Header = ({ type }) => {
     }
   };
 
+  // Watch for userId and login status changes
+  useEffect(() => {
+    const newUserId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+    const newLoginStatus = typeof window !== "undefined" ? !!localStorage.getItem("loginStatus") : false;
+
+    if (newUserId !== currentUserId) {
+      // User changed - update state (this will trigger query refetch automatically)
+      setCurrentUserId(newUserId);
+    }
+
+    if (newLoginStatus !== isLoggedIn) {
+      setIsLoggedIn(newLoginStatus);
+    }
+  }, [currentUserId, isLoggedIn]);
+
   useEffect(() => {
     // Set header data (token and mounted flag)
     const updateToken = () => {
       const currentToken = localStorage.getItem("loginStatus");
       dispatchState({
         type: "set_headerData",
-        payload: { 
-          token: currentToken, 
-          mounted: true 
+        payload: {
+          token: currentToken,
+          mounted: true
         },
       });
-      
-      // If user is logged in, refetch profile to get latest user data
+
+      // If user is logged in, update userId and login status
       if (currentToken) {
-        refetch();
+        setIsLoggedIn(true);
+        const userId = localStorage.getItem("userId");
+        if (userId) {
+          setCurrentUserId((prevUserId) => {
+            // Only update if different to avoid unnecessary re-renders
+            return userId !== prevUserId ? userId : prevUserId;
+          });
+        }
+      } else {
+        setIsLoggedIn(false);
+        setCurrentUserId(null);
       }
     };
-    
+
     updateToken();
 
     // Listen for storage changes (logout from same tab or other tabs)
     const handleStorageChange = () => {
       updateToken();
     };
-    
+
     window.addEventListener("storage", handleStorageChange);
-    
+
     // Also listen for custom logout/login events
     window.addEventListener("userLogout", handleStorageChange);
-    window.addEventListener("userLogin", () => {
+    const handleUserLogin = () => {
       updateToken();
-      // Refetch profile when user logs in
-      if (localStorage.getItem("loginStatus")) {
-        refetch();
+      // Update userId and login status when user logs in
+      const loginStatus = localStorage.getItem("loginStatus");
+      const userId = localStorage.getItem("userId");
+      if (loginStatus && userId) {
+        // Update state immediately - this will enable the query and trigger auto-refetch
+        // Due to refetchOnMountOrArgChange: true, the query will automatically refetch
+        // when skip condition changes from true to false
+        setIsLoggedIn(true);
+        setCurrentUserId(userId);
+
+        // Don't manually call refetch here - let RTK Query handle it automatically
+        // when the query becomes enabled (skip becomes false)
       }
-    });
+    };
+
+    window.addEventListener("userLogin", handleUserLogin);
 
     getMessagingInstance().then((messaging) => {
       if (messaging) {
@@ -132,9 +180,9 @@ const Header = ({ type }) => {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("storage", handleStorageChange);
       window.removeEventListener("userLogout", handleStorageChange);
-      window.removeEventListener("userLogin", handleStorageChange);
+      window.removeEventListener("userLogin", handleUserLogin);
     };
-  }, [refetch]);
+  }, []); // Empty dependency array - only run once on mount
 
   if (!state.headerData.mounted) return null;
 
@@ -142,8 +190,8 @@ const Header = ({ type }) => {
     <>
       <div
         className={`xl:hidden fixed w-full h-[70px] 2xl:h-[80px] shadow-md duration-500  ${!["sign-in"].includes(type) && state.isScrolled
-            ? "top-0 "
-            : "top-[-100px] "
+          ? "top-0 "
+          : "top-[-100px] "
           } left-0 bg-white`}
       ></div>
       <div
@@ -235,7 +283,7 @@ const Header = ({ type }) => {
                   // Then check API data
                   const profileImageFromAPI = data?.data?.image ? BASE_URL + data?.data?.image : null;
                   const profileImage = profileImageFromStorage || profileImageFromAPI;
-                  
+
                   // Get user initials for fallback
                   const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : "";
                   const firstName = data?.data?.firstName || userName?.split(" ")[0] || "";
@@ -273,7 +321,7 @@ const Header = ({ type }) => {
                     const firstName = data?.data?.firstName || "";
                     const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : "";
                     const firstNameFromStorage = userName?.split(" ")[0] || "";
-                    
+
                     return firstName || firstNameFromStorage || "User";
                   })()}
                 </p>

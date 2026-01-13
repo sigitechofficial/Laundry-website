@@ -7,7 +7,18 @@ export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: BASE_URL,
     credentials: "include",
+    prepareHeaders: (headers, { getState }) => {
+      // Get access token from localStorage
+      if (typeof window !== "undefined") {
+        const token = localStorage.getItem("accessToken");
+        if (token) {
+          headers.set("Authorization", `Bearer ${token}`);
+        }
+      }
+      return headers;
+    },
   }),
+  tagTypes: ['Profile'], // Define cache tags
   endpoints: (builder) => ({
     userLogin: builder.mutation({
       query: (body) => ({
@@ -15,6 +26,7 @@ export const api = createApi({
         method: "POST",
         body,
       }),
+      invalidatesTags: ['Profile'], // Invalidate profile cache on login
     }),
     resetPassword: builder.mutation({
       query: (body) => ({
@@ -60,10 +72,12 @@ export const api = createApi({
     }),
 
     getProfile: builder.query({
-      query: () => ({
+      query: (userId) => ({
         url: `customer/getUserProfile`,
         method: "GET",
       }),
+      keepUnusedDataFor: 0, // Don't cache unused data
+      providesTags: ['Profile'], // Tag for cache invalidation
     }),
 
     updateProfile: builder.mutation({

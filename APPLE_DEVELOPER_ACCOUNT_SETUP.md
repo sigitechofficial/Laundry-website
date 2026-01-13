@@ -87,12 +87,14 @@ Before you start, you need:
 Fill in all required information:
 
 1. **Personal Information**:
+
    - Full name
    - Email address
    - Phone number
    - Mailing address
 
 2. **Payment Information**:
+
    - Credit card or debit card
    - Billing address
 
@@ -107,6 +109,7 @@ Fill in all required information:
 Apple will verify your identity:
 
 1. **For Individuals**:
+
    - You may be asked to verify your identity via phone or email
    - In some cases, you may need to provide government-issued ID
 
@@ -120,12 +123,14 @@ Apple will verify your identity:
 ### Step 6: Payment
 
 1. Enter your payment information:
+
    - Credit card or debit card
    - Cardholder name
    - Card number, expiry date, CVV
    - Billing address
 
 2. Review the payment:
+
    - Amount: $99 USD per year
    - Auto-renewal: Enabled by default (you can cancel later)
 
@@ -136,10 +141,12 @@ Apple will verify your identity:
 ### Step 7: Wait for Approval
 
 1. **Processing Time**:
+
    - **Individual**: Usually approved within 24-48 hours
    - **Organization**: Can take 1-2 weeks (due to D-U-N-S verification)
 
 2. **Email Notification**:
+
    - You'll receive an email when your enrollment is approved
    - Check your email regularly
 
@@ -163,11 +170,13 @@ Once approved:
 Once your account is active, you can:
 
 1. **Access Developer Tools**:
+
    - Certificates, Identifiers & Profiles
    - App Store Connect
    - Developer documentation
 
 2. **Get Your Team ID**:
+
    - Go to [developer.apple.com/account](https://developer.apple.com/account)
    - Click on your account name (top right)
    - Your **Team ID** is displayed (you'll need this for Firebase setup)
@@ -191,24 +200,29 @@ Once your account is active, you can:
 ## 💡 Tips and Best Practices
 
 ### 1. Use a Business Email
+
 - Use a professional email address (not personal)
 - This email will be associated with your developer account
 
 ### 2. Keep Documents Handy
+
 - Have your government ID ready
 - For organizations, have business registration documents ready
 
 ### 3. D-U-N-S Number (For Organizations)
+
 - Apply early - it can take 1-2 weeks
 - Free to obtain from [dunsnumber.dnb.com](https://www.dunsnumber.dnb.com/)
 - Must match your business legal name exactly
 
 ### 4. Payment Method
+
 - Use a credit card (not debit card if possible)
 - Ensure sufficient funds available
 - Keep payment method updated
 
 ### 5. Account Security
+
 - Enable two-factor authentication
 - Use a strong password
 - Keep your Apple ID secure
@@ -218,22 +232,26 @@ Once your account is active, you can:
 ## 🆘 Troubleshooting
 
 ### Issue: Enrollment Pending
+
 - **Solution**: Wait 24-48 hours for processing. Check email for updates.
 
 ### Issue: Payment Failed
-- **Solution**: 
+
+- **Solution**:
   - Check card has sufficient funds
   - Verify card details are correct
   - Try a different payment method
 
 ### Issue: D-U-N-S Number Not Found
-- **Solution**: 
+
+- **Solution**:
   - Verify your business name matches exactly
   - Wait for D-U-N-S Number to be registered in Apple's system
   - Contact Apple Developer Support if needed
 
 ### Issue: Identity Verification Failed
-- **Solution**: 
+
+- **Solution**:
   - Ensure information matches your government ID
   - Contact Apple Developer Support for assistance
 
@@ -274,7 +292,8 @@ After your Apple Developer account is set up:
 
 ---
 
-**Estimated Time**: 
+**Estimated Time**:
+
 - Individual: 1-2 days (including approval)
 - Organization: 1-3 weeks (including D-U-N-S Number and approval)
 
@@ -284,4 +303,3 @@ After your Apple Developer account is set up:
 
 **Last Updated**: 2026-01-02  
 **Project**: Laundry Website
-

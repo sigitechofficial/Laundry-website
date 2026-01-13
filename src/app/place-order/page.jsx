@@ -5,6 +5,7 @@ import { ButtonYouth70018 } from "../../../components/Buttons";
 import { PiArrowRight } from "react-icons/pi";
 import SelectHero from "../../../components/SelectHero";
 import { FaPlus } from "react-icons/fa6";
+import { FaChevronLeft } from "react-icons/fa";
 import ReusableModal from "../../../components/Modal";
 import { Spinner, useDisclosure } from "@heroui/react";
 import { IoSearchOutline } from "react-icons/io5";
@@ -60,9 +61,9 @@ export default function orderRegistration() {
 
   const [driverInstruction, setDriverInstruction] = useState("");
   const [collectionData, setCollectionData] = useState({
-    collectionDate: "",
-    collectionTimeTo: "",
-    collectionTimeFrom: "",
+    collectionDate: slots?.[0]?.date || "",
+    collectionTimeTo: slots?.[0]?.timeSlots?.[0]?.end || "",
+    collectionTimeFrom: slots?.[0]?.timeSlots?.[0]?.start || "",
     driverInstructionOptions: "",
     availableTimeSlots: slots?.[0]?.timeSlots || [],
     title: "Home", // 'Home', 'Office', 'Hotel', or 'Other'
@@ -84,9 +85,9 @@ export default function orderRegistration() {
   console.log("🚀 ~ orderRegistration ~ collectionData:", collectionData);
 
   const [deliveryData, setDeliveryData] = useState({
-    deliveryDate: "",
-    deliveryTimeTo: "",
-    deliveryTimeFrom: "",
+    deliveryDate: slotsDelivery?.[0]?.date || "",
+    deliveryTimeTo: slotsDelivery?.[0]?.timeSlots?.[0]?.end || "",
+    deliveryTimeFrom: slotsDelivery?.[0]?.timeSlots?.[0]?.start || "",
     driverInstructionOptions1: "",
     availableTimeSlots: slotsDelivery?.[0]?.timeSlots || [],
     title: "Home", // 'Home', 'Office', 'Hotel', or 'Other'
@@ -145,7 +146,11 @@ export default function orderRegistration() {
           )?.long_name || "",
         lat: place.geometry.location.lat(),
         lng: place.geometry.location.lng(),
+        save: true, // Save address when selected from dropdown
       });
+      // Close modal after selecting address
+      setModal({ ...modal, modType: "" });
+      onClose();
     } else {
       setCollectionData({
         ...collectionData,
@@ -178,7 +183,11 @@ export default function orderRegistration() {
           )?.long_name || "",
         lat: place.geometry.location.lat(),
         lng: place.geometry.location.lng(),
+        save: true, // Save address when selected from dropdown
       });
+      // Close modal after selecting address
+      setModal({ ...modal, modType: "" });
+      onClose();
     }
   };
 
@@ -281,16 +290,60 @@ export default function orderRegistration() {
   useEffect(() => {
     if (orderData) {
       if (orderData.collectionData) {
-        setCollectionData(orderData.collectionData);
+        // Merge with defaults to preserve first date/time if not set
+        setCollectionData((prev) => ({
+          ...prev,
+          ...orderData.collectionData,
+          // Preserve default first date/time if not in orderData
+          collectionDate: orderData.collectionData.collectionDate || prev.collectionDate || slots?.[0]?.date || "",
+          collectionTimeFrom: orderData.collectionData.collectionTimeFrom || prev.collectionTimeFrom || slots?.[0]?.timeSlots?.[0]?.start || "",
+          collectionTimeTo: orderData.collectionData.collectionTimeTo || prev.collectionTimeTo || slots?.[0]?.timeSlots?.[0]?.end || "",
+          availableTimeSlots: orderData.collectionData.availableTimeSlots || prev.availableTimeSlots || slots?.[0]?.timeSlots || [],
+        }));
       }
       if (orderData.deliveryData) {
-        setDeliveryData(orderData.deliveryData);
+        // Merge with defaults to preserve first date/time if not set
+        setDeliveryData((prev) => ({
+          ...prev,
+          ...orderData.deliveryData,
+          // Preserve default first date/time if not in orderData
+          deliveryDate: orderData.deliveryData.deliveryDate || prev.deliveryDate || slotsDelivery?.[0]?.date || "",
+          deliveryTimeFrom: orderData.deliveryData.deliveryTimeFrom || prev.deliveryTimeFrom || slotsDelivery?.[0]?.timeSlots?.[0]?.start || "",
+          deliveryTimeTo: orderData.deliveryData.deliveryTimeTo || prev.deliveryTimeTo || slotsDelivery?.[0]?.timeSlots?.[0]?.end || "",
+          availableTimeSlots: orderData.deliveryData.availableTimeSlots || prev.availableTimeSlots || slotsDelivery?.[0]?.timeSlots || [],
+        }));
       }
       if (orderData.driverInstruction) {
         setDriverInstruction(orderData.driverInstruction);
       }
     }
   }, [orderData]);
+
+  // Ensure time slots are set when modal opens for collection date
+  useEffect(() => {
+    if (modal?.modType === "collection-date" && collectionData?.collectionDate) {
+      const selectedSlot = slots?.find((slot) => slot.date === collectionData.collectionDate);
+      if (selectedSlot && selectedSlot.timeSlots) {
+        setCollectionData((prev) => ({
+          ...prev,
+          availableTimeSlots: selectedSlot.timeSlots,
+        }));
+      }
+    }
+  }, [modal?.modType, collectionData?.collectionDate]);
+
+  // Ensure time slots are set when modal opens for delivery date
+  useEffect(() => {
+    if (modal?.modType === "delivery-date" && deliveryData?.deliveryDate) {
+      const selectedSlot = slotsDelivery?.find((slot) => slot.date === deliveryData.deliveryDate);
+      if (selectedSlot && selectedSlot.timeSlots) {
+        setDeliveryData((prev) => ({
+          ...prev,
+          availableTimeSlots: selectedSlot.timeSlots,
+        }));
+      }
+    }
+  }, [modal?.modType, deliveryData?.deliveryDate]);
 
   return (
     <HomeClientWrapper>
@@ -337,8 +390,20 @@ export default function orderRegistration() {
 
           <div className="w-full flex justify-center items-center">
             {step === "new-order" ? (
-              <div className="w-full h-screen flex justify-center lg:items-center overflow-auto px-8 pad-y">
-                <div className="w-full max-w-[565px] mx-auto ">
+              <div className="w-full h-screen flex justify-center lg:items-center overflow-auto px-8 py-10 sm:py-16 lg:py-20 relative">
+                {/* Back Button */}
+                <button
+                  onClick={() => {
+                    dispatch(setPage(true));
+                    router.push("/");
+                  }}
+                  className="absolute top-5 left-5 sm:left-8 lg:top-8 lg:left-8 flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm z-10"
+                  aria-label="Go back"
+                >
+                  <FaChevronLeft className="text-theme-blue text-lg" />
+                </button>
+
+                <div className="w-full max-w-[565px] mx-auto h-[84vh]">
                   <img
                     className="mx-auto max-lg:hidden"
                     src="/images/logo.png"
@@ -374,8 +439,17 @@ export default function orderRegistration() {
                 </div>
               </div>
             ) : step === "get-started" ? (
-              <div className="w-full h-screen flex justify-center 2xl:items-center overflow-auto px-5 sm:px-8 py-20 ">
-                <div className="w-full max-w-[565px] mx-auto">
+              <div className="w-full h-screen flex justify-center 2xl:items-center overflow-auto px-5 sm:px-8 py-10 sm:py-16 md:py-20  relative">
+                {/* Back Button */}
+                <button
+                  onClick={() => setStep("new-order")}
+                  className="absolute top-5 left-5 sm:left-8 lg:top-8 lg:left-8 flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm z-10"
+                  aria-label="Go back"
+                >
+                  <FaChevronLeft className="text-theme-blue text-lg" />
+                </button>
+
+                <div className="w-full max-w-[565px] mx-auto h-[86vh]">
                   <Link onClick={() => dispatch(setPage(true))} href="/">
                     <img
                       className="mx-auto cursor-pointer max-lg:hidden"
@@ -423,15 +497,13 @@ export default function orderRegistration() {
                         endContent={
                           <span className="whitespace-nowrap">
                             {collectionData?.collectionTimeFrom
-                              ? `${
-                                  collectionData?.collectionTimeFrom?.split(
-                                    " "
-                                  )[0]
-                                } - ${
-                                  collectionData?.collectionTimeTo?.split(
-                                    " "
-                                  )[0]
-                                }`
+                              ? `${collectionData?.collectionTimeFrom?.split(
+                                " "
+                              )[0]
+                              } - ${collectionData?.collectionTimeTo?.split(
+                                " "
+                              )[0]
+                              }`
                               : ""}
                           </span>
                         }
@@ -462,11 +534,9 @@ export default function orderRegistration() {
                         endContent={
                           <span className="whitespace-nowrap">
                             {deliveryData?.deliveryTimeFrom
-                              ? `${
-                                  deliveryData?.deliveryTimeFrom?.split(" ")[0]
-                                } - ${
-                                  deliveryData?.deliveryTimeTo?.split(" ")[0]
-                                }`
+                              ? `${deliveryData?.deliveryTimeFrom?.split(" ")[0]
+                              } - ${deliveryData?.deliveryTimeTo?.split(" ")[0]
+                              }`
                               : ""}
                           </span>
                         }
@@ -507,12 +577,12 @@ export default function orderRegistration() {
                         text="Continue"
                         isDisabled={
                           collectionData?.collectionDate &&
-                          collectionData?.collectionTimeTo &&
-                          deliveryData?.deliveryDate &&
-                          deliveryData?.deliveryTimeTo &&
-                          collectionData?.streetAddress &&
-                          collectionData?.driverInstructionOptions &&
-                          deliveryData?.driverInstructionOptions1
+                            collectionData?.collectionTimeTo &&
+                            deliveryData?.deliveryDate &&
+                            deliveryData?.deliveryTimeTo &&
+                            collectionData?.streetAddress &&
+                            collectionData?.driverInstructionOptions &&
+                            deliveryData?.driverInstructionOptions1
                             ? false
                             : true
                         }
@@ -552,10 +622,10 @@ export default function orderRegistration() {
             modal?.modType === "address"
               ? "Enter Your Location"
               : modal?.modType === "collection-date"
-              ? "Collection"
-              : modal?.modType === "delivery-date"
-              ? "Delivery"
-              : "Driver instruction"
+                ? "Collection"
+                : modal?.modType === "delivery-date"
+                  ? "Delivery"
+                  : "Driver instruction"
           }
           onBack={false}
           onClose={false}
@@ -566,7 +636,7 @@ export default function orderRegistration() {
                 <ButtonYouth70018
                   isDisabled={
                     collectionData?.collectionDate &&
-                    collectionData?.collectionTimeTo
+                      collectionData?.collectionTimeTo
                       ? false
                       : true
                   }
@@ -717,11 +787,10 @@ export default function orderRegistration() {
                                 availableTimeSlots: item?.timeSlots,
                               });
                             }}
-                            className={`text-2xl font-semibold size-14 rounded-full shrink-0 flex items-center justify-center ${
-                              collectionData?.collectionDate === item?.date
-                                ? "bg-theme-blue text-white"
-                                : "bg-theme-gray"
-                            }`}
+                            className={`text-2xl font-semibold size-14 rounded-full shrink-0 flex items-center justify-center ${collectionData?.collectionDate === item?.date
+                              ? "bg-theme-blue text-white"
+                              : "bg-theme-gray"
+                              }`}
                           >
                             {item?.displayDate}
                           </div>
@@ -742,7 +811,10 @@ export default function orderRegistration() {
                 </div>
 
                 <div className="space-y-4 pt-3 pb-8">
-                  {collectionData?.availableTimeSlots?.map((item, idx) => {
+                  {(collectionData?.availableTimeSlots?.length > 0
+                    ? collectionData.availableTimeSlots
+                    : slots?.find((slot) => slot.date === collectionData?.collectionDate)?.timeSlots || []
+                  )?.map((item, idx) => {
                     return (
                       <div
                         key={idx}
@@ -753,11 +825,10 @@ export default function orderRegistration() {
                             collectionTimeTo: item?.end,
                           });
                         }}
-                        className={`w-full h-14 px-5 flex justify-between items-center  rounded-full shrink-0 font-sf font-semibold text-2xl ${
-                          collectionData?.collectionTimeFrom === item?.start
-                            ? "bg-theme-blue text-white"
-                            : "bg-theme-gray"
-                        }`}
+                        className={`w-full h-14 px-5 flex justify-between items-center  rounded-full shrink-0 font-sf font-semibold text-2xl ${collectionData?.collectionTimeFrom === item?.start
+                          ? "bg-theme-blue text-white"
+                          : "bg-theme-gray"
+                          }`}
                       >
                         <div className="flex items-center">
                           {item?.start?.split(" ")[0]}{" "}
@@ -872,11 +943,10 @@ export default function orderRegistration() {
                                   availableTimeSlots: item?.timeSlots,
                                 });
                               }}
-                              className={`text-2xl font-semibold size-14 rounded-full shrink-0 flex items-center justify-center ${
-                                deliveryData?.deliveryDate === item?.date
-                                  ? "bg-theme-blue text-white"
-                                  : "bg-theme-gray"
-                              }`}
+                              className={`text-2xl font-semibold size-14 rounded-full shrink-0 flex items-center justify-center ${deliveryData?.deliveryDate === item?.date
+                                ? "bg-theme-blue text-white"
+                                : "bg-theme-gray"
+                                }`}
                             >
                               {item?.displayDate}
                             </div>
@@ -898,7 +968,10 @@ export default function orderRegistration() {
                 </div>
 
                 <div className="space-y-4 pt-3">
-                  {deliveryData?.availableTimeSlots?.map((item, idx) => {
+                  {(deliveryData?.availableTimeSlots?.length > 0
+                    ? deliveryData.availableTimeSlots
+                    : slotsDelivery?.find((slot) => slot.date === deliveryData?.deliveryDate)?.timeSlots || []
+                  )?.map((item, idx) => {
                     return (
                       <div
                         key={idx}
@@ -909,11 +982,10 @@ export default function orderRegistration() {
                             deliveryTimeTo: item?.end,
                           });
                         }}
-                        className={`w-full h-14 px-5 flex justify-between items-center  rounded-full shrink-0 font-sf font-semibold text-2xl ${
-                          deliveryData?.deliveryTimeFrom === item?.start
-                            ? "bg-theme-blue text-white"
-                            : "bg-theme-gray"
-                        }`}
+                        className={`w-full h-14 px-5 flex justify-between items-center  rounded-full shrink-0 font-sf font-semibold text-2xl ${deliveryData?.deliveryTimeFrom === item?.start
+                          ? "bg-theme-blue text-white"
+                          : "bg-theme-gray"
+                          }`}
                       >
                         <div className="flex items-center">
                           {item?.start?.split(" ")[0]}{" "}

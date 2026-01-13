@@ -36,7 +36,7 @@ export default function OrderHistory() {
   }
 
   return (
-    <section className="w-full mt-16 sm:px-10">
+    <section className="w-full mt-16 sm:px-10 h-[calc(100vh-8rem)] overflow-y-auto">
       <h2 className="font-youth font-medium text-[40px] mb-4">
         Here's What You've Ordered
       </h2>

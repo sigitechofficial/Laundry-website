@@ -33,6 +33,9 @@ import { addToast } from "@heroui/react";
 import { useDispatch } from "react-redux";
 import { setPage } from "@/app/store/slices/cartItemSlice";
 import { BASE_URL } from "../utilities/URL";
+import { signOut } from "firebase/auth";
+import { auth } from "../utilities/firebase";
+import { clearAllCookies } from "../utilities/cookieUtils";
 
 export default function CustomDrawer({
   data,
@@ -61,8 +64,39 @@ export default function CustomDrawer({
     setDrawerScroll(scrollTop);
   };
 
-  const logoutFunc = () => {
+  const logoutFunc = async () => {
+    try {
+      // Sign out from Firebase Auth first (clears Firebase session)
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out from Firebase:", error);
+      // Continue with logout even if Firebase signOut fails
+    }
+    
+    // Try to call backend logout endpoint to invalidate server-side session/cookie
+    try {
+      await fetch(BASE_URL + "customer/logout", {
+        method: "GET",
+        credentials: "include", // Include cookies in the request
+      }).catch(() => {
+        // Ignore errors if logout endpoint doesn't exist
+      });
+    } catch (error) {
+      // Ignore errors - backend logout is optional
+      console.log("Backend logout endpoint not available or failed");
+    }
+    
+    // Clear all cookies (including access token)
+    clearAllCookies();
+    
+    // Clear all local storage
     localStorage.clear();
+    
+    // Clear session storage as well
+    if (typeof window !== "undefined") {
+      sessionStorage.clear();
+    }
+    
     setToken(false); // Update token state immediately
     
     // Dispatch custom event to notify other components (like Header)

@@ -28,13 +28,26 @@ import { setPage } from "../store/slices/cartItemSlice";
 import { useDispatch } from "react-redux";
 import OnHoldbookings from "../../../components/chunks/OnHoldbookings";
 import { MiniLoader } from "../../../components/Loader";
+import { signOut } from "firebase/auth";
+import { auth } from "../../../utilities/firebase";
+import { clearAllCookies } from "../../../utilities/cookieUtils";
 
 export default function Profile() {
   const router = useRouter();
   const dispatch = useDispatch();
   const searchParams = useSearchParams();
   const currentTab = searchParams.get("tab");
-  const { data, error, isLoading, refetch } = useGetProfileQuery();
+  
+  // Get userId from localStorage to ensure we fetch the correct user's profile
+  const [currentUserId, setCurrentUserId] = useState(
+    typeof window !== "undefined" ? localStorage.getItem("userId") : null
+  );
+  
+  const { data, error, isLoading, refetch } = useGetProfileQuery(currentUserId, {
+    skip: !currentUserId, // Skip if no userId
+    refetchOnMountOrArgChange: true, // Always refetch when userId changes
+  });
+  
   const [updateProfile, { isLoading: isLoadingUpdateProfile }] =
     useUpdateProfileMutation();
   const [userData, setUserData] = useState({
@@ -64,9 +77,40 @@ export default function Profile() {
     userId = localStorage.getItem("userId");
   }
 
-  const logoutFunc = () => {
+  const logoutFunc = async () => {
+    try {
+      // Sign out from Firebase Auth first (clears Firebase session)
+      await signOut(auth);
+    } catch (error) {
+      console.error("Error signing out from Firebase:", error);
+      // Continue with logout even if Firebase signOut fails
+    }
+    
+    // Try to call backend logout endpoint to invalidate server-side session/cookie
+    try {
+      await fetch(BASE_URL + "customer/logout", {
+        method: "GET",
+        credentials: "include", // Include cookies in the request
+      }).catch(() => {
+        // Ignore errors if logout endpoint doesn't exist
+      });
+    } catch (error) {
+      // Ignore errors - backend logout is optional
+      console.log("Backend logout endpoint not available or failed");
+    }
+    
+    // Clear all cookies (including access token)
+    clearAllCookies();
+    
     dispatch(setPage(true));
+    
+    // Clear all local storage (including accessToken)
     localStorage.clear();
+    
+    // Clear session storage as well
+    if (typeof window !== "undefined") {
+      sessionStorage.clear();
+    }
     
     // Dispatch custom event to notify other components (like Header)
     if (typeof window !== "undefined") {
@@ -185,6 +229,55 @@ export default function Profile() {
     }
   };
 
+  // Listen for user login event to refetch profile
+  useEffect(() => {
+    const handleUserLogin = () => {
+      // Update userId from localStorage
+      const newUserId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+      if (newUserId && newUserId !== currentUserId) {
+        setCurrentUserId(newUserId);
+      }
+      // Refetch profile data with delay to ensure cookies are set by backend
+      setTimeout(() => {
+        refetch();
+      }, 1000); // Delay to ensure backend has set the cookie and localStorage is updated
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("userLogin", handleUserLogin);
+      return () => {
+        window.removeEventListener("userLogin", handleUserLogin);
+      };
+    }
+  }, [currentUserId, refetch]);
+
+  // Watch for userId changes in localStorage
+  useEffect(() => {
+    const checkUserId = () => {
+      const newUserId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
+      if (newUserId !== currentUserId) {
+        setCurrentUserId(newUserId);
+      }
+    };
+
+    // Check on mount
+    checkUserId();
+
+    // Listen for storage changes
+    if (typeof window !== "undefined") {
+      window.addEventListener("storage", checkUserId);
+      window.addEventListener("userLogout", () => {
+        setCurrentUserId(null);
+      });
+      return () => {
+        window.removeEventListener("storage", checkUserId);
+        window.removeEventListener("userLogout", () => {
+          setCurrentUserId(null);
+        });
+      };
+    }
+  }, [currentUserId]);
+
   useEffect(() => {
     if (data?.data) {
       setUserData({
@@ -195,6 +288,18 @@ export default function Profile() {
         phoneNum: data?.data?.phoneNum,
         profileImage: data?.data?.image,
       });
+      
+      // Update localStorage with fresh data from API to keep it in sync
+      if (typeof window !== "undefined") {
+        localStorage.setItem("email", data?.data?.email || "");
+        localStorage.setItem("phoneNum", data?.data?.phoneNum || "");
+        if (data?.data?.firstName && data?.data?.lastName) {
+          localStorage.setItem(
+            "userName",
+            data?.data?.firstName + " " + data?.data?.lastName
+          );
+        }
+      }
     }
   }, [data]);
 
@@ -207,7 +312,7 @@ export default function Profile() {
           </div>
 
           <div className="w-full flex gap-10 px-5 py-20 xl:py-0">
-            <section className="font-sf pt-8 min-w-[300px] 2xl:min-w-[378px] max-md:hidden">
+            <section className="font-sf pt-8 min-w-[300px] 2xl:min-w-[378px] max-md:hidden fixed top-20 h-[calc(100vh-5rem)] overflow-y-auto sidebar-scroll z-10">
               <div className="space-y-6">
                 <div className="flex items-start justify-start gap-7">
                   <label
@@ -473,7 +578,9 @@ export default function Profile() {
                 </div>
               </section>
             ) : currentTab === "order-history" ? (
-              <OrderHistory />
+              <div className="w-full ml-[320px] 2xl:ml-[398px]">
+                <OrderHistory />
+              </div>
             ) : currentTab === "notifications" ? (
               <Notifications />
             ) : currentTab === "invite-friend" ? (

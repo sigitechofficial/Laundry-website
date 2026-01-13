@@ -250,6 +250,10 @@ export default function page() {
             "userName",
             res.data.firstName + " " + res.data.lastName
           );
+          // Store access token from login response
+          if (res.data.accessToken) {
+            localStorage.setItem("accessToken", res.data.accessToken);
+          }
 
           // Dispatch custom event to notify Header component
           if (typeof window !== "undefined") {
@@ -496,6 +500,10 @@ export default function page() {
       localStorage.setItem("userId", res?.data?.userId);
       localStorage.setItem("email", res?.data?.email);
       localStorage.setItem("stripeCustomerId", res?.data?.stripeCustomerId);
+      // Store access token from login response
+      if (res?.data?.accessToken) {
+        localStorage.setItem("accessToken", res?.data?.accessToken);
+      }
         // Set userName from API response or register state
         const firstName = res?.data?.firstName || register?.firstName || "";
         const lastName = res?.data?.lastName || register?.lastName || "";
@@ -561,24 +569,38 @@ export default function page() {
         color: "danger",
       });
     } else {
-      let res = await changePasswordReset({
-        password: userData?.resetPassword,
-        otpId: localStorage.getItem("otpId"),
-        userId: parseInt(localStorage.getItem("userId"), 10),
-      }).unwrap();
+      try {
+        let res = await changePasswordReset({
+          password: userData?.resetPassword,
+          otpId: localStorage.getItem("otpId"),
+          userId: parseInt(localStorage.getItem("userId"), 10),
+        }).unwrap();
 
-      if (res?.status === "1") {
-        clearAll();
+        if (res?.status === "1") {
+          clearAll();
+          addToast({
+            title: "Change password",
+            description: res?.message || "Password updated successfully",
+            color: "success",
+          });
+          dispatch(setPage(true));
+          router.replace("/");
+        } else {
+          addToast({
+            title: "Change password",
+            description: res?.error || res?.message || "Failed to update password",
+            color: "danger",
+          });
+        }
+      } catch (err) {
+        console.log("🔴 Change Password Error:", err);
+        console.log("🔴 Error Data:", err?.data);
+        const errorData = err?.data || {};
+        const errorMessage = errorData?.error || errorData?.message || "Failed to update password. Please try again.";
+        
         addToast({
           title: "Change password",
-          description: res?.message,
-          color: "success",
-        });
-        setStep("sign-in");
-      } else {
-        addToast({
-          title: "Change password",
-          description: res?.error,
+          description: errorMessage,
           color: "danger",
         });
       }
@@ -661,6 +683,10 @@ export default function page() {
             "userName",
             loginRes.data.firstName + " " + loginRes.data.lastName
           );
+          // Store access token from login response
+          if (loginRes.data.accessToken) {
+            localStorage.setItem("accessToken", loginRes.data.accessToken);
+          }
 
           // Dispatch custom event to notify Header component
           if (typeof window !== "undefined") {
@@ -789,6 +815,10 @@ export default function page() {
                 "userName",
                 loginRes.data.firstName + " " + loginRes.data.lastName
               );
+              // Store access token from login response
+              if (loginRes.data.accessToken) {
+                localStorage.setItem("accessToken", loginRes.data.accessToken);
+              }
 
               addToast({
                 title: "Login Successful",
@@ -1170,14 +1200,21 @@ export default function page() {
             "userName",
             checkUserData.data.firstName + " " + checkUserData.data.lastName
           );
+          // Store access token from login response
+          if (checkUserData.data.accessToken) {
+            localStorage.setItem("accessToken", checkUserData.data.accessToken);
+          }
           // Store profile image from Google if available
           if (user.photoURL) {
             localStorage.setItem("profileImage", user.photoURL);
           }
 
-          // Dispatch custom event to notify Header component
+          // Dispatch custom event to notify Header and other components
+          // Use a small delay to ensure localStorage is fully updated
           if (typeof window !== "undefined") {
-            window.dispatchEvent(new Event("userLogin"));
+            setTimeout(() => {
+              window.dispatchEvent(new Event("userLogin"));
+            }, 100);
           }
 
           addToast({
@@ -1281,9 +1318,21 @@ export default function page() {
           "userName",
           loginData.data.firstName + " " + loginData.data.lastName
         );
+        // Store access token from login response
+        if (loginData.data.accessToken) {
+          localStorage.setItem("accessToken", loginData.data.accessToken);
+        }
         // Store profile image from Google if available
         if (user.photoURL) {
           localStorage.setItem("profileImage", user.photoURL);
+        }
+
+        // Dispatch custom event to notify Header and other components
+        // Use a small delay to ensure localStorage is fully updated
+        if (typeof window !== "undefined") {
+          setTimeout(() => {
+            window.dispatchEvent(new Event("userLogin"));
+          }, 100);
         }
 
         addToast({
@@ -1487,6 +1536,10 @@ export default function page() {
             "userName",
             checkUserData.data.firstName + " " + checkUserData.data.lastName
           );
+          // Store access token from login response
+          if (checkUserData.data.accessToken) {
+            localStorage.setItem("accessToken", checkUserData.data.accessToken);
+          }
           // Store profile image from Facebook if available
           if (user.photoURL) {
             localStorage.setItem("profileImage", user.photoURL);
@@ -1586,6 +1639,10 @@ export default function page() {
           "userName",
           loginData.data.firstName + " " + loginData.data.lastName
         );
+        // Store access token from login response
+        if (loginData.data.accessToken) {
+          localStorage.setItem("accessToken", loginData.data.accessToken);
+        }
         // Store profile image from Facebook if available
         if (user.photoURL) {
           localStorage.setItem("profileImage", user.photoURL);
@@ -1891,6 +1948,10 @@ export default function page() {
           "userName",
           loginData.data.firstName + " " + loginData.data.lastName
         );
+        // Store access token from login response
+        if (loginData.data.accessToken) {
+          localStorage.setItem("accessToken", loginData.data.accessToken);
+        }
         // Store profile image from Apple if available
         if (user.photoURL) {
           localStorage.setItem("profileImage", user.photoURL);

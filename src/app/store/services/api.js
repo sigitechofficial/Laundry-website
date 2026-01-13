@@ -77,7 +77,7 @@ export const api = createApi({
         method: "GET",
       }),
       keepUnusedDataFor: 0, // Don't cache unused data
-      providesTags: ['Profile'], // Tag for cache invalidation
+      providesTags: (result, error, userId) => [{ type: 'Profile', id: userId }], // Tag with userId for proper cache invalidation
     }),
 
     updateProfile: builder.mutation({

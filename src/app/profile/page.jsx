@@ -31,6 +31,7 @@ import { MiniLoader } from "../../../components/Loader";
 import { signOut } from "firebase/auth";
 import { auth } from "../../../utilities/firebase";
 import { clearAllCookies } from "../../../utilities/cookieUtils";
+import { api } from "../store/services/api";
 
 export default function Profile() {
   const router = useRouter();
@@ -101,6 +102,9 @@ export default function Profile() {
     
     // Clear all cookies (including access token)
     clearAllCookies();
+    
+    // Invalidate RTK Query cache before clearing localStorage
+    dispatch(api.util.invalidateTags(['Profile']));
     
     dispatch(setPage(true));
     
@@ -232,15 +236,18 @@ export default function Profile() {
   // Listen for user login event to refetch profile
   useEffect(() => {
     const handleUserLogin = () => {
+      // Invalidate old profile cache first
+      dispatch(api.util.invalidateTags(['Profile']));
+      
       // Update userId from localStorage
       const newUserId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
       if (newUserId && newUserId !== currentUserId) {
         setCurrentUserId(newUserId);
       }
-      // Refetch profile data with delay to ensure cookies are set by backend
+      // Refetch profile data with delay to ensure cookies are set by backend and accessToken is updated
       setTimeout(() => {
         refetch();
-      }, 1000); // Delay to ensure backend has set the cookie and localStorage is updated
+      }, 500); // Reduced delay - accessToken should be set immediately after login
     };
 
     if (typeof window !== "undefined") {
@@ -495,7 +502,7 @@ export default function Profile() {
                 <MiniLoader />
               </div>
             ) : currentTab === "my-account" ? (
-              <section className="w-full flex flex-col lg:flex-row gap-10 2xl:gap-28 mt-16 px-0 sm:px-6 2xl:px-10">
+              <section className="w-full flex flex-col lg:flex-row gap-10 2xl:gap-28 mt-16 px-0 sm:px-6 2xl:px-10 ml-[320px] 2xl:ml-[398px]">
                 <div className="flex-1 font-sf">
                   <h2 className="font-youth font-medium text-[40px] mb-4">
                     Profile
@@ -582,11 +589,17 @@ export default function Profile() {
                 <OrderHistory />
               </div>
             ) : currentTab === "notifications" ? (
-              <Notifications />
+              <div className="w-full ml-[320px] 2xl:ml-[398px]">
+                <Notifications />
+              </div>
             ) : currentTab === "invite-friend" ? (
-              <Invite />
+              <div className="w-full ml-[320px] 2xl:ml-[398px]">
+                <Invite />
+              </div>
             ) : currentTab === "on-hold-bookings" ? (
-              <OnHoldbookings />
+              <div className="w-full ml-[320px] 2xl:ml-[398px]">
+                <OnHoldbookings />
+              </div>
             ) : (
               ""
             )}

@@ -36,6 +36,7 @@ import { BASE_URL } from "../utilities/URL";
 import { signOut } from "firebase/auth";
 import { auth } from "../utilities/firebase";
 import { clearAllCookies } from "../utilities/cookieUtils";
+import { api } from "@/app/store/services/api";
 
 export default function CustomDrawer({
   data,
@@ -88,6 +89,9 @@ export default function CustomDrawer({
     
     // Clear all cookies (including access token)
     clearAllCookies();
+    
+    // Invalidate RTK Query cache before clearing localStorage
+    dispatch(api.util.invalidateTags(['Profile']));
     
     // Clear all local storage
     localStorage.clear();

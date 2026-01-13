@@ -1173,6 +1173,7 @@ export default function page() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include cookies in the request
         body: JSON.stringify({
             email: googleEmail,
           password: "",
@@ -1287,6 +1288,7 @@ export default function page() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include cookies in the request
         body: JSON.stringify(loginPayload),
       });
 
@@ -1509,6 +1511,7 @@ export default function page() {
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include", // Include cookies in the request
           body: JSON.stringify({
             email: facebookEmail,
             password: "",
@@ -1600,6 +1603,7 @@ export default function page() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include cookies in the request
         body: JSON.stringify({
           email: facebookEmail,
           password: "",
@@ -1822,6 +1826,7 @@ export default function page() {
           headers: {
             "Content-Type": "application/json",
           },
+          credentials: "include", // Include cookies in the request
           body: JSON.stringify({
             email: appleEmail,
             password: "",
@@ -1909,6 +1914,7 @@ export default function page() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include cookies in the request
         body: JSON.stringify({
           email: appleEmail,
           password: "",

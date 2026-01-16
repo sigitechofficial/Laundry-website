@@ -7,25 +7,51 @@ import { MdKeyboardArrowRight } from "react-icons/md";
 import {
   useBookingDetailByIdQuery,
   useGetAllOrdersQuery,
+  useGetCancellationPoliciesQuery,
+  useCancelBookingMutation,
 } from "@/app/store/services/api";
 import { formatDate } from "../../utilities/ConversionFunction";
 import ReusableModal from "../Modal";
-import { useDisclosure } from "@heroui/react";
+import { useDisclosure, Spinner, addToast } from "@heroui/react";
+import SelectHero from "../SelectHero";
+
+// Static cancellation reasons with IDs
+const cancellationReasons = [
+  { key: "change_of_plans", label: "Change of plans", id: "1", text: "Change of plans" },
+  { key: "found_another_service", label: "Found another service", id: "2", text: "Found another service" },
+  { key: "no_longer_needed", label: "No longer needed", id: "3", text: "No longer needed" },
+  { key: "price_too_high", label: "Price too high", id: "4", text: "Price too high" },
+  { key: "scheduling_conflict", label: "Scheduling conflict", id: "5", text: "Scheduling conflict" },
+  { key: "other", label: "Other", id: "6", text: "Other" },
+];
 
 export default function OrderHistory() {
-  const { data, isLoading } = useGetAllOrdersQuery();
+  const { data, isLoading, refetch: refetchOrders } = useGetAllOrdersQuery();
   const [order, setOrder] = useState("");
   const [modalScroll, setModalScroll] = useState(false);
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
+  const {
+    isOpen: isCancelModalOpen,
+    onOpen: onCancelModalOpen,
+    onClose: onCancelModalClose,
+    onOpenChange: onCancelModalOpenChange,
+  } = useDisclosure();
   const [manageOrder, setManageOrder] = useState({
     manage: false,
     modType: "track",
     orderId: "",
   });
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [cancellationCharge, setCancellationCharge] = useState(null);
+  const [isCheckingCancellation, setIsCheckingCancellation] = useState(false);
+  
   const { data: bookingDtails, isLoading: bookingDetailsLoading } =
     useBookingDetailByIdQuery(manageOrder?.orderId, {
       skip: !manageOrder?.orderId,
     });
+  
+  const { data: cancellationPolicy } = useGetCancellationPoliciesQuery();
+  const [cancelBooking, { isLoading: isCancelling }] = useCancelBookingMutation();
 
   function handleModalScroll(e) {
     const isScrolled = e.target.scrollTop > 50;
@@ -34,6 +60,140 @@ export default function OrderHistory() {
       return prev;
     });
   }
+
+  // Check if order can be cancelled based on cancellation policy
+  const canCancelOrder = (order, policy) => {
+    if (!order || !policy) return { canCancel: true, reason: null }; // Allow if no policy
+    
+    const policyData = policy?.data?.policies?.[0];
+    if (!policyData) return { canCancel: true, reason: null };
+    
+    const config = policyData?.cancellationConfig;
+    if (!config) return { canCancel: true, reason: null };
+    
+    // Check policy expiry
+    if (policyData.expiry_date) {
+      const expiryDate = new Date(policyData.expiry_date);
+      if (expiryDate < new Date()) {
+        return { canCancel: false, reason: 'Cancellation policy has expired' };
+      }
+    }
+    
+    // Check order status - if processed, cannot cancel
+    const orderStatus = order?.bookingStatus?.title?.toLowerCase() || "";
+    if (orderStatus.includes("processed") || orderStatus.includes("completed") || orderStatus.includes("delivered")) {
+      return { canCancel: false, reason: 'Order already processed or completed' };
+    }
+    
+    // Check if unprocessed cancellation is allowed
+    if (orderStatus.includes("picked") || orderStatus.includes("unprocessed")) {
+      if (!config.allowCancelUnprocessed) {
+        return { canCancel: false, reason: 'Unprocessed orders cannot be cancelled' };
+      }
+    }
+    
+    return { canCancel: true, reason: null };
+  };
+
+  // Handle cancel button click - check eligibility first
+  const handleCancelClick = async () => {
+    if (!bookingDtails?.data) {
+      addToast({
+        title: "Error",
+        description: "Order details not available",
+        color: "danger",
+      });
+      return;
+    }
+
+    setIsCheckingCancellation(true);
+    
+    // Check cancellation eligibility
+    const eligibility = canCancelOrder(bookingDtails.data, cancellationPolicy);
+    
+    if (!eligibility.canCancel) {
+      addToast({
+        title: "Cannot Cancel Order",
+        description: eligibility.reason || "This order cannot be cancelled",
+        color: "warning",
+      });
+      setIsCheckingCancellation(false);
+      return;
+    }
+
+    setIsCheckingCancellation(false);
+    onCancelModalOpen();
+  };
+
+  // Handle confirm cancellation
+  const handleConfirmCancellation = async () => {
+    if (!cancellationReason || !manageOrder?.orderId) {
+      addToast({
+        title: "Error",
+        description: "Please select a cancellation reason",
+        color: "danger",
+      });
+      return;
+    }
+
+    // Find the selected reason object
+    const selectedReason = cancellationReasons.find(
+      (reason) => reason.key === cancellationReason
+    );
+
+    if (!selectedReason) {
+      addToast({
+        title: "Error",
+        description: "Invalid cancellation reason",
+        color: "danger",
+      });
+      return;
+    }
+
+    try {
+      const result = await cancelBooking({
+        bookingId: manageOrder.orderId,
+        reasonId: selectedReason.id,
+        reasonText: selectedReason.text,
+      }).unwrap();
+
+      if (result?.status === "1" || result?.success) {
+        addToast({
+          title: "Order Cancelled",
+          description: result?.message || "Your order has been cancelled successfully",
+          color: "success",
+        });
+        
+        // Close modal and reset state
+        onCancelModalClose();
+        setCancellationReason("");
+        setCancellationCharge(null);
+        
+        // Refetch orders to update the list
+        refetchOrders();
+        
+        // Reset manage order state
+        setManageOrder({
+          manage: false,
+          modType: "track",
+          orderId: "",
+        });
+      } else {
+        addToast({
+          title: "Cancellation Failed",
+          description: result?.message || result?.error || "Failed to cancel order. Please try again.",
+          color: "danger",
+        });
+      }
+    } catch (error) {
+      console.error("Cancel booking error:", error);
+      addToast({
+        title: "Cancellation Failed",
+        description: error?.data?.message || error?.data?.error || "Failed to cancel order. Please try again.",
+        color: "danger",
+      });
+    }
+  };
 
   return (
     <section className="w-full mt-16 sm:px-10 h-[calc(100vh-8rem)] overflow-y-auto">
@@ -313,6 +473,15 @@ export default function OrderHistory() {
                     <PurpleButton text="Contact support" />
                   </div>
                 </div>
+                <div className="my-2 border-t pt-3">
+                  <PurpleButton
+                    text={isCheckingCancellation ? "Checking..." : "Cancel Order"}
+                    bg="bg-red-500"
+                    color="text-white"
+                    onClick={handleCancelClick}
+                    disabled={isCheckingCancellation}
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -531,6 +700,96 @@ export default function OrderHistory() {
         ) : (
           "dddd"
         )}
+      </ReusableModal>
+
+      {/* Cancel Order Confirmation Modal */}
+      <ReusableModal
+        isDismissable={true}
+        isOpen={isCancelModalOpen}
+        onOpenChange={onCancelModalOpenChange}
+        showHeader={true}
+        headerTitle="Cancel Order"
+        modalScroll={false}
+        onBack={false}
+        onClose={false}
+        showFooter={true}
+        footerContent={
+          <div className="w-full flex items-center gap-5 pt-2 mx-6 mb-6">
+            <button
+              onClick={onCancelModalClose}
+              className="w-full rounded-2xl h-12 font-youth text-sm bg-gray-300 text-gray-700 hover:bg-gray-400 transition-colors"
+            >
+              Keep Order
+            </button>
+            <button
+              onClick={handleConfirmCancellation}
+              disabled={!cancellationReason || isCancelling}
+              className={`w-full rounded-2xl h-12 font-youth text-sm flex items-center justify-center gap-2 ${
+                cancellationReason && !isCancelling
+                  ? "bg-red-500 text-white hover:bg-red-600"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              } transition-colors`}
+            >
+              {isCancelling ? (
+                <>
+                  <Spinner size="sm" color="white" />
+                  <span>Cancelling...</span>
+                </>
+              ) : (
+                "Confirm Cancellation"
+              )}
+            </button>
+          </div>
+        }
+        onFooterAction={() => false}
+        size="md"
+        backdrop="blur"
+        className="custom-modal-class"
+      >
+        <div className="w-full px-6 py-6 font-sf">
+          <div className="space-y-6">
+            {/* Confirmation Message */}
+            <div className="text-center">
+              <p className="font-sf text-lg text-gray-700 mb-2">
+                Are you sure you want to cancel this order?
+              </p>
+              <p className="font-sf text-sm text-gray-500">
+                Order ID: {bookingDtails?.data?.orderTrackId}
+              </p>
+            </div>
+
+            {/* Cancellation Reason Dropdown */}
+            <div>
+              <SelectHero
+                label="Reason for cancellation"
+                list={cancellationReasons}
+                value={cancellationReason ? [cancellationReason] : []}
+                onChange={(e) => {
+                  // Extract value from event - HeroUI Select may pass different formats
+                  let value = "";
+                  if (typeof e === "string") {
+                    value = e;
+                  } else if (e?.target?.value) {
+                    value = e.target.value;
+                  } else if (e?.currentTarget?.value) {
+                    value = e.currentTarget.value;
+                  } else if (e?.detail?.value) {
+                    value = e.detail.value;
+                  }
+                  setCancellationReason(value);
+                }}
+              />
+            </div>
+
+            {/* Warning Message */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <p className="font-sf text-sm text-yellow-800">
+                <strong>Note:</strong> Cancellation charges may apply based on
+                your order status and cancellation policy.
+              </p>
+            </div>
+          </div>
+        </div>
       </ReusableModal>
     </section>
   );

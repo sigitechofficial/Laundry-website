@@ -18,7 +18,7 @@ export const api = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Profile'], // Define cache tags
+  tagTypes: ['Profile', 'Orders'], // Define cache tags
   endpoints: (builder) => ({
     userLogin: builder.mutation({
       query: (body) => ({
@@ -132,6 +132,7 @@ export const api = createApi({
         url: "customer/allBookings",
         method: "GET",
       }),
+      providesTags: ['Orders'], // Tag orders for cache invalidation
     }),
 
     bookingDetailById: builder.query({
@@ -168,6 +169,22 @@ export const api = createApi({
         body,
       }),
     }),
+
+    getCancellationPolicies: builder.query({
+      query: () => ({
+        url: "admin/getCancellationPolicies?isActive=1&isDefault=1&limit=1",
+        method: "GET",
+      }),
+    }),
+
+    cancelBooking: builder.mutation({
+      query: (body) => ({
+        url: "customer/cancelBooking",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ['Orders'], // Invalidate orders cache after cancellation
+    }),
   }),
 });
 
@@ -193,4 +210,6 @@ export const {
   useGetOnHoldBookingsQuery,
   useGetOnHoldBookingByIdQuery,
   useUpdateOnHoldBookingMutation,
+  useGetCancellationPoliciesQuery,
+  useCancelBookingMutation,
 } = api;

@@ -20,13 +20,25 @@ export const animals = [
 ];
 
 export default function SelectHero({ label, list = [], onChange, value }) {
+  const handleSelectionChange = (selection) => {
+    if (onChange) {
+      // Convert Selection Set to string value
+      const selectedValue = Array.from(selection)[0] || "";
+      // Create a synthetic event object for compatibility
+      const syntheticEvent = {
+        target: { value: selectedValue },
+        currentTarget: { value: selectedValue },
+      };
+      onChange(syntheticEvent);
+    }
+  };
+
   return (
     <div className="">
       <Select
         label={label}
-        defaultSelectedKeys={value}
-        onChange={onChange}
-        // value={value}
+        selectedKeys={value || []}
+        onSelectionChange={handleSelectionChange}
         classNames={{
           label: [
             "group-data-[focus=true]:text-gray-500",

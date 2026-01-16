@@ -403,7 +403,7 @@ export default function orderRegistration() {
                   <FaChevronLeft className="text-theme-blue text-lg" />
                 </button>
 
-                <div className="w-full max-w-[565px] mx-auto h-[84vh]">
+                <div className="w-full max-w-[565px] mx-auto h-[84vh  ]">
                   <img
                     className="mx-auto max-lg:hidden"
                     src="/images/logo.png"

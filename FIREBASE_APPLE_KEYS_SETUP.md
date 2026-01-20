@@ -4,7 +4,7 @@ Yes, you need to add **4 pieces of information** from your Apple Developer accou
 
 ---
 
-## 📋 What You Need to Add
+<!-- ## 📋 What You Need to Add -->
 
 After setting up your Apple Developer account, you'll have:
 

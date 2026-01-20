@@ -134,7 +134,7 @@ For better integration, create this file in your `public` folder:
 
 ## Troubleshooting
 
-### Error: `auth/operation-not-allowed`
+<!-- ### Error: `auth/operation-not-allowed` -->
 - **Solution**: Enable Apple Sign In in Firebase Console (Step 1 of Quick Setup)
 
 ### Error: `auth/invalid-credential`

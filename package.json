@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@adyen/adyen-web": "^5.71.3",
-    "@heroui/react": "^2.7.6",
-    "@heroui/system": "^2.4.13",
-    "@heroui/theme": "^2.4.13",
+    "@heroui/react": "2.7.6",
+    "@heroui/system": "2.4.17",
+    "@heroui/theme": "2.4.17",
     "@react-google-maps/api": "^2.20.6",
     "@reduxjs/toolkit": "^2.8.2",
     "@stripe/react-stripe-js": "^3.7.0",

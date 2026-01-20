@@ -177,6 +177,13 @@ export const api = createApi({
       }),
     }),
 
+    getAllReasons: builder.query({
+      query: () => ({
+        url: "admin/getAllReasons",
+        method: "GET",
+      }),
+    }),
+
     cancelBooking: builder.mutation({
       query: (body) => ({
         url: "customer/cancelBooking",
@@ -211,5 +218,6 @@ export const {
   useGetOnHoldBookingByIdQuery,
   useUpdateOnHoldBookingMutation,
   useGetCancellationPoliciesQuery,
+  useGetAllReasonsQuery,
   useCancelBookingMutation,
 } = api;

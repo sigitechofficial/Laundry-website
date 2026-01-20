@@ -391,13 +391,13 @@ export default function orderRegistration() {
           <div className="w-full flex justify-center items-center">
             {step === "new-order" ? (
               <div className="w-full h-screen flex justify-center lg:items-center overflow-auto px-8 py-10 sm:py-16 lg:py-20 relative">
-                {/* Back Button */}
+                {/* Back Button - Desktop Only */}
                 <button
                   onClick={() => {
                     dispatch(setPage(true));
                     router.push("/");
                   }}
-                  className="absolute top-5 left-5 sm:left-8 lg:top-8 lg:left-8 flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm z-10"
+                  className="hidden lg:flex absolute top-8 left-8 items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm z-10"
                   aria-label="Go back"
                 >
                   <FaChevronLeft className="text-theme-blue text-lg" />
@@ -440,10 +440,10 @@ export default function orderRegistration() {
               </div>
             ) : step === "get-started" ? (
               <div className="w-full h-screen flex justify-center 2xl:items-center overflow-auto px-5 sm:px-8 py-10 sm:py-16 md:py-20  relative">
-                {/* Back Button */}
+                {/* Back Button - Desktop Only */}
                 <button
                   onClick={() => setStep("new-order")}
-                  className="absolute top-5 left-5 sm:left-8 lg:top-8 lg:left-8 flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm z-10"
+                  className="hidden lg:flex absolute top-8 left-8 items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm z-10"
                   aria-label="Go back"
                 >
                   <FaChevronLeft className="text-theme-blue text-lg" />
@@ -468,8 +468,21 @@ export default function orderRegistration() {
                   </div>
 
                   <div className="space-y-5 pt-10 font-sf">
-                    <h4 className="font-youth font-bold text-[32px] text-center">
-                      Let’s get Started
+                    {/* Mobile Back Button and Heading in Row */}
+                    <div className="md:hidden flex items-center gap-4 mb-4">
+                      <button
+                        onClick={() => setStep("new-order")}
+                        className="flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm shrink-0"
+                        aria-label="Go back"
+                      >
+                        <FaChevronLeft className="text-theme-blue text-lg" />
+                      </button>
+                      <h4 className="font-youth font-bold text-[32px]">
+                        Let's get Started
+                      </h4>
+                    </div>
+                    <h4 className="font-youth font-bold text-[32px] text-center max-md:hidden">
+                      Let's get Started
                     </h4>
                     <div
                       onClick={() => {

@@ -2116,7 +2116,7 @@ export default function page() {
                   router.back();
                 }
               }}
-              className="absolute top-5 left-5 sm:left-8 lg:top-8 lg:left-8 flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm z-10"
+              className="absolute top-5 left-5 sm:bottom-[120px] sm:top-auto sm:left-8 lg:top-8 lg:left-8 lg:bottom-auto flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm z-10"
               aria-label="Go back"
             >
               <FaChevronLeft className="text-theme-blue text-lg" />
@@ -2141,9 +2141,11 @@ export default function page() {
                   </h4>
                 </div>
 
-                <h4 className="font-youth font-bold text-2xl pt-5 text-theme-blue sm:hidden">
-                  Welcome Back!
-                </h4>
+                <div className="flex items-center gap-3 pt-5 pl-16 sm:hidden">
+                  <h4 className="font-youth font-bold text-2xl text-theme-blue">
+                    Welcome Back!
+                  </h4>
+                </div>
 
                 <form className="space-y-5 pt-12 font-sf">
                   <InputHeroUi

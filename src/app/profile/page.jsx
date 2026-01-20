@@ -38,17 +38,17 @@ export default function Profile() {
   const dispatch = useDispatch();
   const searchParams = useSearchParams();
   const currentTab = searchParams.get("tab");
-  
+
   // Get userId from localStorage to ensure we fetch the correct user's profile
   const [currentUserId, setCurrentUserId] = useState(
     typeof window !== "undefined" ? localStorage.getItem("userId") : null
   );
-  
+
   const { data, error, isLoading, refetch } = useGetProfileQuery(currentUserId, {
     skip: !currentUserId, // Skip if no userId
     refetchOnMountOrArgChange: true, // Always refetch when userId changes
   });
-  
+
   const [updateProfile, { isLoading: isLoadingUpdateProfile }] =
     useUpdateProfileMutation();
   const [userData, setUserData] = useState({
@@ -86,7 +86,7 @@ export default function Profile() {
       console.error("Error signing out from Firebase:", error);
       // Continue with logout even if Firebase signOut fails
     }
-    
+
     // Try to call backend logout endpoint to invalidate server-side session/cookie
     try {
       await fetch(BASE_URL + "customer/logout", {
@@ -99,28 +99,28 @@ export default function Profile() {
       // Ignore errors - backend logout is optional
       console.log("Backend logout endpoint not available or failed");
     }
-    
+
     // Clear all cookies (including access token)
     clearAllCookies();
-    
+
     // Invalidate RTK Query cache before clearing localStorage
     dispatch(api.util.invalidateTags(['Profile']));
-    
+
     dispatch(setPage(true));
-    
+
     // Clear all local storage (including accessToken)
     localStorage.clear();
-    
+
     // Clear session storage as well
     if (typeof window !== "undefined") {
       sessionStorage.clear();
     }
-    
+
     // Dispatch custom event to notify other components (like Header)
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("userLogout"));
     }
-    
+
     addToast({
       title: "Logout",
       description: "logged out successfully!",
@@ -238,7 +238,7 @@ export default function Profile() {
     const handleUserLogin = () => {
       // Invalidate old profile cache first
       dispatch(api.util.invalidateTags(['Profile']));
-      
+
       // Update userId from localStorage
       const newUserId = typeof window !== "undefined" ? localStorage.getItem("userId") : null;
       if (newUserId && newUserId !== currentUserId) {
@@ -295,7 +295,7 @@ export default function Profile() {
         phoneNum: data?.data?.phoneNum,
         profileImage: data?.data?.image,
       });
-      
+
       // Update localStorage with fresh data from API to keep it in sync
       if (typeof window !== "undefined") {
         localStorage.setItem("email", data?.data?.email || "");
@@ -313,22 +313,21 @@ export default function Profile() {
   return (
     <>
       <HomeClientWrapper>
-        <div className="w-full relative">
-          <div className="max-xl:fixed max-xl:z-50 w-full">
+        <div className="w-full relative min-h-screen md:h-screen md:overflow-hidden">
+          <div className="fixed top-0 left-0 right-0 z-50 w-full">
             <Header type="profile" />
           </div>
 
-          <div className="w-full flex gap-10 px-5 py-20 xl:py-0">
-            <section className="font-sf pt-8 min-w-[300px] 2xl:min-w-[378px] max-md:hidden fixed top-20 h-[calc(100vh-5rem)] overflow-y-auto sidebar-scroll z-10">
+          <div className="w-full flex gap-5 md:gap-10 px-4 sm:px-5 py-16 sm:py-20 md:pt-20 md:h-[calc(100vh-5rem)]">
+            <section className="font-sf pt-8 min-w-[300px] 2xl:min-w-[378px] max-md:hidden fixed top-20 h-[calc(100vh-5rem)] overflow-y-auto sidebar-scroll hideScrollbar z-10 border-r border-gray-300">
               <div className="space-y-6">
                 <div className="flex items-start justify-start gap-7">
                   <label
                     htmlFor="profileImage"
-                    className={` h-[120px] uppercase font-bold text-3xl  rounded-full w-[120px] md:h-[120px] flex justify-center items-center cursor-pointer ${
-                      false
-                        ? "bg-theme-red bg-opacity-20 text-theme-red"
-                        : "bg-gray-300 bg-opacity-60 text-white"
-                    }`}
+                    className={` h-[120px] uppercase font-bold text-3xl  rounded-full w-[120px] md:h-[120px] flex justify-center items-center cursor-pointer ${false
+                      ? "bg-theme-red bg-opacity-20 text-theme-red"
+                      : "bg-gray-300 bg-opacity-60 text-white"
+                      }`}
                   >
                     {userData?.firstName ? (
                       userData?.profileImage ? (
@@ -417,16 +416,16 @@ export default function Profile() {
                   <DrawerItem
                     Icon={RxCounterClockwiseClock}
                     text={"Country"}
-                    // onClick={() => {
-                    //   router.push("/order-history");
-                    // }}
+                  // onClick={() => {
+                  //   router.push("/order-history");
+                  // }}
                   />
                   <DrawerItem
                     Icon={RxCounterClockwiseClock}
                     text={"Language"}
-                    // onClick={() => {
-                    //   router.push("");
-                    // }}
+                  // onClick={() => {
+                  //   router.push("");
+                  // }}
                   />
                 </div>
 
@@ -502,7 +501,7 @@ export default function Profile() {
                 <MiniLoader />
               </div>
             ) : currentTab === "my-account" ? (
-              <section className="w-full flex flex-col lg:flex-row gap-10 2xl:gap-28 mt-16 px-0 sm:px-6 2xl:px-10 ml-[320px] 2xl:ml-[398px]">
+              <section className="w-full flex flex-col lg:flex-row gap-6 md:gap-10 2xl:gap-28 mt-8 sm:mt-12 md:mt-16 px-0 sm:px-4 md:px-6 2xl:px-10 md:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
                 <div className="flex-1 font-sf">
                   <h2 className="font-youth font-medium text-[40px] mb-4">
                     Profile
@@ -585,19 +584,19 @@ export default function Profile() {
                 </div>
               </section>
             ) : currentTab === "order-history" ? (
-              <div className="w-full ml-[320px] 2xl:ml-[398px]">
+              <div className="w-full md:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
                 <OrderHistory />
               </div>
             ) : currentTab === "notifications" ? (
-              <div className="w-full ml-[320px] 2xl:ml-[398px]">
+              <div className="w-full md:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
                 <Notifications />
               </div>
             ) : currentTab === "invite-friend" ? (
-              <div className="w-full ml-[320px] 2xl:ml-[398px]">
+              <div className="w-full md:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
                 <Invite />
               </div>
             ) : currentTab === "on-hold-bookings" ? (
-              <div className="w-full ml-[320px] 2xl:ml-[398px]">
+              <div className="w-full md:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
                 <OnHoldbookings />
               </div>
             ) : (

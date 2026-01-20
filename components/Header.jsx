@@ -198,14 +198,14 @@ const Header = ({ type }) => {
         className={`w-full h-[70px] 2xl:h-[80px] flex justify-center items-center px-5 md:px-[45px] relative ${showShadow ? "xl:shadow-md" : ""
           }`}
       >
-        <div className="w-full max-w-[1290px] flex justify-center xl:justify-between items-center">
-          <div className="flex items-center justify-center gap-14">
+        <div className={`w-full max-w-[1290px] flex ${!state.headerData?.token ? "justify-between" : "justify-center"} xl:justify-between items-center`}>
+          <div className={`flex items-center ${!state.headerData?.token ? "justify-start" : "justify-center"} gap-14`}>
             <Link
               onClick={() => {
                 handleNavigate("/");
               }}
               href="/"
-              className="flex items-center gap-2 max-sm:justify-center"
+              className="flex items-center gap-2"
             >
               <div className="size-9 overflow-hidden">
                 <img
@@ -265,6 +265,21 @@ const Header = ({ type }) => {
               </ul>
             </div>
           </div>
+
+          {/* Join Us button for guest users on small/medium screens - part of flex layout */}
+          {!state.headerData?.token && (
+            <div className="xl:hidden">
+              <Link
+                onClick={() => {
+                  handleNavigate("/sign-in");
+                }}
+                href="/sign-in"
+                className="w-32 sm:w-40 h-[45px] sm:h-[50px] rounded-full font-youth font-bold text-base sm:text-lg flex justify-center items-center border-black border-[2px] bg-white"
+              >
+                Join Us
+              </Link>
+            </div>
+          )}
 
           <div className="max-xl:hidden">
             {state.headerData?.token ? (
@@ -332,7 +347,7 @@ const Header = ({ type }) => {
                   handleNavigate("/sign-in");
                 }}
                 href="/sign-in"
-                className="w-48 2xl:w-52 h-[50px] 2xl:h-[60px] rounded-full font-youth font-bold text-xl flex justify-center items-center border-black border-[2px]"
+                className="w-48 2xl:w-52 h-[50px] 2xl:h-[60px] rounded-full font-youth font-bold text-xl flex justify-center items-center border-black border-[2px] bg-white"
               >
                 Join Us
               </Link>
@@ -340,37 +355,43 @@ const Header = ({ type }) => {
           </div>
         </div>
 
-        <div
-          className={`absolute top-5 left-4 text-theme-blue sm:left-12 xl:hidden ${["sign-in"].includes(type) ? "hidden" : ""
-            }`}
-        >
-          <HiOutlineMenuAlt2
-            onClick={() =>
-              dispatchState({
-                type: "set_drawer",
-                payload: true,
-              })
-            }
-            size={30}
-          />
-          {/* <CustomMenuBtn onClick={() => setIsDrawerOpen(true)} /> */}
-        </div>
+        {/* Menu icon - only show for logged-in users on small/medium screens */}
+        {state.headerData?.token && (
+          <div
+            className={`absolute top-5 left-4 text-theme-blue sm:left-12 xl:hidden ${["sign-in"].includes(type) ? "hidden" : ""
+              }`}
+          >
+            <HiOutlineMenuAlt2
+              onClick={() =>
+                dispatchState({
+                  type: "set_drawer",
+                  payload: true,
+                })
+              }
+              size={30}
+            />
+          </div>
+        )}
+        
       </div>
 
-      <CustomDrawer
-        data={data ? data : {}}
-        loading={isLoading}
-        isOpen={state.isDrawerOpen}
-        onClose={() =>
-          dispatchState({
-            type: "set_drawer",
-            payload: false,
-          })
-        }
-        title=""
-      // actionLabel="Submit"
-      // onActionClick={() => console.log("Submit clicked")}
-      />
+      {/* Only show drawer for logged-in users */}
+      {state.headerData?.token && (
+        <CustomDrawer
+          data={data ? data : {}}
+          loading={isLoading}
+          isOpen={state.isDrawerOpen}
+          onClose={() =>
+            dispatchState({
+              type: "set_drawer",
+              payload: false,
+            })
+          }
+          title=""
+        // actionLabel="Submit"
+        // onActionClick={() => console.log("Submit clicked")}
+        />
+      )}
     </>
   );
 };

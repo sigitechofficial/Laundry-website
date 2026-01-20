@@ -2,30 +2,26 @@
 import React, { useState } from "react";
 import { GoArrowUp, GoClock } from "react-icons/go";
 import { IoBagCheck, IoLocation } from "react-icons/io5";
-import {  PurpleButton } from "../Buttons";
+import { PurpleButton } from "../Buttons";
 import { MdKeyboardArrowRight } from "react-icons/md";
 import {
   useBookingDetailByIdQuery,
   useGetAllOrdersQuery,
   useGetCancellationPoliciesQuery,
+  useGetAllReasonsQuery,
   useCancelBookingMutation,
 } from "@/app/store/services/api";
 import { formatDate } from "../../utilities/ConversionFunction";
 import ReusableModal from "../Modal";
 import { useDisclosure, Spinner, addToast } from "@heroui/react";
 import SelectHero from "../SelectHero";
-
-// Static cancellation reasons with IDs
-const cancellationReasons = [
-  { key: "change_of_plans", label: "Change of plans", id: "1", text: "Change of plans" },
-  { key: "found_another_service", label: "Found another service", id: "2", text: "Found another service" },
-  { key: "no_longer_needed", label: "No longer needed", id: "3", text: "No longer needed" },
-  { key: "price_too_high", label: "Price too high", id: "4", text: "Price too high" },
-  { key: "scheduling_conflict", label: "Scheduling conflict", id: "5", text: "Scheduling conflict" },
-  { key: "other", label: "Other", id: "6", text: "Other" },
-];
+import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { setOrderData } from "@/app/store/slices/cartItemSlice";
 
 export default function OrderHistory() {
+  const router = useRouter();
+  const dispatch = useDispatch();
   const { data, isLoading, refetch: refetchOrders } = useGetAllOrdersQuery();
   const [order, setOrder] = useState("");
   const [modalScroll, setModalScroll] = useState(false);
@@ -36,6 +32,12 @@ export default function OrderHistory() {
     onClose: onCancelModalClose,
     onOpenChange: onCancelModalOpenChange,
   } = useDisclosure();
+  const {
+    isOpen: isOrderDetailsModalOpen,
+    onOpen: onOrderDetailsModalOpen,
+    onClose: onOrderDetailsModalClose,
+    onOpenChange: onOrderDetailsModalOpenChange,
+  } = useDisclosure();
   const [manageOrder, setManageOrder] = useState({
     manage: false,
     modType: "track",
@@ -44,14 +46,71 @@ export default function OrderHistory() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [cancellationCharge, setCancellationCharge] = useState(null);
   const [isCheckingCancellation, setIsCheckingCancellation] = useState(false);
-  
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [showManageDetails, setShowManageDetails] = useState(false);
+  const [shouldRenderManageDetails, setShouldRenderManageDetails] = useState(false);
+
   const { data: bookingDtails, isLoading: bookingDetailsLoading } =
     useBookingDetailByIdQuery(manageOrder?.orderId, {
       skip: !manageOrder?.orderId,
     });
-  
+
+  // Handle smooth transition when order details are loaded
+  React.useEffect(() => {
+    if (bookingDtails?.data && !bookingDetailsLoading) {
+      // Reset animation state first
+      setShowOrderDetails(false);
+      // Small delay to trigger animation
+      setTimeout(() => {
+        setShowOrderDetails(true);
+      }, 50);
+    } else if (!manageOrder?.orderId) {
+      setShowOrderDetails(false);
+    }
+  }, [bookingDtails, bookingDetailsLoading, manageOrder?.orderId]);
+
+  // Handle smooth transition for manage order details section
+  React.useEffect(() => {
+    if (manageOrder?.manage) {
+      // Render the element first
+      setShouldRenderManageDetails(true);
+      // Small delay to trigger opening animation
+      setTimeout(() => {
+        setShowManageDetails(true);
+      }, 10);
+    } else {
+      // Start closing animation first
+      setShowManageDetails(false);
+      // Remove from DOM after animation completes (500ms)
+      setTimeout(() => {
+        setShouldRenderManageDetails(false);
+      }, 500);
+    }
+  }, [manageOrder?.manage]);
+
   const { data: cancellationPolicy } = useGetCancellationPoliciesQuery();
+  const { data: reasonsData, isLoading: isLoadingReasons } = useGetAllReasonsQuery();
   const [cancelBooking, { isLoading: isCancelling }] = useCancelBookingMutation();
+
+  // Transform API reasons to match SelectHero format
+  const cancellationReasons = React.useMemo(() => {
+    if (!reasonsData?.data || !Array.isArray(reasonsData.data)) {
+      return [];
+    }
+    return reasonsData.data.map((reason) => {
+      // Convert cancelReason to a key format (lowercase with underscores)
+      const key = reason.cancelReason
+        .toLowerCase()
+        .replace(/\s+/g, "_")
+        .replace(/[^a-z0-9_]/g, "");
+      return {
+        key: key,
+        label: reason.cancelReason,
+        id: String(reason.id),
+        text: reason.cancelReason,
+      };
+    });
+  }, [reasonsData]);
 
   function handleModalScroll(e) {
     const isScrolled = e.target.scrollTop > 50;
@@ -61,16 +120,23 @@ export default function OrderHistory() {
     });
   }
 
+  // Check if an order is cancelled
+  const isOrderCancelled = (order) => {
+    if (!order) return false;
+    const status = order?.bookingStatus?.title?.toLowerCase() || "";
+    return status.includes("cancel") || status.includes("cancelled");
+  };
+
   // Check if order can be cancelled based on cancellation policy
   const canCancelOrder = (order, policy) => {
     if (!order || !policy) return { canCancel: true, reason: null }; // Allow if no policy
-    
+
     const policyData = policy?.data?.policies?.[0];
     if (!policyData) return { canCancel: true, reason: null };
-    
+
     const config = policyData?.cancellationConfig;
     if (!config) return { canCancel: true, reason: null };
-    
+
     // Check policy expiry
     if (policyData.expiry_date) {
       const expiryDate = new Date(policyData.expiry_date);
@@ -78,20 +144,20 @@ export default function OrderHistory() {
         return { canCancel: false, reason: 'Cancellation policy has expired' };
       }
     }
-    
+
     // Check order status - if processed, cannot cancel
     const orderStatus = order?.bookingStatus?.title?.toLowerCase() || "";
     if (orderStatus.includes("processed") || orderStatus.includes("completed") || orderStatus.includes("delivered")) {
       return { canCancel: false, reason: 'Order already processed or completed' };
     }
-    
+
     // Check if unprocessed cancellation is allowed
     if (orderStatus.includes("picked") || orderStatus.includes("unprocessed")) {
       if (!config.allowCancelUnprocessed) {
         return { canCancel: false, reason: 'Unprocessed orders cannot be cancelled' };
       }
     }
-    
+
     return { canCancel: true, reason: null };
   };
 
@@ -107,10 +173,10 @@ export default function OrderHistory() {
     }
 
     setIsCheckingCancellation(true);
-    
+
     // Check cancellation eligibility
     const eligibility = canCancelOrder(bookingDtails.data, cancellationPolicy);
-    
+
     if (!eligibility.canCancel) {
       addToast({
         title: "Cannot Cancel Order",
@@ -163,15 +229,15 @@ export default function OrderHistory() {
           description: result?.message || "Your order has been cancelled successfully",
           color: "success",
         });
-        
+
         // Close modal and reset state
         onCancelModalClose();
         setCancellationReason("");
         setCancellationCharge(null);
-        
+
         // Refetch orders to update the list
         refetchOrders();
-        
+
         // Reset manage order state
         setManageOrder({
           manage: false,
@@ -195,197 +261,120 @@ export default function OrderHistory() {
     }
   };
 
-  return (
-    <section className="w-full mt-16 sm:px-10 h-[calc(100vh-8rem)] overflow-y-auto">
-      <h2 className="font-youth font-medium text-[40px] mb-4">
-        Here's What You've Ordered
-      </h2>
+  // Render order details content (reusable for both modal and side panel)
+  const renderOrderDetailsContent = () => {
+    if (!bookingDtails?.data) return null;
 
-      <div className="w-full flex gap-5">
-        <div className="w-full font-sf space-y-5">
-          {data?.data?.map((order) => {
-            return (
-              <div
-                onClick={() =>
-                  setManageOrder({ ...manageOrder, orderId: order?.id })
-                }
-                className="w-full max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-5 py-3 space-y-2"
-              >
-                <h6 className="font-youth font-bold text-lg">
-                  Order ID: {order?.orderTrackId}
-                </h6>
+    return (
+      <>
+        <h6 className="font-youth font-bold text-2xl sm:text-3xl md:text-[32px]">
+          Order ID: {bookingDtails?.data?.orderTrackId}
+        </h6>
 
-                <div className="w-full flex justify-between items-center">
-                  <button className="bg-theme-skyBlue rounded-full shrink-0 text-[#0391C4] font-youth font-bold text-sm p-3">
-                    {order?.bookingStatus?.title}
-                  </button>
+        <div className="flex justify-between items-center font-sf pt-3 pb-6">
+          <button
+            title={bookingDtails?.data?.bookingStatus?.description}
+            className="bg-theme-skyBlue rounded-full shrink-0 text-[#0391C4] font-youth font-bold text-sm p-3"
+          >
+            {bookingDtails?.data?.bookingStatus?.title}
+          </button>
 
-                  <p className="font-youth font-bold text-base">
-                    Est ${order?.orderAmount}
-                  </p>
-                </div>
-
-                <div className="w-full flex justify-between items-center border-b">
-                  <div className="flex gap-2 items-center py-2">
-                    <GoArrowUp size={25} />
-                    <div>
-                      <p className="font-sf text-lg text-theme-psGray leading-tight">
-                        Pick up
-                      </p>
-                      <p className="font-sf text-xl">
-                        {formatDate(order?.collectionDate)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="font-youth font-bold text-base flex items-center gap-2">
-                    <GoClock size="20" />
-                    {order?.collectionTimeFrom} - {order?.collectionTimeTo}
-                  </p>
-                </div>
-
-                <div className="w-full flex justify-between items-center">
-                  <div className="flex gap-2 items-center py-2">
-                    <GoArrowUp size={25} />
-                    <div>
-                      <p className="font-sf text-lg text-theme-psGray leading-tight">
-                        Drop off
-                      </p>
-                      <p className="font-sf text-xl">
-                        {formatDate(order?.deliveryDate)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <p className="font-youth font-bold text-base flex items-center gap-2">
-                    <GoClock size="20" />
-                    {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
-                  </p>
-                </div>
-
-                <p className="font-sf text-base text-theme-psGray">
-                  {order?.driverInstruction}
-                </p>
-              </div>
-            );
-          })}
+          {!isOrderCancelled(bookingDtails?.data) && (
+            <p
+              onClick={onOpen}
+              className="underline underline-offset-4 text-theme-psGray cursor-pointer"
+            >
+              Track your order
+            </p>
+          )}
         </div>
 
-        {bookingDtails ? (
-          <div className="w-[600px] h-max px-4 py-4 shadow-theme-shadow-light rounded-[20px]">
-            <h6 className="font-youth font-bold text-[32px]">
-              Order ID: {bookingDtails?.data?.orderTrackId}
-            </h6>
-
-            <div className="flex justify-between items-center font-sf pt-3 pb-6">
-              <button
-                title={bookingDtails?.data?.bookingStatus?.description}
-                className="bg-theme-skyBlue rounded-full shrink-0 text-[#0391C4] font-youth font-bold text-sm p-3"
-              >
-                {bookingDtails?.data?.bookingStatus?.title}
-              </button>
-
-              <p
-                onClick={onOpen}
-                className="underline underline-offset-4 text-theme-psGray cursor-pointer"
-              >
-                Track your order
+        <div className="space-y-4">
+          <div className="font-sf space-y-3">
+            <p className="font-youth font-bold">Collection</p>
+            <div className="flex gap-4 items-center">
+              <div>
+                <IoLocation size="20" />
+              </div>
+              <p className="text-sm font-medium">
+                {formatDate(bookingDtails?.data?.collectionDate)}
               </p>
             </div>
-
-            <div className="space-y-4">
-              <div className="font-sf space-y-3">
-                <p className="font-youth font-bold">Collection</p>
-                <div className="flex gap-4 items-center">
-                  <div>
-                    <IoLocation size="20" />
-                  </div>
-
-                  <p className="text-sm font-medium">
-                    {" "}
-                    {formatDate(bookingDtails?.data?.collectionDate)}
-                  </p>
-                </div>
-                <div className="flex gap-4 items-center">
-                  <div>
-                    <IoLocation size="20" />
-                  </div>
-
-                  <p className="text-sm font-medium">
-                    {" "}
-                    {bookingDtails?.data?.collectionTimeFrom} -{" "}
-                    {bookingDtails?.data?.collectionTimeTo}
-                  </p>
-                </div>
-                <div className="flex gap-4 items-center">
-                  <div>
-                    <IoLocation size="20" />
-                  </div>
-
-                  <p className="text-sm font-medium">
-                    {bookingDtails?.data?.driverInstructionOptions}
-                  </p>
-                </div>
+            <div className="flex gap-4 items-center">
+              <div>
+                <IoLocation size="20" />
               </div>
-              <div className="font-sf space-y-3">
-                <p className="font-youth font-bold">Delivery</p>
-                <div className="flex gap-4 items-center">
-                  <div>
-                    <IoLocation size="20" />
-                  </div>
-
-                  <p className="text-sm font-medium">
-                    {" "}
-                    {formatDate(bookingDtails?.data?.deliveryDate)}
-                  </p>
-                </div>
-                <div className="flex gap-4 items-center">
-                  <div>
-                    <IoLocation size="20" />
-                  </div>
-
-                  <p className="text-sm font-medium">
-                    {" "}
-                    {bookingDtails?.data?.deliveryTimeFrom} -{" "}
-                    {bookingDtails?.data?.deliveryTimeTo}
-                  </p>
-                </div>
-                <div className="flex gap-4 items-center">
-                  <div>
-                    <IoLocation size="20" />
-                  </div>
-
-                  <p className="text-sm font-medium">
-                    {bookingDtails?.data?.driverInstructionOptions1}
-                  </p>
-                </div>
+              <p className="text-sm font-medium">
+                {bookingDtails?.data?.collectionTimeFrom} - {bookingDtails?.data?.collectionTimeTo}
+              </p>
+            </div>
+            <div className="flex gap-4 items-center">
+              <div>
+                <IoLocation size="20" />
               </div>
-              <div className="font-sf space-y-3">
-                <p className="font-youth font-bold">Address</p>
-                <div className="flex gap-4 items-center">
-                  <div>
-                    <IoBagCheck />
-                  </div>
-
-                  <p className="text-sm font-medium">
-                    {bookingDtails?.data?.dropOffAddress?.streetAddress}
-                  </p>
-                </div>
+              <p className="text-sm font-medium">
+                {bookingDtails?.data?.driverInstructionOptions}
+              </p>
+            </div>
+          </div>
+          <div className="font-sf space-y-3">
+            <p className="font-youth font-bold">Delivery</p>
+            <div className="flex gap-4 items-center">
+              <div>
+                <IoLocation size="20" />
               </div>
-              <div className="font-sf space-y-3">
-                <p className="font-youth font-bold">Driver Instruction</p>
-
-                <p className="text-sm font-medium font-sf">
-                  {bookingDtails?.data?.driverInstruction}
-                </p>
+              <p className="text-sm font-medium">
+                {formatDate(bookingDtails?.data?.deliveryDate)}
+              </p>
+            </div>
+            <div className="flex gap-4 items-center">
+              <div>
+                <IoLocation size="20" />
               </div>
-              <div className="font-sf space-y-3">
-                <p className="font-youth font-bold">Order frequency</p>
-
-                <p className="text-sm font-medium font-sf">
-                  {bookingDtails?.data?.frequency}
-                </p>
+              <p className="text-sm font-medium">
+                {bookingDtails?.data?.deliveryTimeFrom} - {bookingDtails?.data?.deliveryTimeTo}
+              </p>
+            </div>
+            <div className="flex gap-4 items-center">
+              <div>
+                <IoLocation size="20" />
               </div>
+              <p className="text-sm font-medium">
+                {bookingDtails?.data?.driverInstructionOptions1}
+              </p>
+            </div>
+          </div>
+          <div className="font-sf space-y-3">
+            <p className="font-youth font-bold">Address</p>
+            <div className="flex gap-4 items-center">
+              <div>
+                <IoBagCheck />
+              </div>
+              <p className="text-sm font-medium">
+                {bookingDtails?.data?.dropOffAddress?.streetAddress}
+              </p>
+            </div>
+          </div>
+          <div className="font-sf space-y-3">
+            <p className="font-youth font-bold">Driver Instruction</p>
+            <p className="text-sm font-medium font-sf">
+              {bookingDtails?.data?.driverInstruction}
+            </p>
+          </div>
+          <div className="font-sf space-y-3">
+            <p className="font-youth font-bold">Order frequency</p>
+            <p className="text-sm font-medium font-sf">
+              {bookingDtails?.data?.frequency}
+            </p>
+          </div>
+          <PurpleButton
+            onClick={handleScheduleAgain}
+            text="Schedule Again"
+            bg="bg-theme-blue"
+            color="text-white"
+          />
+          {!isOrderCancelled(bookingDtails?.data) && (
+            <>
               <PurpleButton onClick={onOpen} text="Track Order" />
               <PurpleButton
                 text={manageOrder?.manage ? "Close" : "Manage Order"}
@@ -398,97 +387,444 @@ export default function OrderHistory() {
                   })
                 }
               />
+            </>
+          )}
+        </div>
+
+        {shouldRenderManageDetails && (
+          <div
+            className={`space-y-3 mt-8 transition-all duration-500 ease-in-out overflow-hidden ${showManageDetails && manageOrder?.manage
+              ? 'opacity-100 max-h-[2000px] translate-y-0'
+              : 'opacity-0 max-h-0 -translate-y-4'
+              }`}
+          >
+            <div className="flex justify-between items-center border-b py-2">
+              <div className="font-sf">
+                <h6 className="font-semibold text-xl">Order details</h6>
+                <p className="text-theme-psGray">6 items</p>
+              </div>
+              <MdKeyboardArrowRight size="25" />
             </div>
-
-            {manageOrder?.manage && (
-              <div className="space-y-3 mt-8">
-                <div className="flex justify-between items-center border-b py-2">
-                  <div className="font-sf">
-                    <h6 className="font-semibold text-xl">Order details</h6>
-                    <p className="text-theme-psGray">6 items</p>
-                  </div>
-
-                  <MdKeyboardArrowRight size="25" />
+            <div className="space-y-1 font-sf border-b pb-3">
+              <div className="flex justify-between items-center ">
+                <h4 className="font-semibold">Subtotal</h4>
+                <p className="font-semibold">CHF 69.00</p>
+              </div>
+              <div className="flex justify-between items-center">
+                <h4 className="text-sm text-theme-psGray">Minimum order fee</h4>
+                <p className="text-sm text-theme-psGray">CHF 0.00</p>
+              </div>
+              <div className="flex justify-between items-center">
+                <h4 className="text-sm text-theme-psGray">Service fee</h4>
+                <p className="text-sm text-theme-psGray">CHF 0.00</p>
+              </div>
+              <div className="flex justify-between items-center">
+                <h4 className="text-sm text-theme-psGray">Additional fee</h4>
+                <p className="text-sm text-theme-psGray">CHF 0.00</p>
+              </div>
+            </div>
+            <div className="space-y-1 font-sf border-b pb-3">
+              <h4 className="font-semibold text-2xl">Payment</h4>
+              <div className="flex justify-between items-center">
+                <div>
+                  <h6>MasterCard *******2356</h6>
+                  <p>07/13/23, 12:25</p>
                 </div>
-
-                <div className="space-y-1 font-sf border-b pb-3">
-                  <div className="flex justify-between items-center ">
-                    <h4 className="font-semibold">Subtotal</h4>
-                    <p className="font-semibold">CHF 69.00</p>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-sm text-theme-psGray">
-                      Minimum order fee
-                    </h4>
-                    <p className="text-sm text-theme-psGray">CHF 0.00</p>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-sm text-theme-psGray">Service fee</h4>
-                    <p className="text-sm text-theme-psGray">CHF 0.00</p>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <h4 className="text-sm text-theme-psGray">
-                      Additional fee
-                    </h4>
-                    <p className="text-sm text-theme-psGray">CHF 0.00</p>
-                  </div>
-                </div>
-
-                <div className="space-y-1 font-sf border-b pb-3">
-                  <h4 className="font-semibold text-2xl">Payment</h4>
-
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h6>MasterCard *******2356</h6>
-                      <p>07/13/23, 12:25</p>
-                    </div>
-
-                    <p>$18</p>
-                  </div>
-                  <div className="py-2">
-                    <PurpleButton text="Send receipt to email" />
-                  </div>
-                </div>
-
-                <div className="space-y-1 font-sf pb-3 border-b-0">
-                  <h4 className="font-semibold text-2xl">
-                    Proof of collection
-                  </h4>
-
-                  <p className="font-sf text-theme-psGray">
-                    Malle Sushi Stockholm
-                  </p>
-                  <div className="py-3">
-                    <div className="grid grid-cols-3 gap-5">
-                      <div className="bg-gray-200 h-20"></div>
-                      <div className="bg-gray-200 h-20"></div>
-                      <div className="bg-gray-200 h-20"></div>
-                      <div className="bg-gray-200 h-20"></div>
-                      <div className="bg-gray-200 h-20"></div>
-                      <div className="bg-gray-200 h-20"></div>
-                    </div>
-                  </div>
-                  <div className="my-2">
-                    <PurpleButton text="Contact support" />
-                  </div>
-                </div>
-                <div className="my-2 border-t pt-3">
-                  <PurpleButton
-                    text={isCheckingCancellation ? "Checking..." : "Cancel Order"}
-                    bg="bg-red-500"
-                    color="text-white"
-                    onClick={handleCancelClick}
-                    disabled={isCheckingCancellation}
-                  />
+                <p>$18</p>
+              </div>
+              <div className="py-2">
+                <PurpleButton text="Send receipt to email" />
+              </div>
+            </div>
+            <div className="space-y-1 font-sf pb-3 border-b-0">
+              <h4 className="font-semibold text-2xl">Proof of collection</h4>
+              <p className="font-sf text-theme-psGray">Malle Sushi Stockholm</p>
+              <div className="py-3">
+                <div className="grid grid-cols-3 gap-5">
+                  <div className="bg-gray-200 h-20"></div>
+                  <div className="bg-gray-200 h-20"></div>
+                  <div className="bg-gray-200 h-20"></div>
+                  <div className="bg-gray-200 h-20"></div>
+                  <div className="bg-gray-200 h-20"></div>
+                  <div className="bg-gray-200 h-20"></div>
                 </div>
               </div>
-            )}
+              <div className="my-2">
+                <PurpleButton text="Contact support" />
+              </div>
+            </div>
+            <div className="my-2 border-t pt-3">
+              <PurpleButton
+                text={isCheckingCancellation ? "Checking..." : "Cancel Order"}
+                bg="bg-red-500"
+                color="text-white"
+                onClick={handleCancelClick}
+                disabled={isCheckingCancellation}
+              />
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
+
+  // Handle Schedule Again - pre-fill order data from current booking
+  const handleScheduleAgain = () => {
+    if (!bookingDtails?.data) {
+      addToast({
+        title: "Error",
+        description: "Order details not available",
+        color: "danger",
+      });
+      return;
+    }
+
+    const booking = bookingDtails.data;
+
+    // Map booking data to order data structure
+    const orderData = {
+      collectionData: {
+        collectionDate: booking.collectionDate || "",
+        collectionTimeFrom: booking.collectionTimeFrom || "",
+        collectionTimeTo: booking.collectionTimeTo || "",
+        driverInstructionOptions: booking.driverInstructionOptions || "",
+        streetAddress: booking.pickUpAddress?.streetAddress || "",
+        district: booking.pickUpAddress?.district || "",
+        city: booking.pickUpAddress?.city || "",
+        province: booking.pickUpAddress?.province || "",
+        country: booking.pickUpAddress?.country || "",
+        postalCode: booking.pickUpAddress?.postalCode || "",
+        lat: booking.pickUpAddress?.lat || null,
+        lng: booking.pickUpAddress?.lng || null,
+        title: booking.pickUpAddress?.title || "Home",
+        hotelName: booking.pickUpAddress?.hotelName || null,
+        apartmentNumber: booking.pickUpAddress?.apartmentNumber || null,
+        floor: booking.pickUpAddress?.floor || null,
+        addressType: "pickUp",
+        save: false,
+      },
+      deliveryData: {
+        deliveryDate: booking.deliveryDate || "",
+        deliveryTimeFrom: booking.deliveryTimeFrom || "",
+        deliveryTimeTo: booking.deliveryTimeTo || "",
+        driverInstructionOptions1: booking.driverInstructionOptions1 || "",
+        streetAddress: booking.dropOffAddress?.streetAddress || "",
+        district: booking.dropOffAddress?.district || "",
+        city: booking.dropOffAddress?.city || "",
+        province: booking.dropOffAddress?.province || "",
+        country: booking.dropOffAddress?.country || "",
+        postalCode: booking.dropOffAddress?.postalCode || "",
+        lat: booking.dropOffAddress?.lat || null,
+        lng: booking.dropOffAddress?.lng || null,
+        title: booking.dropOffAddress?.title || "Home",
+        hotelName: booking.dropOffAddress?.hotelName || null,
+        apartmentNumber: booking.dropOffAddress?.apartmentNumber || null,
+        floor: booking.dropOffAddress?.floor || null,
+        addressType: "dropOff",
+      },
+      driverInstruction: booking.driverInstruction || "",
+      frequency: booking.frequency || "Just once",
+    };
+
+    // Dispatch order data to Redux
+    dispatch(setOrderData(orderData));
+
+    // Navigate to place-order page
+    router.push("/place-order");
+  };
+
+  return (
+    <section className="w-full md:mt-6 px-4 sm:px-6 md:px-10 pb-4 sm:pb-6 md:pb-10">
+      <h2 className="font-youth font-medium text-2xl sm:text-3xl md:text-[40px] mb-4 pt-4 sm:pt-8 md:pt-4">
+        Here's What You've Ordered
+      </h2>
+
+      <div className="w-full flex flex-col md:flex-row gap-5">
+        <div className="w-full font-sf space-y-5">
+          {/* Active Bookings Section */}
+          {React.useMemo(() => {
+            if (!data?.data || !Array.isArray(data.data)) return null;
+
+            const active = data.data.filter((order) => {
+              const status = order?.bookingStatus?.title?.toLowerCase() || "";
+
+              // Include orders with active statuses (created, order created, pending, etc.)
+              // Exclude cancelled, completed, delivered, processed, etc.
+              if (
+                status.includes("cancel") ||
+                status.includes("cancelled") ||
+                status.includes("completed") ||
+                status.includes("delivered") ||
+                status.includes("processed") ||
+                status.includes("finished") ||
+                status.includes("done")
+              ) {
+                return false;
+              }
+
+              // Include all other statuses (created, order created, pending, in progress, etc.)
+              return true;
+            }).sort((a, b) => {
+              const dateA = a.createdAt || a.created_at || a.orderDate || a.bookingDate;
+              const dateB = b.createdAt || b.created_at || b.orderDate || b.bookingDate;
+              if (dateA && dateB) return new Date(dateB) - new Date(dateA);
+              if (a.id && b.id) return parseInt(b.id) - parseInt(a.id);
+              if (a.collectionDate && b.collectionDate) return new Date(b.collectionDate) - new Date(a.collectionDate);
+              return 0;
+            });
+
+            if (active.length === 0) return null;
+
+            return (
+              <>
+                <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4">Active Bookings</h3>
+                {active.map((order) => {
+                  const isCancelled = isOrderCancelled(order);
+                  return (
+                    <div
+                      key={order.id}
+                      onClick={() => {
+                        if (!isCancelled) {
+                          setManageOrder({ ...manageOrder, orderId: order?.id });
+                          // Open modal on mobile screens
+                          if (typeof window !== "undefined" && window.innerWidth < 768) {
+                            onOrderDetailsModalOpen();
+                          }
+                        }
+                      }}
+                      className={`w-full max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 ${isCancelled ? "cursor-default opacity-75" : "cursor-pointer"
+                        }`}
+                    >
+                      <h6 className="font-youth font-bold text-base sm:text-lg">
+                        Order ID: {order?.orderTrackId}
+                      </h6>
+
+                      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+                        <button className="bg-theme-skyBlue rounded-full shrink-0 text-[#0391C4] font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3">
+                          {order?.bookingStatus?.title}
+                        </button>
+
+                        <p className="font-youth font-bold text-sm sm:text-base">
+                          Est ${order?.orderAmount}
+                        </p>
+                      </div>
+
+                      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
+                        <div className="flex gap-2 items-center py-2">
+                          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+                          <div>
+                            <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+                              Pick up
+                            </p>
+                            <p className="font-sf text-base sm:text-xl">
+                              {formatDate(order?.collectionDate)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+                          <GoClock size={18} className="sm:w-5 sm:h-5" />
+                          {order?.collectionTimeFrom} - {order?.collectionTimeTo}
+                        </p>
+                      </div>
+
+                      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                        <div className="flex gap-2 items-center py-2">
+                          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+                          <div>
+                            <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+                              Drop off
+                            </p>
+                            <p className="font-sf text-base sm:text-xl">
+                              {formatDate(order?.deliveryDate)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+                          <GoClock size={18} className="sm:w-5 sm:h-5" />
+                          {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
+                        </p>
+                      </div>
+
+                      <p className="font-sf text-base text-theme-psGray">
+                        {order?.driverInstruction}
+                      </p>
+                    </div>
+                  );
+                })}
+              </>
+            );
+          }, [data?.data, manageOrder])}
+
+          {/* Past Bookings Section */}
+          {React.useMemo(() => {
+            if (!data?.data || !Array.isArray(data.data)) return null;
+
+            const past = data.data.filter((order) => {
+              const status = order?.bookingStatus?.title?.toLowerCase() || "";
+
+              // Include orders with past/final statuses
+              if (
+                status.includes("cancel") ||
+                status.includes("cancelled") ||
+                status.includes("completed") ||
+                status.includes("delivered") ||
+                status.includes("processed") ||
+                status.includes("finished") ||
+                status.includes("done")
+              ) {
+                return true;
+              }
+
+              // Exclude active statuses (created, order created, pending, etc.)
+              return false;
+            }).sort((a, b) => {
+              const dateA = a.createdAt || a.created_at || a.orderDate || a.bookingDate;
+              const dateB = b.createdAt || b.created_at || b.orderDate || b.bookingDate;
+              if (dateA && dateB) return new Date(dateB) - new Date(dateA);
+              if (a.id && b.id) return parseInt(b.id) - parseInt(a.id);
+              if (a.collectionDate && b.collectionDate) return new Date(b.collectionDate) - new Date(a.collectionDate);
+              return 0;
+            });
+
+            if (past.length === 0) return null;
+
+            return (
+              <>
+                <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4 mt-6 sm:mt-8">Past Bookings</h3>
+                {past.map((order) => {
+                  const isCancelled = isOrderCancelled(order);
+                  return (
+                    <div
+                      key={order.id}
+                      onClick={() => {
+                        if (!isCancelled) {
+                          setManageOrder({ ...manageOrder, orderId: order?.id });
+                          // Open modal on mobile screens
+                          if (typeof window !== "undefined" && window.innerWidth < 768) {
+                            onOrderDetailsModalOpen();
+                          }
+                        }
+                      }}
+                      className={`w-full max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 ${isCancelled ? "cursor-default opacity-75" : "cursor-pointer"
+                        }`}
+                    >
+                      <h6 className="font-youth font-bold text-base sm:text-lg">
+                        Order ID: {order?.orderTrackId}
+                      </h6>
+
+                      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+                        <button className="bg-theme-skyBlue rounded-full shrink-0 text-[#0391C4] font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3">
+                          {order?.bookingStatus?.title}
+                        </button>
+
+                        <p className="font-youth font-bold text-sm sm:text-base">
+                          Est ${order?.orderAmount}
+                        </p>
+                      </div>
+
+                      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
+                        <div className="flex gap-2 items-center py-2">
+                          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+                          <div>
+                            <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+                              Pick up
+                            </p>
+                            <p className="font-sf text-base sm:text-xl">
+                              {formatDate(order?.collectionDate)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+                          <GoClock size={18} className="sm:w-5 sm:h-5" />
+                          {order?.collectionTimeFrom} - {order?.collectionTimeTo}
+                        </p>
+                      </div>
+
+                      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                        <div className="flex gap-2 items-center py-2">
+                          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+                          <div>
+                            <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+                              Drop off
+                            </p>
+                            <p className="font-sf text-base sm:text-xl">
+                              {formatDate(order?.deliveryDate)}
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+                          <GoClock size={18} className="sm:w-5 sm:h-5" />
+                          {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
+                        </p>
+                      </div>
+
+                      <p className="font-sf text-base text-theme-psGray">
+                        {order?.driverInstruction}
+                      </p>
+                    </div>
+                  );
+                })}
+              </>
+            );
+          }, [data?.data, manageOrder])}
+        </div>
+
+        {/* Desktop/Tablet Side Panel - Hidden on mobile */}
+        {bookingDtails && !bookingDetailsLoading ? (
+          <div
+            className={`hidden md:block w-full max-w-[600px] h-max px-4 sm:px-6 py-4 shadow-theme-shadow-light rounded-[20px] transition-all duration-500 ease-in-out ${showOrderDetails
+              ? 'opacity-100 translate-x-0'
+              : 'opacity-0 translate-x-4'
+              }`}
+          >
+            {renderOrderDetailsContent()}
           </div>
         ) : (
           ""
         )}
       </div>
+
+      {/* Mobile Order Details Modal - Bottom Sheet */}
+      <ReusableModal
+        isDismissable={true}
+        isOpen={isOrderDetailsModalOpen}
+        onOpenChange={(open) => {
+          onOrderDetailsModalOpenChange(open);
+          if (!open) {
+            setManageOrder({ ...manageOrder, orderId: "" });
+          }
+        }}
+        onClose={onOrderDetailsModalClose}
+        size="full"
+        placement="bottom"
+        className="md:hidden"
+        classNames={{
+          base: "h-[90vh] !my-0 mx-0 rounded-t-3xl rounded-b-none",
+        }}
+        motionProps={{
+          initial: { y: "100%", opacity: 0 },
+          animate: {
+            y: 0,
+            opacity: 1,
+            transition: { duration: 0.3, ease: "easeOut" },
+          },
+          exit: {
+            y: "100%",
+            opacity: 0,
+            transition: { duration: 0.2, ease: "easeIn" },
+          },
+        }}
+      >
+        <div className="w-full h-full px-4 sm:px-6 py-4 overflow-y-auto">
+          {renderOrderDetailsContent()}
+        </div>
+      </ReusableModal>
+
+      {/* =======================Modal======================== */}
 
       {/* =======================Modal======================== */}
 
@@ -622,11 +958,10 @@ export default function OrderHistory() {
                         ironingAfter: "hung",
                       }))
                     }
-                    className={`flex justify-center items-center cursor-pointer ${
-                      preferences.ironingAfter === "hung"
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                    }`}
+                    className={`flex justify-center items-center cursor-pointer ${preferences.ironingAfter === "hung"
+                      ? "bg-theme-blue text-white"
+                      : "bg-theme-gray"
+                      }`}
                   >
                     Hung
                   </div>
@@ -637,11 +972,10 @@ export default function OrderHistory() {
                         ironingAfter: "folded",
                       }))
                     }
-                    className={`flex justify-center items-center cursor-pointer ${
-                      preferences.ironingAfter === "folded"
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                    }`}
+                    className={`flex justify-center items-center cursor-pointer ${preferences.ironingAfter === "folded"
+                      ? "bg-theme-blue text-white"
+                      : "bg-theme-gray"
+                      }`}
                   >
                     Folded
                   </div>
@@ -658,11 +992,10 @@ export default function OrderHistory() {
                           ironingTemperature: temp,
                         }))
                       }
-                      className={`flex justify-center items-center cursor-pointer ${
-                        preferences.ironingTemperature === temp
-                          ? "bg-theme-blue text-white"
-                          : "bg-theme-gray"
-                      }`}
+                      className={`flex justify-center items-center cursor-pointer ${preferences.ironingTemperature === temp
+                        ? "bg-theme-blue text-white"
+                        : "bg-theme-gray"
+                        }`}
                     >
                       {temp}
                     </div>
@@ -724,11 +1057,10 @@ export default function OrderHistory() {
             <button
               onClick={handleConfirmCancellation}
               disabled={!cancellationReason || isCancelling}
-              className={`w-full rounded-2xl h-12 font-youth text-sm flex items-center justify-center gap-2 ${
-                cancellationReason && !isCancelling
-                  ? "bg-red-500 text-white hover:bg-red-600"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              } transition-colors`}
+              className={`w-full rounded-2xl h-12 font-youth text-sm flex items-center justify-center gap-2 ${cancellationReason && !isCancelling
+                ? "bg-red-500 text-white hover:bg-red-600"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                } transition-colors`}
             >
               {isCancelling ? (
                 <>
@@ -760,25 +1092,36 @@ export default function OrderHistory() {
 
             {/* Cancellation Reason Dropdown */}
             <div>
-              <SelectHero
-                label="Reason for cancellation"
-                list={cancellationReasons}
-                value={cancellationReason ? [cancellationReason] : []}
-                onChange={(e) => {
-                  // Extract value from event - HeroUI Select may pass different formats
-                  let value = "";
-                  if (typeof e === "string") {
-                    value = e;
-                  } else if (e?.target?.value) {
-                    value = e.target.value;
-                  } else if (e?.currentTarget?.value) {
-                    value = e.currentTarget.value;
-                  } else if (e?.detail?.value) {
-                    value = e.detail.value;
-                  }
-                  setCancellationReason(value);
-                }}
-              />
+              {isLoadingReasons ? (
+                <div className="flex items-center justify-center py-4">
+                  <Spinner size="sm" />
+                  <span className="ml-2 font-sf text-sm text-gray-500">Loading reasons...</span>
+                </div>
+              ) : cancellationReasons.length === 0 ? (
+                <div className="text-center py-4">
+                  <p className="font-sf text-sm text-gray-500">No cancellation reasons available</p>
+                </div>
+              ) : (
+                <SelectHero
+                  label="Reason for cancellation"
+                  list={cancellationReasons}
+                  value={cancellationReason ? [cancellationReason] : []}
+                  onChange={(e) => {
+                    // Extract value from event - HeroUI Select may pass different formats
+                    let value = "";
+                    if (typeof e === "string") {
+                      value = e;
+                    } else if (e?.target?.value) {
+                      value = e.target.value;
+                    } else if (e?.currentTarget?.value) {
+                      value = e.currentTarget.value;
+                    } else if (e?.detail?.value) {
+                      value = e.detail.value;
+                    }
+                    setCancellationReason(value);
+                  }}
+                />
+              )}
             </div>
 
             {/* Warning Message */}

@@ -22,7 +22,7 @@ jobs:
 
             cd /home/sigisolutions/apps/laundrywebsite
             git pull origin main
-            npm install
+            npm install --legacy-peer-deps
             npm run build
             pm2 restart laundrynext
 

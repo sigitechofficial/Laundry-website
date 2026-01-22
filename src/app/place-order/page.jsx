@@ -558,7 +558,7 @@ export default function orderRegistration() {
                     <SelectHero
                       label="Select delivery method"
                       list={delivery}
-                      value={deliveryData?.driverInstructionOptions1}
+                      value={deliveryData?.driverInstructionOptions1 ? [deliveryData?.driverInstructionOptions1] : []}
                       onChange={(e) =>
                         setDeliveryData({
                           ...deliveryData,

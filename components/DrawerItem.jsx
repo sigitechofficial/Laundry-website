@@ -7,15 +7,15 @@ export default function DrawerItem(props) {
   return (
     <button
       onClick={props.onClick}
-      className="w-full flex items-center justify-between px-0 py-5 border-b border-b-[#e4e4e5]"
+      className="w-full flex items-center justify-between py-5 px-0 border-b border-b-[#e4e4e5] pe-3"
     >
       <div className="flex items-center gap-x-5">
-        <Icon size={24} className="text-theme-black-2" />
+        <Icon size={24} className="text-theme-black-2 shrink-0" />
         <span className="font-medium text-base text-theme-black-2">
           {props.text}
         </span>
       </div>
-      <IoChevronForward size={20} className="text-theme-black-2" />
+      <IoChevronForward size={20} className="text-theme-black-2 shrink-0" />
     </button>
   );
 }

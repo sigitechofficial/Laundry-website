@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { GoArrowUp, GoClock } from "react-icons/go";
-import { IoBagCheck, IoLocation } from "react-icons/io5";
+import { IoBagCheck, IoLocation, IoClose, IoCalendarOutline, IoTimeOutline, IoInformationCircleOutline, IoLocationOutline } from "react-icons/io5";
 import { PurpleButton } from "../Buttons";
 import { MdKeyboardArrowRight } from "react-icons/md";
 import {
@@ -18,6 +18,7 @@ import SelectHero from "../SelectHero";
 import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { setOrderData } from "@/app/store/slices/cartItemSlice";
+import { BASE_URL } from "../../utilities/URL";
 
 export default function OrderHistory() {
   const router = useRouter();
@@ -37,6 +38,12 @@ export default function OrderHistory() {
     onOpen: onOrderDetailsModalOpen,
     onClose: onOrderDetailsModalClose,
     onOpenChange: onOrderDetailsModalOpenChange,
+  } = useDisclosure();
+  const {
+    isOpen: isManageOrderModalOpen,
+    onOpen: onManageOrderModalOpen,
+    onClose: onManageOrderModalClose,
+    onOpenChange: onManageOrderModalOpenChange,
   } = useDisclosure();
   const [manageOrder, setManageOrder] = useState({
     manage: false,
@@ -125,6 +132,26 @@ export default function OrderHistory() {
     if (!order) return false;
     const status = order?.bookingStatus?.title?.toLowerCase() || "";
     return status.includes("cancel") || status.includes("cancelled");
+  };
+
+  // Get status badge color classes based on status
+  const getStatusColorClasses = (statusTitle) => {
+    if (!statusTitle) return "bg-theme-skyBlue text-[#0391C4]"; // Default blue
+    
+    const status = statusTitle.toLowerCase();
+    
+    // Cancelled status - red
+    if (status.includes("cancel") || status.includes("cancelled")) {
+      return "bg-red-100 text-red-600";
+    }
+    
+    // On Hold statuses - yellow/warning
+    if (status.includes("on hold") || status.includes("waiting for") || status.includes("onhold")) {
+      return "bg-yellow-100 text-yellow-700";
+    }
+    
+    // Default - blue (for normal statuses like created, confirmed, processing, etc.)
+    return "bg-theme-skyBlue text-[#0391C4]";
   };
 
   // Check if order can be cancelled based on cancellation policy
@@ -261,6 +288,106 @@ export default function OrderHistory() {
     }
   };
 
+  // Helper function to get proof of collection (pickUp)
+  const getProofOfCollection = () => {
+    if (!bookingDtails?.data?.proofOfDeliveries || !Array.isArray(bookingDtails.data.proofOfDeliveries)) {
+      return [];
+    }
+    return bookingDtails.data.proofOfDeliveries.filter(
+      (proof) => proof.deliveryType === "pickUp"
+    );
+  };
+
+  // Helper function to get proof of delivery (dropOff)
+  const getProofOfDelivery = () => {
+    if (!bookingDtails?.data?.proofOfDeliveries || !Array.isArray(bookingDtails.data.proofOfDeliveries)) {
+      return [];
+    }
+    return bookingDtails.data.proofOfDeliveries.filter(
+      (proof) => proof.deliveryType === "dropOff"
+    );
+  };
+
+  // Helper function to get image URL from proof object
+  const getImageUrl = (imgUpload) => {
+    if (!imgUpload) return null;
+    
+    if (typeof imgUpload === 'string') {
+      return imgUpload.startsWith('http') ? imgUpload : BASE_URL + imgUpload;
+    }
+    
+    return null;
+  };
+
+  // Memoize active bookings - always compute, regardless of loading state
+  const activeBookings = React.useMemo(() => {
+    if (!data?.data || !Array.isArray(data.data)) return null;
+
+    const active = data.data.filter((order) => {
+      const status = order?.bookingStatus?.title?.toLowerCase() || "";
+
+      // Include orders with active statuses (created, order created, pending, etc.)
+      // Exclude cancelled, completed, delivered, processed, etc.
+      if (
+        status.includes("cancel") ||
+        status.includes("cancelled") ||
+        status.includes("completed") ||
+        status.includes("delivered") ||
+        status.includes("processed") ||
+        status.includes("finished") ||
+        status.includes("done")
+      ) {
+        return false;
+      }
+
+      // Include all other statuses (created, order created, pending, in progress, etc.)
+      return true;
+    }).sort((a, b) => {
+      const dateA = a.createdAt || a.created_at || a.orderDate || a.bookingDate;
+      const dateB = b.createdAt || b.created_at || b.orderDate || b.bookingDate;
+      if (dateA && dateB) return new Date(dateB) - new Date(dateA);
+      if (a.id && b.id) return parseInt(b.id) - parseInt(a.id);
+      if (a.collectionDate && b.collectionDate) return new Date(b.collectionDate) - new Date(a.collectionDate);
+      return 0;
+    });
+
+    return active.length === 0 ? null : active;
+  }, [data?.data]);
+
+  // Memoize past bookings - always compute, regardless of loading state
+  const pastBookings = React.useMemo(() => {
+    if (!data?.data || !Array.isArray(data.data)) return null;
+
+    const past = data.data.filter((order) => {
+      const status = order?.bookingStatus?.title?.toLowerCase() || "";
+
+      // Include orders with past/final statuses
+      if (
+        status.includes("cancel") ||
+        status.includes("cancelled") ||
+        status.includes("completed") ||
+        status.includes("delivered") ||
+        status.includes("processed") ||
+        status.includes("finished") ||
+        status.includes("done")
+      ) {
+        return true;
+      }
+
+      // Exclude active statuses (created, order created, pending, etc.)
+      return false;
+    }).sort((a, b) => {
+      const dateA = a.createdAt || a.created_at || a.orderDate || a.bookingDate;
+      const dateB = b.createdAt || b.created_at || b.orderDate || b.bookingDate;
+      if (dateA && dateB) return new Date(dateB) - new Date(dateA);
+      if (a.id && b.id) return parseInt(b.id) - parseInt(a.id);
+      if (a.collectionDate && b.collectionDate) return new Date(b.collectionDate) - new Date(a.collectionDate);
+      return 0;
+    });
+
+    return past.length === 0 ? null : past;
+  }, [data?.data]);
+
   // Render order details content (reusable for both modal and side panel)
   const renderOrderDetailsContent = () => {
     if (!bookingDtails?.data) return null;
@@ -274,7 +401,7 @@ export default function OrderHistory() {
         <div className="flex justify-between items-center font-sf pt-3 pb-6">
           <button
             title={bookingDtails?.data?.bookingStatus?.description}
-            className="bg-theme-skyBlue rounded-full shrink-0 text-[#0391C4] font-youth font-bold text-sm p-3"
+            className={`rounded-full shrink-0 font-youth font-bold text-sm p-3 ${getStatusColorClasses(bookingDtails?.data?.bookingStatus?.title)}`}
           >
             {bookingDtails?.data?.bookingStatus?.title}
           </button>
@@ -292,25 +419,25 @@ export default function OrderHistory() {
         <div className="space-y-4">
           <div className="font-sf space-y-3">
             <p className="font-youth font-bold">Collection</p>
-            <div className="flex gap-4 items-center">
-              <div>
-                <IoLocation size="20" />
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center justify-center">
+                <IoCalendarOutline size="16" />
               </div>
               <p className="text-sm font-medium">
                 {formatDate(bookingDtails?.data?.collectionDate)}
               </p>
             </div>
-            <div className="flex gap-4 items-center">
-              <div>
-                <IoLocation size="20" />
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center justify-center">
+                <IoTimeOutline size="16" />
               </div>
               <p className="text-sm font-medium">
                 {bookingDtails?.data?.collectionTimeFrom} - {bookingDtails?.data?.collectionTimeTo}
               </p>
             </div>
-            <div className="flex gap-4 items-center">
-              <div>
-                <IoLocation size="20" />
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center justify-center">
+                <IoInformationCircleOutline size="16" />
               </div>
               <p className="text-sm font-medium">
                 {bookingDtails?.data?.driverInstructionOptions}
@@ -319,25 +446,25 @@ export default function OrderHistory() {
           </div>
           <div className="font-sf space-y-3">
             <p className="font-youth font-bold">Delivery</p>
-            <div className="flex gap-4 items-center">
-              <div>
-                <IoLocation size="20" />
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center justify-center">
+                <IoCalendarOutline size="16" />
               </div>
               <p className="text-sm font-medium">
                 {formatDate(bookingDtails?.data?.deliveryDate)}
               </p>
             </div>
-            <div className="flex gap-4 items-center">
-              <div>
-                <IoLocation size="20" />
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center justify-center">
+                <IoTimeOutline size="16" />
               </div>
               <p className="text-sm font-medium">
                 {bookingDtails?.data?.deliveryTimeFrom} - {bookingDtails?.data?.deliveryTimeTo}
               </p>
             </div>
-            <div className="flex gap-4 items-center">
-              <div>
-                <IoLocation size="20" />
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center justify-center">
+                <IoInformationCircleOutline size="16" />
               </div>
               <p className="text-sm font-medium">
                 {bookingDtails?.data?.driverInstructionOptions1}
@@ -346,9 +473,9 @@ export default function OrderHistory() {
           </div>
           <div className="font-sf space-y-3">
             <p className="font-youth font-bold">Address</p>
-            <div className="flex gap-4 items-center">
-              <div>
-                <IoBagCheck />
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center justify-center">
+                <IoLocationOutline size="16" />
               </div>
               <p className="text-sm font-medium">
                 {bookingDtails?.data?.dropOffAddress?.streetAddress}
@@ -367,103 +494,154 @@ export default function OrderHistory() {
               {bookingDtails?.data?.frequency}
             </p>
           </div>
-          <PurpleButton
-            onClick={handleScheduleAgain}
-            text="Schedule Again"
-            bg="bg-theme-blue"
-            color="text-white"
-          />
           {!isOrderCancelled(bookingDtails?.data) && (
-            <>
-              <PurpleButton onClick={onOpen} text="Track Order" />
-              <PurpleButton
-                text={manageOrder?.manage ? "Close" : "Manage Order"}
-                bg="bg-theme-blue"
-                color="text-white"
-                onClick={() =>
-                  setManageOrder({
-                    ...manageOrder,
-                    manage: !manageOrder?.manage,
-                  })
-                }
-              />
-            </>
+            <PurpleButton
+              text="Manage Order"
+              bg="bg-theme-blue"
+              color="text-white"
+              onClick={onManageOrderModalOpen}
+            />
           )}
         </div>
 
-        {shouldRenderManageDetails && (
-          <div
-            className={`space-y-3 mt-8 transition-all duration-500 ease-in-out overflow-hidden ${showManageDetails && manageOrder?.manage
-              ? 'opacity-100 max-h-[2000px] translate-y-0'
-              : 'opacity-0 max-h-0 -translate-y-4'
-              }`}
-          >
+        {/* Order Details Section - Always visible below Manage Order button */}
+        <div className="space-y-3 mt-8">
             <div className="flex justify-between items-center border-b py-2">
               <div className="font-sf">
                 <h6 className="font-semibold text-xl">Order details</h6>
-                <p className="text-theme-psGray">6 items</p>
+                <p className="text-theme-psGray">
+                  {bookingDtails?.data?.totalItems || bookingDtails?.data?.customerSelectedServices?.length || 0} items
+                </p>
               </div>
               <MdKeyboardArrowRight size="25" />
             </div>
             <div className="space-y-1 font-sf border-b pb-3">
               <div className="flex justify-between items-center ">
                 <h4 className="font-semibold">Subtotal</h4>
-                <p className="font-semibold">CHF 69.00</p>
+                <p className="font-semibold">
+                  ${bookingDtails?.data?.subTotal || bookingDtails?.data?.orderAmount || "0.00"}
+                </p>
               </div>
-              <div className="flex justify-between items-center">
-                <h4 className="text-sm text-theme-psGray">Minimum order fee</h4>
-                <p className="text-sm text-theme-psGray">CHF 0.00</p>
-              </div>
-              <div className="flex justify-between items-center">
-                <h4 className="text-sm text-theme-psGray">Service fee</h4>
-                <p className="text-sm text-theme-psGray">CHF 0.00</p>
-              </div>
-              <div className="flex justify-between items-center">
-                <h4 className="text-sm text-theme-psGray">Additional fee</h4>
-                <p className="text-sm text-theme-psGray">CHF 0.00</p>
-              </div>
-            </div>
-            <div className="space-y-1 font-sf border-b pb-3">
-              <h4 className="font-semibold text-2xl">Payment</h4>
-              <div className="flex justify-between items-center">
-                <div>
-                  <h6>MasterCard *******2356</h6>
-                  <p>07/13/23, 12:25</p>
+              {bookingDtails?.data?.zone?.serviceCharge && (
+                <div className="flex justify-between items-center">
+                  <h4 className="text-sm text-theme-psGray">Service fee</h4>
+                  <p className="text-sm text-theme-psGray">${bookingDtails.data.zone.serviceCharge}</p>
                 </div>
-                <p>$18</p>
-              </div>
-              <div className="py-2">
-                <PurpleButton text="Send receipt to email" />
-              </div>
+              )}
             </div>
-            <div className="space-y-1 font-sf pb-3 border-b-0">
-              <h4 className="font-semibold text-2xl">Proof of collection</h4>
-              <p className="font-sf text-theme-psGray">Malle Sushi Stockholm</p>
-              <div className="py-3">
-                <div className="grid grid-cols-3 gap-5">
-                  <div className="bg-gray-200 h-20"></div>
-                  <div className="bg-gray-200 h-20"></div>
-                  <div className="bg-gray-200 h-20"></div>
-                  <div className="bg-gray-200 h-20"></div>
-                  <div className="bg-gray-200 h-20"></div>
-                  <div className="bg-gray-200 h-20"></div>
+            {bookingDtails?.data?.paymentMethodId && (
+              <div className="space-y-1 font-sf border-b pb-3">
+                <h4 className="font-semibold text-2xl">Payment</h4>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h6>
+                      {bookingDtails?.data?.paymentMethodId?.startsWith("pm_") 
+                        ? `Card ending in ${bookingDtails.data.paymentMethodId.slice(-4)}`
+                        : bookingDtails?.data?.paymentMethodId || "Payment Method"}
+                    </h6>
+                    {bookingDtails?.data?.createdAt && (
+                      <p className="text-sm text-theme-psGray">
+                        {formatDate(bookingDtails.data.createdAt)}
+                      </p>
+                    )}
+                  </div>
+                  <p className="font-semibold">${bookingDtails?.data?.orderAmount || "0.00"}</p>
+                </div>
+                <div className="py-2">
+                  <PurpleButton text="Send receipt to email" />
                 </div>
               </div>
-              <div className="my-2">
-                <PurpleButton text="Contact support" />
+            )}
+            {/* Proof of Collection Section */}
+            {getProofOfCollection().length > 0 && (
+              <div className="space-y-1 font-sf pb-3 border-b">
+                <h4 className="font-semibold text-2xl">Proof of Collection</h4>
+                <div className="py-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
+                    {getProofOfCollection().map((proof, index) => {
+                      const imageUrl = getImageUrl(proof.imgUpload);
+                      if (!imageUrl) return null;
+                      
+                      return (
+                        <div key={proof.id || index} className="space-y-2">
+                          <div className="relative bg-gray-200 rounded-lg overflow-hidden aspect-square">
+                            <img
+                              src={imageUrl}
+                              alt={`Proof of collection ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                          {proof.noOfItems !== undefined && proof.noOfItems !== null && (
+                            <p className="text-xs text-theme-psGray text-center">
+                              Items: {proof.noOfItems}
+                            </p>
+                          )}
+                          {proof.note && (
+                            <p className="text-xs text-theme-psGray text-center line-clamp-2">
+                              {proof.note}
+                            </p>
+                          )}
+                          {proof.createdAt && (
+                            <p className="text-xs text-theme-psGray text-center">
+                              {formatDate(proof.createdAt)}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="my-2 border-t pt-3">
-              <PurpleButton
-                text={isCheckingCancellation ? "Checking..." : "Cancel Order"}
-                bg="bg-red-500"
-                color="text-white"
-                onClick={handleCancelClick}
-                disabled={isCheckingCancellation}
-              />
-            </div>
+            )}
+
+            {/* Proof of Delivery Section */}
+            {getProofOfDelivery().length > 0 && (
+              <div className="space-y-1 font-sf pb-3 border-b">
+                <h4 className="font-semibold text-2xl">Proof of Delivery</h4>
+                <div className="py-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
+                    {getProofOfDelivery().map((proof, index) => {
+                      const imageUrl = getImageUrl(proof.imgUpload);
+                      if (!imageUrl) return null;
+                      
+                      return (
+                        <div key={proof.id || index} className="space-y-2">
+                          <div className="relative bg-gray-200 rounded-lg overflow-hidden aspect-square">
+                            <img
+                              src={imageUrl}
+                              alt={`Proof of delivery ${index + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                          {proof.noOfItems !== undefined && proof.noOfItems !== null && (
+                            <p className="text-xs text-theme-psGray text-center">
+                              Items: {proof.noOfItems}
+                            </p>
+                          )}
+                          {proof.note && (
+                            <p className="text-xs text-theme-psGray text-center line-clamp-2">
+                              {proof.note}
+                            </p>
+                          )}
+                          {proof.createdAt && (
+                            <p className="text-xs text-theme-psGray text-center">
+                              {formatDate(proof.createdAt)}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-        )}
       </>
     );
   };
@@ -541,236 +719,185 @@ export default function OrderHistory() {
 
       <div className="w-full flex flex-col md:flex-row gap-5">
         <div className="w-full font-sf space-y-5">
-          {/* Active Bookings Section */}
-          {React.useMemo(() => {
-            if (!data?.data || !Array.isArray(data.data)) return null;
-
-            const active = data.data.filter((order) => {
-              const status = order?.bookingStatus?.title?.toLowerCase() || "";
-
-              // Include orders with active statuses (created, order created, pending, etc.)
-              // Exclude cancelled, completed, delivered, processed, etc.
-              if (
-                status.includes("cancel") ||
-                status.includes("cancelled") ||
-                status.includes("completed") ||
-                status.includes("delivered") ||
-                status.includes("processed") ||
-                status.includes("finished") ||
-                status.includes("done")
-              ) {
-                return false;
-              }
-
-              // Include all other statuses (created, order created, pending, in progress, etc.)
-              return true;
-            }).sort((a, b) => {
-              const dateA = a.createdAt || a.created_at || a.orderDate || a.bookingDate;
-              const dateB = b.createdAt || b.created_at || b.orderDate || b.bookingDate;
-              if (dateA && dateB) return new Date(dateB) - new Date(dateA);
-              if (a.id && b.id) return parseInt(b.id) - parseInt(a.id);
-              if (a.collectionDate && b.collectionDate) return new Date(b.collectionDate) - new Date(a.collectionDate);
-              return 0;
-            });
-
-            if (active.length === 0) return null;
-
-            return (
-              <>
-                <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4">Active Bookings</h3>
-                {active.map((order) => {
-                  const isCancelled = isOrderCancelled(order);
-                  return (
-                    <div
-                      key={order.id}
-                      onClick={() => {
-                        if (!isCancelled) {
-                          setManageOrder({ ...manageOrder, orderId: order?.id });
-                          // Open modal on mobile screens
-                          if (typeof window !== "undefined" && window.innerWidth < 768) {
-                            onOrderDetailsModalOpen();
-                          }
+          {/* Loading Spinner */}
+          {isLoading ? (
+            <div className="w-full flex items-center justify-center py-20">
+              <Spinner
+                size="lg"
+                label="Loading orders..."
+                classNames={{
+                  label: "text-foreground mt-4 font-youth font-semibold text-theme-blue",
+                }}
+                variant="wave"
+              />
+            </div>
+          ) : (
+            <>
+              {/* Active Bookings Section */}
+              {activeBookings && (
+                <>
+                  <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4">Active Bookings</h3>
+                  {activeBookings.map((order) => {
+                const isCancelled = isOrderCancelled(order);
+                return (
+                  <div
+                    key={order.id}
+                    onClick={() => {
+                      if (!isCancelled) {
+                        setManageOrder({ ...manageOrder, orderId: order?.id });
+                        // Open modal on mobile screens
+                        if (typeof window !== "undefined" && window.innerWidth < 768) {
+                          onOrderDetailsModalOpen();
                         }
-                      }}
-                      className={`w-full max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 ${isCancelled ? "cursor-default opacity-75" : "cursor-pointer"
-                        }`}
-                    >
-                      <h6 className="font-youth font-bold text-base sm:text-lg">
-                        Order ID: {order?.orderTrackId}
-                      </h6>
+                      }
+                    }}
+                    className={`w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 ${isCancelled ? "cursor-default opacity-75" : "cursor-pointer"
+                      }`}
+                  >
+                    <h6 className="font-youth font-bold text-base sm:text-lg">
+                      Order ID: {order?.orderTrackId}
+                    </h6>
 
-                      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-                        <button className="bg-theme-skyBlue rounded-full shrink-0 text-[#0391C4] font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3">
-                          {order?.bookingStatus?.title}
-                        </button>
+                    <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+                      <button className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
+                        {order?.bookingStatus?.title}
+                      </button>
 
-                        <p className="font-youth font-bold text-sm sm:text-base">
-                          Est ${order?.orderAmount}
-                        </p>
-                      </div>
-
-                      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
-                        <div className="flex gap-2 items-center py-2">
-                          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                          <div>
-                            <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                              Pick up
-                            </p>
-                            <p className="font-sf text-base sm:text-xl">
-                              {formatDate(order?.collectionDate)}
-                            </p>
-                          </div>
-                        </div>
-
-                        <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                          <GoClock size={18} className="sm:w-5 sm:h-5" />
-                          {order?.collectionTimeFrom} - {order?.collectionTimeTo}
-                        </p>
-                      </div>
-
-                      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-                        <div className="flex gap-2 items-center py-2">
-                          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                          <div>
-                            <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                              Drop off
-                            </p>
-                            <p className="font-sf text-base sm:text-xl">
-                              {formatDate(order?.deliveryDate)}
-                            </p>
-                          </div>
-                        </div>
-
-                        <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                          <GoClock size={18} className="sm:w-5 sm:h-5" />
-                          {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
-                        </p>
-                      </div>
-
-                      <p className="font-sf text-base text-theme-psGray">
-                        {order?.driverInstruction}
+                      <p className="font-youth font-bold text-sm sm:text-base">
+                        Est ${order?.orderAmount}
                       </p>
                     </div>
+
+                    <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
+                      <div className="flex gap-2 items-center py-2">
+                        <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+                        <div>
+                          <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+                            Pick up
+                          </p>
+                          <p className="font-sf text-base sm:text-xl">
+                            {formatDate(order?.collectionDate)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+                        <GoClock size={18} className="sm:w-5 sm:h-5" />
+                        {order?.collectionTimeFrom} - {order?.collectionTimeTo}
+                      </p>
+                    </div>
+
+                    <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                      <div className="flex gap-2 items-center py-2">
+                        <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+                        <div>
+                          <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+                            Drop off
+                          </p>
+                          <p className="font-sf text-base sm:text-xl">
+                            {formatDate(order?.deliveryDate)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+                        <GoClock size={18} className="sm:w-5 sm:h-5" />
+                        {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
+                      </p>
+                    </div>
+
+                    <p className="font-sf text-base text-theme-psGray">
+                      {order?.driverInstruction}
+                    </p>
+                  </div>
                   );
                 })}
               </>
-            );
-          }, [data?.data, manageOrder])}
+            )}
 
-          {/* Past Bookings Section */}
-          {React.useMemo(() => {
-            if (!data?.data || !Array.isArray(data.data)) return null;
-
-            const past = data.data.filter((order) => {
-              const status = order?.bookingStatus?.title?.toLowerCase() || "";
-
-              // Include orders with past/final statuses
-              if (
-                status.includes("cancel") ||
-                status.includes("cancelled") ||
-                status.includes("completed") ||
-                status.includes("delivered") ||
-                status.includes("processed") ||
-                status.includes("finished") ||
-                status.includes("done")
-              ) {
-                return true;
-              }
-
-              // Exclude active statuses (created, order created, pending, etc.)
-              return false;
-            }).sort((a, b) => {
-              const dateA = a.createdAt || a.created_at || a.orderDate || a.bookingDate;
-              const dateB = b.createdAt || b.created_at || b.orderDate || b.bookingDate;
-              if (dateA && dateB) return new Date(dateB) - new Date(dateA);
-              if (a.id && b.id) return parseInt(b.id) - parseInt(a.id);
-              if (a.collectionDate && b.collectionDate) return new Date(b.collectionDate) - new Date(a.collectionDate);
-              return 0;
-            });
-
-            if (past.length === 0) return null;
-
-            return (
+            {/* Past Bookings Section */}
+            {pastBookings && (
               <>
                 <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4 mt-6 sm:mt-8">Past Bookings</h3>
-                {past.map((order) => {
-                  const isCancelled = isOrderCancelled(order);
-                  return (
-                    <div
-                      key={order.id}
-                      onClick={() => {
-                        if (!isCancelled) {
-                          setManageOrder({ ...manageOrder, orderId: order?.id });
-                          // Open modal on mobile screens
-                          if (typeof window !== "undefined" && window.innerWidth < 768) {
-                            onOrderDetailsModalOpen();
-                          }
+                {pastBookings.map((order) => {
+                const isCancelled = isOrderCancelled(order);
+                return (
+                  <div
+                    key={order.id}
+                    onClick={() => {
+                      if (!isCancelled) {
+                        setManageOrder({ ...manageOrder, orderId: order?.id });
+                        // Open modal on mobile screens
+                        if (typeof window !== "undefined" && window.innerWidth < 768) {
+                          onOrderDetailsModalOpen();
                         }
-                      }}
-                      className={`w-full max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 ${isCancelled ? "cursor-default opacity-75" : "cursor-pointer"
-                        }`}
-                    >
-                      <h6 className="font-youth font-bold text-base sm:text-lg">
-                        Order ID: {order?.orderTrackId}
-                      </h6>
+                      }
+                    }}
+                    className={`w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 ${isCancelled ? "cursor-default opacity-75" : "cursor-pointer"
+                      }`}
+                  >
+                    <h6 className="font-youth font-bold text-base sm:text-lg">
+                      Order ID: {order?.orderTrackId}
+                    </h6>
 
-                      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-                        <button className="bg-theme-skyBlue rounded-full shrink-0 text-[#0391C4] font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3">
-                          {order?.bookingStatus?.title}
-                        </button>
+                    <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+                      <button className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
+                        {order?.bookingStatus?.title}
+                      </button>
 
-                        <p className="font-youth font-bold text-sm sm:text-base">
-                          Est ${order?.orderAmount}
-                        </p>
-                      </div>
-
-                      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
-                        <div className="flex gap-2 items-center py-2">
-                          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                          <div>
-                            <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                              Pick up
-                            </p>
-                            <p className="font-sf text-base sm:text-xl">
-                              {formatDate(order?.collectionDate)}
-                            </p>
-                          </div>
-                        </div>
-
-                        <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                          <GoClock size={18} className="sm:w-5 sm:h-5" />
-                          {order?.collectionTimeFrom} - {order?.collectionTimeTo}
-                        </p>
-                      </div>
-
-                      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-                        <div className="flex gap-2 items-center py-2">
-                          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                          <div>
-                            <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                              Drop off
-                            </p>
-                            <p className="font-sf text-base sm:text-xl">
-                              {formatDate(order?.deliveryDate)}
-                            </p>
-                          </div>
-                        </div>
-
-                        <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                          <GoClock size={18} className="sm:w-5 sm:h-5" />
-                          {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
-                        </p>
-                      </div>
-
-                      <p className="font-sf text-base text-theme-psGray">
-                        {order?.driverInstruction}
+                      <p className="font-youth font-bold text-sm sm:text-base">
+                        Est ${order?.orderAmount}
                       </p>
                     </div>
+
+                    <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
+                      <div className="flex gap-2 items-center py-2">
+                        <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+                        <div>
+                          <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+                            Pick up
+                          </p>
+                          <p className="font-sf text-base sm:text-xl">
+                            {formatDate(order?.collectionDate)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+                        <GoClock size={18} className="sm:w-5 sm:h-5" />
+                        {order?.collectionTimeFrom} - {order?.collectionTimeTo}
+                      </p>
+                    </div>
+
+                    <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                      <div className="flex gap-2 items-center py-2">
+                        <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+                        <div>
+                          <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+                            Drop off
+                          </p>
+                          <p className="font-sf text-base sm:text-xl">
+                            {formatDate(order?.deliveryDate)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+                        <GoClock size={18} className="sm:w-5 sm:h-5" />
+                        {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
+                      </p>
+                    </div>
+
+                    <p className="font-sf text-base text-theme-psGray">
+                      {order?.driverInstruction}
+                    </p>
+                  </div>
                   );
                 })}
               </>
-            );
-          }, [data?.data, manageOrder])}
+            )}
+            </>
+          )}
         </div>
 
         {/* Desktop/Tablet Side Panel - Hidden on mobile */}
@@ -870,7 +997,7 @@ export default function OrderHistory() {
               <p className="font-sf font-semibold cursor-pointer">
                 Order Status
               </p>
-              <button className="bg-theme-skyBlue rounded-full shrink-0 text-[#0391C4] font-youth font-bold text-sm px-3 py-1.5">
+              <button className={`rounded-full shrink-0 font-youth font-bold text-sm px-3 py-1.5 ${getStatusColorClasses(bookingDtails?.data?.bookingStatus?.title)}`}>
                 {bookingDtails?.data?.bookingStatus?.title}
               </button>
             </div>
@@ -1130,6 +1257,72 @@ export default function OrderHistory() {
                 <strong>Note:</strong> Cancellation charges may apply based on
                 your order status and cancellation policy.
               </p>
+            </div>
+          </div>
+        </div>
+      </ReusableModal>
+
+      {/* Manage Order Modal */}
+      <ReusableModal
+        isDismissable={true}
+        isOpen={isManageOrderModalOpen}
+        onOpenChange={onManageOrderModalOpenChange}
+        showHeader={false}
+        headerTitle=""
+        modalScroll={false}
+        onBack={false}
+        onClose={false}
+        showFooter={false}
+        onFooterAction={() => false}
+        size="md"
+        backdrop="blur"
+        className="custom-modal-class"
+      >
+        <div className="w-full px-6 py-6 font-sf">
+          <div className="space-y-4">
+            {/* Close Button */}
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={onManageOrderModalClose}
+                className="bg-gray-200 hover:bg-gray-300 rounded-full cursor-pointer duration-150 size-10 flex justify-center items-center"
+              >
+                <IoClose size={24} className="text-gray-700" />
+              </button>
+            </div>
+
+            {/* Heading */}
+            <div className="text-center mb-6">
+              <h2 className="font-youth font-bold text-2xl mb-2 text-gray-800">
+                Manage Order
+              </h2>
+              <p className="font-sf text-lg text-gray-700 mb-2">
+                What would you like to do with this order?
+              </p>
+              <p className="font-sf text-sm text-gray-500">
+                Order ID: {bookingDtails?.data?.orderTrackId}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <PurpleButton
+                onClick={() => {
+                  onManageOrderModalClose();
+                  handleScheduleAgain();
+                }}
+                text="Reschedule"
+                bg="bg-theme-blue"
+                color="text-white"
+              />
+              <PurpleButton
+                onClick={() => {
+                  onManageOrderModalClose();
+                  handleCancelClick();
+                }}
+                text={isCheckingCancellation ? "Checking..." : "Cancel Order"}
+                bg="bg-red-500"
+                color="text-white"
+                disabled={isCheckingCancellation}
+              />
             </div>
           </div>
         </div>

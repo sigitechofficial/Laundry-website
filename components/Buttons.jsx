@@ -28,16 +28,15 @@ export function ButtonYouth70018({
   isDisabled,
   isPending,
 }) {
+  const baseClasses = `${width || "w-full"} ${
+    isDisabled ? "bg-theme-darkBlue/30" : "bg-theme-darkBlue"
+  } relative rounded-full flex justify-center items-center font-medium sm:font-bold px-4 sm:px-8 h-14 sm:h-[60px] font-youth text-white text-lg`;
+  
   return (
     <button
       disabled={isDisabled}
       onClick={onClick}
-      className={
-        className ||
-        `${width || "w-full"} ${
-          isDisabled ? "bg-theme-darkBlue/30" : "bg-theme-darkBlue"
-        } relative rounded-full flex justify-center items-center font-medium sm:font-bold px-4 sm:px-8 h-14 sm:h-[60px] font-youth text-white text-lg`
-      }
+      className={className ? `${baseClasses} ${className}` : baseClasses}
     >
       {isPending ? (
         <BouncingBallsLoader />

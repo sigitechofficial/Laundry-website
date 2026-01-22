@@ -6,7 +6,7 @@ import { MdKeyboardArrowRight, MdOutlineDryCleaning } from "react-icons/md";
 import { TbIroning, TbWash, TbIroningSteam } from "react-icons/tb";
 import { AiOutlinePercentage } from "react-icons/ai";
 import { ButtonYouth70018, PurpleButton } from "../../../../components/Buttons";
-import { IoBagCheck, IoLocation, IoShirt } from "react-icons/io5";
+import { IoBagCheck, IoLocation, IoShirt, IoCalendarOutline, IoTimeOutline, IoInformationCircleOutline, IoLocationOutline, IoBagOutline } from "react-icons/io5";
 import { useGetServicesQuery, useGetServiceWithPreferenceDetailsQuery } from "@/app/store/services/api";
 import { useDisclosure } from "@heroui/react";
 import ReusableModal from "../../../../components/Modal";
@@ -40,9 +40,9 @@ export default function Order() {
     modType: "wash",
     step: "",
   });
-  
+
   // Fetch preferences when serviceId is set
-  const { data: preferencesResponse, isLoading: isLoadingPreferences } = 
+  const { data: preferencesResponse, isLoading: isLoadingPreferences } =
     useGetServiceWithPreferenceDetailsQuery(currentServiceId, {
       skip: !currentServiceId,
     });
@@ -59,7 +59,7 @@ export default function Order() {
 
   // Initialize preferences state based on fetched data
   const [preferences, setPreferences] = useState({});
-  
+
   // Initialize preferences when service preferences data is loaded
   useEffect(() => {
     if (servicePreferencesData && servicePreferencesData.length > 0) {
@@ -117,7 +117,7 @@ export default function Order() {
 
       // Dispatch to redux
       dispatch(updatePreference({ serviceId: currentServiceId, data: prefsData }));
-      
+
       // Reset state
       setPreferences({});
       setCurrentServiceId(null);
@@ -160,9 +160,9 @@ export default function Order() {
                           right="right-0"
                           type={
                             Array.isArray(preferencesData) &&
-                            preferencesData?.some(
-                              (elem) => elem?.serviceId === 1
-                            )
+                              preferencesData?.some(
+                                (elem) => elem?.serviceId === 1
+                              )
                               ? "check"
                               : "plus"
                           }
@@ -197,9 +197,9 @@ export default function Order() {
                           right="-right-10"
                           type={
                             Array.isArray(preferencesData) &&
-                            preferencesData?.some(
-                              (elem) => elem?.serviceId === 3
-                            )
+                              preferencesData?.some(
+                                (elem) => elem?.serviceId === 3
+                              )
                               ? "check"
                               : "plus"
                           }
@@ -251,7 +251,7 @@ export default function Order() {
                 <div className="lg:w-[600px] space-y-4">
                   <div className="px-4 py-4 shadow-theme-shadow-light rounded-[20px]">
                     <div className="flex items-center gap-x-3 my-2">
-                      <FaTruck size={20} />
+                      <IoBagOutline size={20} />
 
                       <p className="font-sf font-semibold">Pickup</p>
                     </div>
@@ -260,22 +260,20 @@ export default function Order() {
                       <div className="font-sf space-y-3">
                         <p className="text-theme-psGray">Scheduled for</p>
                         <p className="text-theme-psGray">Collection</p>
-                        <div className="flex gap-4 items-center">
-                          <div>
-                            <IoLocation size="20" />
+                        <div className="flex gap-2 items-center">
+                          <div className="flex items-center justify-center">
+                            <IoCalendarOutline size="16" />
                           </div>
-
                           <p className="text-sm font-medium">
                             {formatDate(
                               orderData?.collectionData?.collectionDate
                             )}
                           </p>
                         </div>
-                        <div className="flex gap-4 items-center">
-                          <div>
-                            <IoLocation size="20" />
+                        <div className="flex gap-2 items-center">
+                          <div className="flex items-center justify-center">
+                            <IoTimeOutline size="16" />
                           </div>
-
                           <p className="text-sm font-medium">
                             {to24Hour(
                               orderData?.collectionData?.collectionTimeFrom
@@ -286,11 +284,10 @@ export default function Order() {
                             )}
                           </p>
                         </div>
-                        <div className="flex gap-4 items-center">
-                          <div>
-                            <IoLocation size="20" />
+                        <div className="flex gap-2 items-center">
+                          <div className="flex items-center justify-center">
+                            <IoInformationCircleOutline size="16" />
                           </div>
-
                           <p className="text-sm font-medium">
                             {
                               orderData?.collectionData
@@ -301,20 +298,18 @@ export default function Order() {
                       </div>
                       <div className="font-sf space-y-3">
                         <p className="text-theme-psGray">Delivery</p>
-                        <div className="flex gap-4 items-center">
-                          <div>
-                            <IoLocation size="20" />
+                        <div className="flex gap-2 items-center">
+                          <div className="flex items-center justify-center">
+                            <IoCalendarOutline size="16" />
                           </div>
-
                           <p className="text-sm font-medium">
                             {formatDate(orderData?.deliveryData?.deliveryDate)}
                           </p>
                         </div>
-                        <div className="flex gap-4 items-center">
-                          <div>
-                            <IoLocation size="20" />
+                        <div className="flex gap-2 items-center">
+                          <div className="flex items-center justify-center">
+                            <IoTimeOutline size="16" />
                           </div>
-
                           <p className="text-sm font-medium">
                             {to24Hour(
                               orderData?.deliveryData?.deliveryTimeFrom
@@ -323,11 +318,10 @@ export default function Order() {
                             {to24Hour(orderData?.deliveryData?.deliveryTimeTo)}
                           </p>
                         </div>
-                        <div className="flex gap-4 items-center">
-                          <div>
-                            <IoLocation size="20" />
+                        <div className="flex gap-2 items-center">
+                          <div className="flex items-center justify-center">
+                            <IoInformationCircleOutline size="16" />
                           </div>
-
                           <p className="text-sm font-medium">
                             {orderData?.deliveryData?.driverInstructionOptions1}
                           </p>
@@ -337,11 +331,10 @@ export default function Order() {
                         <p className="text-theme-psGray">Address</p>
 
                         <div className="flex gap-4 items-center justify-between">
-                          <div className="flex gap-4 items-center">
-                            <div>
-                              <IoBagCheck />
+                          <div className="flex gap-2 items-center">
+                            <div className="flex items-center justify-center">
+                              <IoLocationOutline size="16" />
                             </div>
-
                             <p className="text-sm font-medium line-clamp-1">
                               {orderData?.collectionData?.streetAddress}
                             </p>
@@ -365,11 +358,10 @@ export default function Order() {
                         <p className="text-theme-psGray">Driver instructions</p>
 
                         <div className="flex gap-4 items-center justify-between">
-                          <div className="flex gap-4 items-center">
-                            <div>
-                              <IoBagCheck />
+                          <div className="flex gap-2 items-center">
+                            <div className="flex items-center justify-center">
+                              <IoInformationCircleOutline size="16" />
                             </div>
-
                             <p className="text-sm font-medium">
                               {orderData?.driverInstruction}
                             </p>
@@ -556,7 +548,7 @@ export default function Order() {
                       <ButtonYouth70018
                         isDisabled={
                           Array.isArray(preferencesData) &&
-                          orderData?.collectionData?.streetAddress
+                            orderData?.collectionData?.streetAddress
                             ? false
                             : true
                         }
@@ -677,11 +669,10 @@ export default function Order() {
                                     },
                                   }))
                                 }
-                                className={`h-[53px] flex justify-center items-center cursor-pointer ${
-                                  isSelected
-                                    ? "bg-theme-blue text-white"
-                                    : "bg-theme-gray"
-                                }`}
+                                className={`h-[53px] flex justify-center items-center cursor-pointer ${isSelected
+                                  ? "bg-theme-blue text-white"
+                                  : "bg-theme-gray"
+                                  }`}
                               >
                                 {value.value}
                               </div>

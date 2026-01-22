@@ -154,7 +154,7 @@ export default function Payment() {
         color: "success",
       });
 
-      router.push("/");
+      router.replace("/");
     } else {
       addToast({
         title: "Create Booking",

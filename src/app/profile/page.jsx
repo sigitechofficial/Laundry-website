@@ -4,12 +4,19 @@ import Header from "../../../components/Header";
 import { useState } from "react";
 import DrawerItem from "../../../components/DrawerItem";
 import { LiaUserFriendsSolid } from "react-icons/lia";
-import { MdOutlineSupportAgent, MdPayment, MdLogout } from "react-icons/md";
-import { FaChevronLeft, FaRegAddressBook, FaUser } from "react-icons/fa";
+import { 
+  MdOutlineSupportAgent, 
+  MdPayment, 
+  MdLogout,
+  MdLanguage,
+  MdPauseCircleOutline,
+} from "react-icons/md";
+import { FaChevronLeft, FaRegAddressBook, FaUser, FaGlobe } from "react-icons/fa";
 import { RxCounterClockwiseClock } from "react-icons/rx";
 import { TbUserCircle } from "react-icons/tb";
 import { GrUserAdmin } from "react-icons/gr";
 import { FiLogOut } from "react-icons/fi";
+import { IoNotificationsOutline } from "react-icons/io5";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   useGetProfileQuery,
@@ -228,9 +235,10 @@ export default function Profile() {
     params.set("tab", tabName);
     router.push(`/profile?${params.toString()}`);
 
-    if (tabName !== currentTab) {
-      dispatch(setPage(true));
-    }
+    // Don't show full-page loader on tab changes - each tab handles its own loading state
+    // if (tabName !== currentTab) {
+    //   dispatch(setPage(true));
+    // }
   };
 
   // Listen for user login event to refetch profile
@@ -319,7 +327,7 @@ export default function Profile() {
           </div>
 
           <div className="w-full flex gap-5 md:gap-10 px-4 sm:px-5 py-16 sm:py-20 md:pt-20 md:h-[calc(100vh-5rem)]">
-            <section className="font-sf pt-8 min-w-[300px] 2xl:min-w-[378px] max-md:hidden fixed top-20 h-[calc(100vh-5rem)] overflow-y-auto sidebar-scroll hideScrollbar z-10 border-r border-gray-300">
+            <section className="font-sf pt-8 min-w-[300px] 2xl:min-w-[378px] max-xl:hidden fixed top-20 h-[calc(100vh-5rem)] overflow-y-auto sidebar-scroll hideScrollbar z-10 border-r border-gray-300">
               <div className="space-y-6">
                 <div className="flex items-start justify-start gap-7">
                   <label
@@ -367,7 +375,21 @@ export default function Profile() {
                       {userName ? userName?.split(" ")[0] : "User"}
                     </h2>
                     <p className="font-sf  text-sm font-normal text-theme-black-2 text-opacity-60">
-                      {userName ? <>{phoneNumber ?? ""}</> : <></>}
+                      {userName ? (() => {
+                        // Get phone from API data first, then localStorage
+                        const phoneNum = userData?.phoneNum || phoneNumber || "";
+                        const countryCode = userData?.countryCode || (typeof window !== "undefined" ? localStorage.getItem("countryCode") : "") || "";
+                        
+                        if (phoneNum && countryCode) {
+                          // Ensure country code has + prefix
+                          const formattedCountryCode = countryCode.startsWith("+") ? countryCode : `+${countryCode}`;
+                          return formattedCountryCode + " " + phoneNum;
+                        } else if (phoneNumber) {
+                          // If phoneNumber already includes country code, use as is
+                          return phoneNumber;
+                        }
+                        return "";
+                      })() : <></>}
                     </p>
                     <p className="font-sf  text-sm font-normal text-theme-black-2 text-opacity-60">
                       {userEmail ?? "user@gmail.com"}
@@ -391,7 +413,7 @@ export default function Profile() {
                     onClick={() => handleTabChange("order-history")}
                   />
                   <DrawerItem
-                    Icon={RxCounterClockwiseClock}
+                    Icon={MdPauseCircleOutline}
                     text={"On Hold Bookings"}
                     onClick={() => handleTabChange("on-hold-bookings")}
                   />
@@ -405,7 +427,7 @@ export default function Profile() {
                 <DrawerItem Icon={FaRegAddressBook} text={"My addresses"} /> */}
 
                   <DrawerItem
-                    Icon={RxCounterClockwiseClock}
+                    Icon={IoNotificationsOutline}
                     text={"Notifications"}
                     // onClick={() => {
                     //   router.push("/profile?tab=notifications");
@@ -414,14 +436,14 @@ export default function Profile() {
                     onClick={() => handleTabChange("notifications")}
                   />
                   <DrawerItem
-                    Icon={RxCounterClockwiseClock}
+                    Icon={FaGlobe}
                     text={"Country"}
                   // onClick={() => {
                   //   router.push("/order-history");
                   // }}
                   />
                   <DrawerItem
-                    Icon={RxCounterClockwiseClock}
+                    Icon={MdLanguage}
                     text={"Language"}
                   // onClick={() => {
                   //   router.push("");
@@ -501,7 +523,7 @@ export default function Profile() {
                 <MiniLoader />
               </div>
             ) : currentTab === "my-account" ? (
-              <section className="w-full flex flex-col lg:flex-row gap-6 md:gap-10 2xl:gap-28 mt-8 sm:mt-12 md:mt-16 px-0 sm:px-4 md:px-6 2xl:px-10 md:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
+              <section className="w-full flex flex-col lg:flex-row gap-6 md:gap-10 2xl:gap-28 mt-8 sm:mt-12 md:mt-16 px-0 sm:px-4 md:px-6 2xl:px-10 xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
                 <div className="flex-1 font-sf">
                   <h2 className="font-youth font-medium text-[40px] mb-4">
                     Profile
@@ -584,19 +606,19 @@ export default function Profile() {
                 </div>
               </section>
             ) : currentTab === "order-history" ? (
-              <div className="w-full md:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
+              <div className="w-full xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
                 <OrderHistory />
               </div>
             ) : currentTab === "notifications" ? (
-              <div className="w-full md:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
+              <div className="w-full xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
                 <Notifications />
               </div>
             ) : currentTab === "invite-friend" ? (
-              <div className="w-full md:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
+              <div className="w-full xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
                 <Invite />
               </div>
             ) : currentTab === "on-hold-bookings" ? (
-              <div className="w-full md:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
+              <div className="w-full xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
                 <OnHoldbookings />
               </div>
             ) : (

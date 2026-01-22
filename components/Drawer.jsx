@@ -17,12 +17,16 @@ import {
   MdOutlineTableRestaurant,
   MdPayment,
   MdLogout,
+  MdLanguage,
+  MdPauseCircleOutline,
+  MdAttachMoney,
 } from "react-icons/md";
 import {
   FaBicycle,
   FaChevronLeft,
   FaRegAddressBook,
   FaUser,
+  FaGlobe,
 } from "react-icons/fa";
 import { RxCounterClockwiseClock } from "react-icons/rx";
 import { TbUserCircle } from "react-icons/tb";
@@ -73,7 +77,7 @@ export default function CustomDrawer({
       console.error("Error signing out from Firebase:", error);
       // Continue with logout even if Firebase signOut fails
     }
-    
+
     // Try to call backend logout endpoint to invalidate server-side session/cookie
     try {
       await fetch(BASE_URL + "customer/logout", {
@@ -86,28 +90,28 @@ export default function CustomDrawer({
       // Ignore errors - backend logout is optional
       console.log("Backend logout endpoint not available or failed");
     }
-    
+
     // Clear all cookies (including access token)
     clearAllCookies();
-    
+
     // Invalidate RTK Query cache before clearing localStorage
     dispatch(api.util.invalidateTags(['Profile']));
-    
+
     // Clear all local storage
     localStorage.clear();
-    
+
     // Clear session storage as well
     if (typeof window !== "undefined") {
       sessionStorage.clear();
     }
-    
+
     setToken(false); // Update token state immediately
-    
+
     // Dispatch custom event to notify other components (like Header)
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("userLogout"));
     }
-    
+
     addToast({
       title: "User Logout",
       description: "Logout successfully",
@@ -138,18 +142,18 @@ export default function CustomDrawer({
         setToken(currentToken);
       }
     };
-    
+
     // Check token on mount and when drawer opens
     updateToken();
-    
+
     // Listen for storage changes (in case logout happens in another tab/window)
     window.addEventListener("storage", updateToken);
-    
+
     return () => {
       window.removeEventListener("storage", updateToken);
     };
   }, [isOpen]); // Re-check when drawer opens/closes
-  
+
   useEffect(() => {
     // Also update token when drawer opens to catch logout from same tab
     if (isOpen && typeof window !== "undefined") {
@@ -157,7 +161,7 @@ export default function CustomDrawer({
       setToken(currentToken);
     }
   }, [isOpen]);
-  
+
   if (!mounted) return null;
   return (
     <Drawer
@@ -199,17 +203,16 @@ export default function CustomDrawer({
                         const firstName = data?.data?.firstName || "";
                         const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : "";
                         const firstNameFromStorage = userName?.split(" ")[0] || "";
-                        
+
                         return firstName || firstNameFromStorage || "User";
                       })()}
                     </h1>
                     <div className="flex items-start justify-start gap-7">
                       <div
-                        className={` h-[120px] uppercase font-bold text-3xl shrink-0 rounded-full w-[120px] md:h-[120px] flex justify-center items-center ${
-                          false
-                            ? "bg-theme-red bg-opacity-20 text-theme-red"
-                            : "bg-theme-blue text-white"
-                        }`}
+                        className={` h-[120px] uppercase font-bold text-3xl shrink-0 rounded-full w-[120px] md:h-[120px] flex justify-center items-center ${false
+                          ? "bg-theme-red bg-opacity-20 text-theme-red"
+                          : "bg-theme-blue text-white"
+                          }`}
                       >
                         {token ? (
                           (() => {
@@ -218,7 +221,7 @@ export default function CustomDrawer({
                             // Then check API data
                             const profileImageFromAPI = data?.data?.image ? BASE_URL + data?.data?.image : null;
                             const profileImage = profileImageFromStorage || profileImageFromAPI;
-                            
+
                             // Get user initials for fallback
                             const firstName = data?.data?.firstName || "";
                             const lastName = data?.data?.lastName || "";
@@ -258,7 +261,7 @@ export default function CustomDrawer({
                             const firstName = data?.data?.firstName || "";
                             const lastName = data?.data?.lastName || "";
                             const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : "";
-                            
+
                             if (firstName && lastName) {
                               return firstName + " " + lastName;
                             } else if (userName) {
@@ -274,10 +277,19 @@ export default function CustomDrawer({
                             const phoneNum = data?.data?.phoneNum || "";
                             const countryCode = data?.data?.countryCode || "";
                             const phoneFromStorage = typeof window !== "undefined" ? localStorage.getItem("phoneNum") : "";
-                            
+                            const countryCodeFromStorage = typeof window !== "undefined" ? localStorage.getItem("countryCode") : "";
+
                             if (phoneNum && countryCode) {
-                              return countryCode + phoneNum;
+                              // Ensure country code has + prefix
+                              const formattedCountryCode = countryCode.startsWith("+") ? countryCode : `+${countryCode}`;
+                              return formattedCountryCode + " " + phoneNum;
                             } else if (phoneFromStorage) {
+                              // If we have country code in storage, use it
+                              if (countryCodeFromStorage) {
+                                const formattedCountryCode = countryCodeFromStorage.startsWith("+") ? countryCodeFromStorage : `+${countryCodeFromStorage}`;
+                                return formattedCountryCode + " " + phoneFromStorage;
+                              }
+                              // If phoneFromStorage already includes country code, use as is
                               return phoneFromStorage;
                             } else {
                               return "+1 234 567 890";
@@ -289,7 +301,7 @@ export default function CustomDrawer({
                             // Get email from API data first, then localStorage
                             const email = data?.data?.email || "";
                             const emailFromStorage = typeof window !== "undefined" ? localStorage.getItem("email") : "";
-                            
+
                             return email || emailFromStorage || "abc@gmail.com";
                           })()}
                         </p>
@@ -319,7 +331,7 @@ export default function CustomDrawer({
                         }}
                       />
                       <DrawerItem
-                        Icon={RxCounterClockwiseClock}
+                        Icon={MdPauseCircleOutline}
                         text={"On Hold Bookings"}
                         onClick={() => {
                           handleNavigate("/profile?tab=on-hold-bookings");
@@ -340,21 +352,21 @@ export default function CustomDrawer({
                       />
 
                       <DrawerItem
-                        Icon={RxCounterClockwiseClock}
+                        Icon={IoNotificationsOutline}
                         text={"Notifications"}
                         onClick={() => {
                           handleNavigate("/profile?tab=notifications");
                         }}
                       />
                       <DrawerItem
-                        Icon={RxCounterClockwiseClock}
+                        Icon={FaGlobe}
                         text={"Country"}
                         onClick={() => {
                           router.push("/order-history");
                         }}
                       />
                       <DrawerItem
-                        Icon={RxCounterClockwiseClock}
+                        Icon={MdLanguage}
                         text={"Language"}
                         onClick={() => {
                           router.push("/order-history");
@@ -369,7 +381,7 @@ export default function CustomDrawer({
 
                       <div>
                         <DrawerItem
-                          Icon={RxCounterClockwiseClock}
+                          Icon={MdAttachMoney}
                           text={"Pricing"}
                           onClick={() => {
                             router.push("/pricing");

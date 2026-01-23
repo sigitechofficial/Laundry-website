@@ -11,7 +11,9 @@
     "serve": "npm run build:production && npm run start:production",
     "lint": "next lint",
     "export": "next export",
-    "tunnel": "npx ngrok http 3000",
+    "tunnel": "npx ngrok http 3888",
+    "tunnel:localtunnel": "npx localtunnel --port 3888",
+    "tunnel:cloudflare": "npx cloudflared tunnel --url http://localhost:3888",
     "check-env": "node scripts/check-env.js",
     "setup-api-key": "node scripts/setup-google-maps-key.js"
   },

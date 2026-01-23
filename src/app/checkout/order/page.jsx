@@ -40,6 +40,7 @@ export default function Order() {
     modType: "wash",
     step: "",
   });
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
 
   // Fetch preferences when serviceId is set
   const { data: preferencesResponse, isLoading: isLoadingPreferences } =
@@ -142,8 +143,8 @@ export default function Order() {
               </h4>
 
               <div className="flex flex-col lg:flex-row gap-10 2xl:gap-20 pt-10">
-                {/* Cards */}
-                <div className="w-full space-y-5">
+                {/* Cards - Hide on mobile when summary is shown */}
+                <div className={`w-full space-y-5 ${showMobileSummary ? 'lg:block hidden' : ''}`}>
                   {!isLoading ? (
                     data?.data?.serviceData?.map((item) => {
                       return item?.id === 1 ? (
@@ -235,23 +236,37 @@ export default function Order() {
                           type={"plus"}
                           serviceId={item?.id}
                         />
-                      ) : (
-                        "loading..."
-                      );
+                      ) : null;
                     })
                   ) : (
                     <div className="col-span-2 text-xl font-semibold w-max mx-auto">
                       <MiniLoader />
                     </div>
                   )}
+
+                  {/* Mobile Continue Button - Shows summary (only visible when services are shown) */}
+                  {!showMobileSummary && (
+                    <div className="lg:hidden sticky bottom-4 left-0 right-0 z-50 mt-6 pb-4">
+                      <ButtonYouth70018
+                        isDisabled={
+                          !preferencesData?.length ||
+                          !orderData?.collectionData?.streetAddress
+                        }
+                        text="Continue"
+                        onClick={() => {
+                          setShowMobileSummary(true);
+                        }}
+                        className="w-full"
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {/* Order */}
-
-                <div className="lg:w-[600px] space-y-4">
+                {/* Order Summary - Hidden on mobile by default, shown when Continue is clicked */}
+                <div className={`lg:w-[600px] space-y-4 ${showMobileSummary ? 'block' : 'hidden lg:block'}`}>
                   <div className="px-4 py-4 shadow-theme-shadow-light rounded-[20px]">
                     <div className="flex items-center gap-x-3 my-2">
-                      <IoBagOutline size={20} />
+                      <IoBagOutline size={16} />
 
                       <p className="font-sf font-semibold">Pickup</p>
                     </div>
@@ -389,6 +404,22 @@ export default function Order() {
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Mobile Continue Button - Sticky at bottom of summary section */}
+                  <div className="lg:hidden sticky bottom-4 left-0 right-0 z-50 mt-6 pb-4">
+                    <ButtonYouth70018
+                      isDisabled={
+                        !preferencesData?.length ||
+                        !orderData?.collectionData?.streetAddress
+                      }
+                      text="Continue"
+                      onClick={() => {
+                        dispatch(setPage(true));
+                        router.push("/checkout/payment");
+                      }}
+                      className="w-full"
+                    />
                   </div>
 
                   {/* ///////////////service preferences///////////// */}
@@ -544,19 +575,19 @@ export default function Order() {
                       </div>
                     )}
 
-                    <div className="py-3">
+                    {/* Continue Button - Desktop Only */}
+                    <div className="hidden lg:block py-3">
                       <ButtonYouth70018
                         isDisabled={
-                          Array.isArray(preferencesData) &&
-                            orderData?.collectionData?.streetAddress
-                            ? false
-                            : true
+                          !preferencesData?.length ||
+                          !orderData?.collectionData?.streetAddress
                         }
                         text="Continue"
                         onClick={() => {
                           dispatch(setPage(true));
                           router.push("/checkout/payment");
                         }}
+                        className="w-full"
                       />
                     </div>
                   </div>

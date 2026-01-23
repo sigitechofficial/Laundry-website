@@ -25,6 +25,7 @@ import {
   setDriverTip,
   setFrequency,
   updatePreference,
+  clearCartData,
 } from "@/app/store/slices/cartItemSlice";
 import { FaTruck } from "react-icons/fa6";
 import { formatDate, to24Hour } from "../../../../utilities/ConversionFunction";
@@ -147,7 +148,9 @@ export default function Payment() {
 
     const response = await createBooking(bookingData).unwrap();
     if (response?.status === "1") {
-      // setModal({ ...modal, page: "payment" });
+      // Clear all cart data (address, preferences, etc.)
+      dispatch(clearCartData());
+      
       addToast({
         title: "Create Booking",
         description: response?.message,

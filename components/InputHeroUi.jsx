@@ -38,9 +38,9 @@ export default function InputField({
       endContent={endContent}
       classNames={{
         label: [
-          "group-data-[focus=true]:text-gray-500 text-base text-gray-400",
+          "group-data-[focus=true]:text-gray-500 text-sm text-gray-400",
         ],
-        input: ["bg-transparent", "dark:hover:bg-transparent"],
+        input: ["bg-transparent text-lg", "dark:hover:bg-transparent"],
         innerWrapper: [
           "bg-transparent",
           "hover:bg-transparent",

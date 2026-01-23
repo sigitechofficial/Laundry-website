@@ -90,7 +90,7 @@ export const api = createApi({
 
     getServices: builder.query({
       query: () => ({
-        url: "/customer/allServices",
+        url: "customer/allServices",
         method: "GET",
       }),
     }),
@@ -143,7 +143,7 @@ export const api = createApi({
     }),
     getOnHoldBookings: builder.query({
       query: () => ({
-        url: `/customer/getOnHoldBookingsForCustomer`,
+        url: "customer/getOnHoldBookingsForCustomer",
         method: "GET",
       }),
     }),

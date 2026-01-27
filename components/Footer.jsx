@@ -1,4 +1,5 @@
 import React from "react";
+import Link from "next/link";
 import { FaFacebookF } from "react-icons/fa";
 import { SiInstagram } from "react-icons/si";
 import { MdLocationPin } from "react-icons/md";
@@ -49,7 +50,11 @@ export default function Footer() {
         <div className="space-y-2 sm:space-y-5">
           <h4 className="font-semibold text-lg sm:text-2xl whitespace-nowrap">Work With Us</h4>
           <ul className="text-base sm:text-lg space-y-1.5 sm:space-y-3 text-black/70">
-            <li>Cleaning Partner</li>
+            <li>
+              <Link href="/become-partner" className="hover:text-theme-blue transition-colors">
+                Cleaning Partner
+              </Link>
+            </li>
           </ul>
         </div>
       </div>

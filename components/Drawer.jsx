@@ -20,6 +20,7 @@ import {
   MdLanguage,
   MdPauseCircleOutline,
   MdAttachMoney,
+  MdArticle,
 } from "react-icons/md";
 import {
   FaBicycle,
@@ -385,6 +386,13 @@ export default function CustomDrawer({
                           text={"Pricing"}
                           onClick={() => {
                             router.push("/pricing");
+                          }}
+                        />
+                        <DrawerItem
+                          Icon={MdArticle}
+                          text={"Blog"}
+                          onClick={() => {
+                            handleNavigate("/blog");
                           }}
                         />
                       </div>

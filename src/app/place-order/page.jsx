@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { generateCollectionSlots } from "../../../utilities/generateSlots";
 import { useDispatch, useSelector } from "react-redux";
 import { setOrderData, setPage } from "../store/slices/cartItemSlice";
-import { useGetAllAddressQuery } from "../store/services/api";
+import { useGetAllAddressQuery, useLazyGetAddressesByPostcodeQuery } from "../store/services/api";
 import Link from "next/link";
 import Header from "../../../components/Header";
 import HomeClientWrapper from "../../../utilities/Test";
@@ -37,13 +37,17 @@ export default function orderRegistration() {
   const state = history.state?.customData?.step || null;
   const dispatch = useDispatch();
   const { data } = useGetAllAddressQuery();
+  const [getAddressesByPostcode, { data: postcodeAddresses, isLoading: isLoadingAddresses }] = useLazyGetAddressesByPostcodeQuery();
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const autocompleteRef = useRef(null);
+  const postcodeInputRef = useRef(null);
+  const addressDropdownRef = useRef(null);
   const [step, setStep] = useState(state ?? "get-started");
   const [modal, setModal] = useState({
     modType: "",
   });
   const [modalScroll, setModalScroll] = useState(false);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
 
   const slots = generateCollectionSlots({
     daysCount: 4,
@@ -345,6 +349,77 @@ export default function orderRegistration() {
     }
   }, [modal?.modType, deliveryData?.deliveryDate]);
 
+  // Handle postcode submission
+  const handlePostcodeSubmit = async (postcode) => {
+    if (!postcode || postcode.trim().length === 0) return;
+    
+    try {
+      const result = await getAddressesByPostcode(postcode.trim().toUpperCase().replace(/\s/g, ''));
+      console.log("Postcode API Response:", result);
+      console.log("Postcode Addresses from hook:", postcodeAddresses);
+      // RTK Query returns { data: <api_response> } or { error: <error> }
+      // The API response has structure: { status: "1", data: { addresses: [...] } }
+      if (result?.data?.status === "1" && result?.data?.data?.addresses?.length > 0) {
+        setShowAddressDropdown(true);
+      } else {
+        setShowAddressDropdown(false);
+      }
+    } catch (error) {
+      console.error("Error fetching addresses:", error);
+      setShowAddressDropdown(false);
+    }
+  };
+
+  // Handle address selection from dropdown
+  const handleAddressSelect = (address) => {
+    setCollectionData({
+      ...collectionData,
+      streetAddress: address.fullAddress || `${address.line1}, ${address.line2 || ''}`.trim(),
+      district: address.locality || "",
+      city: address.town || "",
+      province: address.county || "",
+      postalCode: address.postcode || collectionData.postalCode,
+      lat: address.latitude || null,
+      lng: address.longitude || null,
+    });
+    setShowAddressDropdown(false);
+  };
+
+  // Show dropdown when addresses are loaded
+  useEffect(() => {
+    console.log("Postcode addresses effect:", postcodeAddresses);
+    // RTK Query returns the API response directly in the data property
+    // API response structure: { status: "1", data: { addresses: [...] } }
+    const addresses = postcodeAddresses?.data?.addresses;
+    if (addresses && Array.isArray(addresses) && addresses.length > 0) {
+      console.log("Setting dropdown to true, addresses count:", addresses.length);
+      setShowAddressDropdown(true);
+    } else {
+      console.log("No addresses found or invalid structure");
+    }
+  }, [postcodeAddresses]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        addressDropdownRef.current &&
+        postcodeInputRef.current &&
+        !addressDropdownRef.current.contains(event.target) &&
+        !postcodeInputRef.current.contains(event.target)
+      ) {
+        setShowAddressDropdown(false);
+      }
+    };
+
+    if (showAddressDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [showAddressDropdown]);
+
   return (
     <HomeClientWrapper>
       <GoogleMapsProvider>
@@ -484,7 +559,73 @@ export default function orderRegistration() {
                     <h4 className="font-youth font-bold text-[32px] text-center max-md:hidden">
                       Let's get Started
                     </h4>
+                    <div className="relative z-50" ref={postcodeInputRef}>
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1">
+                          <div className="relative">
+                            <InputHeroUi
+                              type="text"
+                              label="Post Code"
+                              value={collectionData?.postalCode || ""}
+                              onChange={(e) =>
+                                setCollectionData({
+                                  ...collectionData,
+                                  postalCode: e.target.value,
+                                })
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  handlePostcodeSubmit(collectionData?.postalCode);
+                                }
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handlePostcodeSubmit(collectionData?.postalCode)}
+                          className="h-[60px] w-[60px] bg-theme-blue rounded-[8px] flex items-center justify-center hover:bg-theme-darkBlue disabled:bg-blue-200 disabled:cursor-not-allowed transition-colors shrink-0"
+                          disabled={isLoadingAddresses || !collectionData?.postalCode?.trim()}
+                        >
+                          {isLoadingAddresses ? (
+                            <Spinner size="sm" className="text-white" />
+                          ) : (
+                            <IoSearchOutline className="text-xl text-white" />
+                          )}
+                        </button>
+                      </div>
+                      {/* Address Dropdown */}
+                      {showAddressDropdown && postcodeAddresses?.data?.addresses && Array.isArray(postcodeAddresses.data.addresses) && postcodeAddresses.data.addresses.length > 0 && (
+                        <div
+                          ref={addressDropdownRef}
+                          className="absolute z-[10000] w-full mt-2 bg-white rounded-lg shadow-xl max-h-[250px] overflow-y-auto border border-gray-200"
+                          style={{ backgroundColor: '#ffffff', position: 'absolute', top: '100%' }}
+                        >
+                          {postcodeAddresses.data.addresses.map((address, index) => (
+                            <div
+                              key={address.id || index}
+                              onClick={() => handleAddressSelect(address)}
+                              className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0 transition-colors"
+                            >
+                              <p className="font-sf font-semibold text-base text-gray-900">
+                                {address.line1}
+                              </p>
+                              {address.line2 && (
+                                <p className="font-sf text-sm text-gray-600 mt-1">
+                                  {address.line2}
+                                </p>
+                              )}
+                              <p className="font-sf text-sm text-gray-500 mt-1">
+                                {address.fullAddress || `${address.town || ''}, ${address.county || ''}`.trim()}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <div
+                      className="relative z-0"
                       onClick={() => {
                         setModal({ ...modal, modType: "address" });
                         onOpen();

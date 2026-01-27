@@ -23,7 +23,7 @@ export default function PartnerRegistration() {
               Thanks for your interest in partnering with Just Dry Cleaner!
             </h2>
             <p className="text-2xl font-medium">
-              We’re excited to learn more about your dry cleaning facility.
+              We're excited to learn more about your dry cleaning facility.
               Please complete this brief questionnaire so we can make sure our
               partnership is a great match.
             </p>
@@ -36,50 +36,59 @@ export default function PartnerRegistration() {
       <div className="w-full py-[70px]">
         <div className="w-full max-w-[1290px] mx-auto flex justify-between items-center relative">
           <hr className="bg-gray-400 h-[2px] rounded-full w-full absolute z-[-1] top-7 left-0" />
-          <div className="flex flex-col justify-center items-center gap-5 bg-white">
+          <div
+            className="flex flex-col justify-center items-center gap-5 bg-white cursor-pointer group"
+            onClick={() => setStep(1)}
+          >
             <div
-              className={`size-[60px] rounded-full shrink-0 ${
-                step >= 1
+              className={`size-[60px] rounded-full shrink-0 ${step >= 1
                   ? "bg-theme-blue text-white"
                   : "bg-theme-gray text-black"
-              } flex justify-center items-center font-sf font-semibold text-2xl`}
+                } flex justify-center items-center font-sf font-semibold text-2xl transition-all duration-200 group-hover:scale-110 ${step >= 1 ? "group-hover:bg-theme-darkBlue" : "group-hover:bg-gray-400"
+                }`}
             >
               1
             </div>
 
-            <p className="font-sf font-semibold text-xl text-center">
+            <p className="font-sf font-semibold text-xl text-center group-hover:text-theme-blue transition-colors">
               Add your <br /> Information
             </p>
           </div>
 
-          <div className="flex flex-col justify-center items-center gap-5 bg-white">
+          <div
+            className="flex flex-col justify-center items-center gap-5 bg-white cursor-pointer group"
+            onClick={() => setStep(2)}
+          >
             <div
-              className={`size-[60px] rounded-full shrink-0 ${
-                step >= 2
+              className={`size-[60px] rounded-full shrink-0 ${step >= 2
                   ? "bg-theme-blue text-white"
                   : "bg-theme-gray text-black"
-              } flex justify-center items-center font-sf font-semibold text-2xl`}
+                } flex justify-center items-center font-sf font-semibold text-2xl transition-all duration-200 group-hover:scale-110 ${step >= 2 ? "group-hover:bg-theme-darkBlue" : "group-hover:bg-gray-400"
+                }`}
             >
               2
             </div>
 
-            <p className="font-sf font-semibold text-xl text-center">
+            <p className="font-sf font-semibold text-xl text-center group-hover:text-theme-blue transition-colors">
               Add Address <br /> Details
             </p>
           </div>
 
-          <div className="flex flex-col justify-center items-center gap-5 bg-white">
+          <div
+            className="flex flex-col justify-center items-center gap-5 bg-white cursor-pointer group"
+            onClick={() => setStep(3)}
+          >
             <div
-              className={`size-[60px] rounded-full shrink-0 ${
-                step >= 3
+              className={`size-[60px] rounded-full shrink-0 ${step >= 3
                   ? "bg-theme-blue text-white"
                   : "bg-theme-gray text-black"
-              } flex justify-center items-center font-sf font-semibold text-2xl`}
+                } flex justify-center items-center font-sf font-semibold text-2xl transition-all duration-200 group-hover:scale-110 ${step >= 3 ? "group-hover:bg-theme-darkBlue" : "group-hover:bg-gray-400"
+                }`}
             >
               3
             </div>
 
-            <p className="font-sf font-semibold text-xl text-center">
+            <p className="font-sf font-semibold text-xl text-center group-hover:text-theme-blue transition-colors">
               Add Business <br /> Details
             </p>
           </div>
@@ -87,558 +96,660 @@ export default function PartnerRegistration() {
 
         {step === 1 ? (
           <div className="w-full max-w-[1290px] space-y-5 mx-auto pt-16">
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] space-y-3 font-sf">
+            {/* Row 1: Full Name and Email */}
+            <div className="flex flex-col md:flex-row gap-5">
+              <div className="flex-1 space-y-3 font-sf">
                 <p className="font-semibold text-xl">Full Name</p>
                 <InputField label="Enter Your Name" type="text" />
               </div>
-            </div>
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] space-y-3 font-sf">
-                <p className="font-semibold text-xl">Full Name</p>
+              <div className="flex-1 space-y-3 font-sf">
+                <p className="font-semibold text-xl">Email</p>
                 <InputField label="Your Email" type="email" />
               </div>
             </div>
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] space-y-3 font-sf">
-                <p className="font-semibold text-xl">Full Name</p>
+
+            {/* Row 2: Contact and Country */}
+            <div className="flex flex-col md:flex-row gap-5">
+              <div className="flex-1 space-y-3 font-sf">
+                <p className="font-semibold text-xl">Contact</p>
                 <InputField label="Your Contact" type="number" />
               </div>
-            </div>
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] space-y-3 font-sf">
-                <p className="font-semibold text-xl">Full Name</p>
+              <div className="flex-1 space-y-3 font-sf">
+                <p className="font-semibold text-xl">Country</p>
                 <SelectHero label="Select Country" type="text" />
-
-                <div className="pt-14">
-                  <ButtonContinueWith
-                    text="Continue"
-                    bg="bg-theme-blue"
-                    color="text-white"
-                    size="text-xl"
-                    onClick={() => setStep(2)}
-                  />
-                </div>
               </div>
+            </div>
+
+            {/* Continue Button */}
+            <div className="pt-14">
+              <ButtonContinueWith
+                text="Continue"
+                bg="bg-theme-blue"
+                color="text-white"
+                size="text-xl"
+                onClick={() => setStep(2)}
+              />
             </div>
           </div>
         ) : step === 2 ? (
           <div className="w-full max-w-[1290px] space-y-5 mx-auto pt-16">
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] space-y-3 font-sf">
+            {/* Row 1: Province and City */}
+            <div className="flex flex-col md:flex-row gap-5">
+              <div className="flex-1 space-y-3 font-sf">
                 <p className="font-semibold text-xl">Province</p>
                 <InputField label="Enter Province" type="text" />
               </div>
-            </div>
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] space-y-3 font-sf">
+              <div className="flex-1 space-y-3 font-sf">
                 <p className="font-semibold text-xl">City</p>
-                <InputField label="Your City" type="email" />
+                <InputField label="Your City" type="text" />
               </div>
             </div>
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] space-y-3 font-sf">
+
+            {/* Row 2: Street Address and Zip Code */}
+            <div className="flex flex-col md:flex-row gap-5">
+              <div className="flex-1 space-y-3 font-sf">
                 <p className="font-semibold text-xl">Street Address</p>
                 <InputField label="Street Address" type="text" />
               </div>
-            </div>
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] space-y-3 font-sf">
+              <div className="flex-1 space-y-3 font-sf">
                 <p className="font-semibold text-xl">Zip Code</p>
                 <InputField label="Zip Code" type="number" />
-
-                <div className="pt-14">
-                  <ButtonContinueWith
-                    text="Continue"
-                    bg="bg-theme-blue"
-                    color="text-white"
-                    size="text-xl"
-                    onClick={() => setStep(3)}
-                  />
-                </div>
               </div>
+            </div>
+
+            {/* Continue Button */}
+            <div className="pt-14">
+              <ButtonContinueWith
+                text="Continue"
+                bg="bg-theme-blue"
+                color="text-white"
+                size="text-xl"
+                onClick={() => setStep(3)}
+              />
             </div>
           </div>
         ) : step === 3 ? (
           <div className="w-full max-w-[1290px] space-y-5 mx-auto pt-16">
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] space-y-3 font-sf">
+            {/* Top Row: Two Inputs */}
+            <div className="flex flex-col md:flex-row gap-5">
+              <div className="flex-1 space-y-3 font-sf">
                 <p className="font-semibold text-xl">
                   Registered Business Name{" "}
                   <span className="text-theme-psGray font-normal">
                     (Shop Name)
                   </span>{" "}
-                  <span class="text-red-500">*</span>
+                  <span className="text-red-500">*</span>
                 </p>
                 <InputField label="Enter Shop Name" type="text" />
               </div>
-            </div>
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] space-y-3 font-sf">
+              <div className="flex-1 space-y-3 font-sf">
                 <p className="font-semibold text-xl">
-                  Add Services <span class="text-red-500">*</span>
+                  Add Services <span className="text-red-500">*</span>
                 </p>
                 <InputField label="Add Services" type="text" />
               </div>
             </div>
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] space-y-3 font-sf">
+
+            {/* Two Columns: Profile Selection and Days of Week */}
+            <div className="flex flex-col lg:flex-row gap-5">
+              {/* Left Column: Profile Selection */}
+              <div className="flex-1 space-y-3 font-sf">
                 <p className="font-semibold text-xl">
                   Please select what matches your profile{" "}
-                  <span class="text-red-500">*</span>
+                  <span className="text-red-500">*</span>
                 </p>
 
-                <div className="space-y-5 font-sf">
-                  <label className="flex items-center gap-3">
+                <div className="space-y-4 font-sf">
+                  <label className="flex items-start gap-4 p-4 rounded-lg border-2 border-gray-200 hover:border-theme-blue transition-colors cursor-pointer group">
                     <input
                       type="radio"
                       name="profile"
                       value="student"
-                      className="accent-theme-darkBlue"
+                      className="accent-theme-darkBlue w-5 h-5 mt-0.5 cursor-pointer"
                     />
-                    <span className="text-base">
+                    <span className="text-base text-gray-700 group-hover:text-gray-900 flex-1">
                       ALL IN HOUSE- Washing, Ironing and Dry cleaning all done
                       by us
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-3">
+                  <label className="flex items-start gap-4 p-4 rounded-lg border-2 border-gray-200 hover:border-theme-blue transition-colors cursor-pointer group">
                     <input
                       type="radio"
                       name="profile"
                       value="professional"
-                      className="accent-theme-darkBlue"
+                      className="accent-theme-darkBlue w-5 h-5 mt-0.5 cursor-pointer"
                     />
-                    <span className="text-base">
+                    <span className="text-base text-gray-700 group-hover:text-gray-900 flex-1">
                       OUTSOURCE DRY CLEANING- Washing and Drying handled in
                       house
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-3">
+                  <label className="flex items-start gap-4 p-4 rounded-lg border-2 border-gray-200 hover:border-theme-blue transition-colors cursor-pointer group">
                     <input
                       type="radio"
                       name="profile"
                       value="business"
-                      className="accent-theme-darkBlue"
+                      className="accent-theme-darkBlue w-5 h-5 mt-0.5 cursor-pointer"
                     />
-                    <span className="text-base">
+                    <span className="text-base text-gray-700 group-hover:text-gray-900 flex-1">
                       OUTSOURCE ALL- We are just a shop front that outsources
                       all of the processing
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-3">
+                  <label className="flex items-start gap-4 p-4 rounded-lg border-2 border-gray-200 hover:border-theme-blue transition-colors cursor-pointer group">
                     <input
                       type="radio"
                       name="profile"
                       value="other"
-                      className="accent-theme-darkBlue"
+                      className="accent-theme-darkBlue w-5 h-5 mt-0.5 cursor-pointer"
                     />
-                    <span className="text-base">Other</span>
+                    <span className="text-base text-gray-700 group-hover:text-gray-900 flex-1">Other</span>
                   </label>
                 </div>
               </div>
-            </div>
 
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] font-sf space-y-5">
+              {/* Right Column: Days of Week */}
+              <div className="flex-1 font-sf space-y-4">
                 <p className="font-semibold text-xl">
                   What days of the week are you open{" "}
-                  <span class="text-red-500">*</span>
+                  <span className="text-red-500">*</span>
                 </p>
 
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="flex items-center gap-3">
                       <Switch size="sm" defaultSelected></Switch>
+                      <span className="text-base font-medium text-gray-700">Monday</span>
                     </div>
-                    <span>Monday</span>
+                    <input
+                      type="text"
+                      value="7:00 AM - 8:00 PM"
+                      className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm w-[150px] bg-white text-gray-700 focus:outline-none focus:border-theme-blue"
+                      readOnly
+                    />
                   </div>
-                  <input
-                    type="text"
-                    value="7:00 AM - 8:00 PM"
-                    class="border rounded px-2 py-1 text-sm w-[150px]"
-                    readonly
-                  />
-                </div>
 
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="flex items-center gap-3">
                       <Switch size="sm"></Switch>
+                      <span className="text-base font-medium text-gray-700">Tuesday</span>
                     </div>
-                    <span>Tuesday</span>
                   </div>
-                </div>
 
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="flex items-center gap-3">
                       <Switch size="sm"></Switch>
+                      <span className="text-base font-medium text-gray-700">Wednesday</span>
                     </div>
-                    <span>Wednesday</span>
                   </div>
-                </div>
 
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="flex items-center gap-3">
                       <Switch size="sm"></Switch>
+                      <span className="text-base font-medium text-gray-700">Thursday</span>
                     </div>
-                    <span>Thursday</span>
                   </div>
-                </div>
 
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="flex items-center gap-3">
                       <Switch size="sm"></Switch>
+                      <span className="text-base font-medium text-gray-700">Friday</span>
                     </div>
-                    <span>Friday</span>
                   </div>
-                </div>
 
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="flex items-center gap-3">
                       <Switch size="sm"></Switch>
+                      <span className="text-base font-medium text-gray-700">Saturday</span>
                     </div>
-                    <span>Saturday</span>
                   </div>
-                </div>
 
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="flex items-center gap-3">
                       <Switch size="sm"></Switch>
+                      <span className="text-base font-medium text-gray-700">Sunday</span>
                     </div>
-                    <span>Sunday</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px]  max-w-2xl font-sf space-y-6">
-                <p class="font-semibold text-xl">
+            {/* Two Columns: Machinery Count and Turnaround Time */}
+            <div className="flex flex-col lg:flex-row gap-5">
+              {/* Left Column: Machinery Count */}
+              <div className="flex-1 font-sf space-y-6">
+                <p className="font-semibold text-xl">
                   What is your count of machinery?{" "}
-                  <span class="text-red-500">*</span>
+                  <span className="text-red-500">*</span>
                 </p>
 
-                <div class="grid grid-cols-6 gap-4 text-sm font-medium">
-                  <div class="col-start-3">0</div>
-                  <div class="">1 - 2</div>
-                  <div class="">3 - 5</div>
-                  <div class="">5+</div>
+                <div className="space-y-4">
+                  {/* Header Row */}
+                  <div className="grid grid-cols-5 gap-4 text-sm font-semibold text-gray-600 pb-2 border-b border-gray-200">
+                    <div className="col-span-1"></div>
+                    <div className="text-center">0</div>
+                    <div className="text-center">1 - 2</div>
+                    <div className="text-center">3 - 5</div>
+                    <div className="text-center">5+</div>
+                  </div>
 
-                  <div class="col-span-6 bg-inputBg rounded-md flex items-center px-4 py-3 gap-6">
-                    <div class="w-32">Washers</div>
-                    <div class="flex justify-around flex-1">
-                      <label>
-                        <input
-                          type="radio"
-                          name="washers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="washers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="washers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="washers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
+                  {/* Washers Row */}
+                  <div className="bg-inputBg rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="grid grid-cols-5 gap-4 items-center px-4 py-4">
+                      <div className="font-medium text-gray-700">Washers</div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="washers"
+                            value="0"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="washers"
+                            value="1-2"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="washers"
+                            value="3-5"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="washers"
+                            value="5+"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
 
-                  <div class="col-span-6 bg-inputBg rounded-md flex items-center px-4 py-3 gap-6">
-                    <div class="w-32">Dryers</div>
-                    <div class="flex justify-around flex-1">
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
+                  {/* Dryers Row */}
+                  <div className="bg-inputBg rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="grid grid-cols-5 gap-4 items-center px-4 py-4">
+                      <div className="font-medium text-gray-700">Dryers</div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="dryers"
+                            value="0"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="dryers"
+                            value="1-2"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="dryers"
+                            value="3-5"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="dryers"
+                            value="5+"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
 
-                  <div class="col-span-6 bg-inputBg rounded-md flex items-center px-4 py-3 gap-6">
-                    <div class="w-32 leading-tight">
-                      Dry cleaning
-                      <br />
-                      Machines
-                    </div>
-                    <div class="flex justify-around flex-1">
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryclean"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryclean"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryclean"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryclean"
-                          class="accent-theme-blue"
-                        />
-                      </label>
+                  {/* Dry Cleaning Machines Row */}
+                  <div className="bg-inputBg rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="grid grid-cols-5 gap-4 items-center px-4 py-4">
+                      <div className="font-medium text-gray-700 leading-tight">
+                        Dry cleaning<br />Machines
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="dryclean"
+                            value="0"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="dryclean"
+                            value="1-2"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="dryclean"
+                            value="3-5"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="dryclean"
+                            value="5+"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
 
-                  <div class="col-span-6 bg-inputBg rounded-md flex items-center px-4 py-3 gap-6">
-                    <div class="w-32">Presser</div>
-                    <div class="flex justify-around flex-1">
-                      <label>
-                        <input
-                          type="radio"
-                          name="presser"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="presser"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="presser"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="presser"
-                          class="accent-theme-blue"
-                        />
-                      </label>
+                  {/* Presser Row */}
+                  <div className="bg-inputBg rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="grid grid-cols-5 gap-4 items-center px-4 py-4">
+                      <div className="font-medium text-gray-700">Presser</div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="presser"
+                            value="0"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="presser"
+                            value="1-2"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="presser"
+                            value="3-5"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="presser"
+                            value="5+"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Turnaround Time */}
+              <div className="flex-1 font-sf space-y-6">
+                <p className="font-semibold text-xl">
+                  What is your Turnaround time (TAT)?
+                  <span className="text-red-500"> *</span>
+                </p>
+
+                <div className="space-y-4">
+                  {/* Header Row */}
+                  <div className="grid grid-cols-5 gap-4 text-sm font-semibold text-gray-600 pb-2 border-b border-gray-200">
+                    <div className="col-span-1"></div>
+                    <div className="text-center">N/A</div>
+                    <div className="text-center">24h</div>
+                    <div className="text-center">48h</div>
+                    <div className="text-center">More than 48h</div>
+                  </div>
+
+                  {/* Wash & Fold Row */}
+                  <div className="bg-inputBg rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="grid grid-cols-5 gap-4 items-center px-4 py-4">
+                      <div className="font-medium text-gray-700">Wash & Fold</div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="washFold"
+                            value="na"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="washFold"
+                            value="24h"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="washFold"
+                            value="48h"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="washFold"
+                            value="48h+"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dry Cleaning Row */}
+                  <div className="bg-inputBg rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="grid grid-cols-5 gap-4 items-center px-4 py-4">
+                      <div className="font-medium text-gray-700">Dry Cleaning</div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="dryCleaning"
+                            value="na"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="dryCleaning"
+                            value="24h"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="dryCleaning"
+                            value="48h"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="dryCleaning"
+                            value="48h+"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Wash & Iron Row */}
+                  <div className="bg-inputBg rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="grid grid-cols-5 gap-4 items-center px-4 py-4">
+                      <div className="font-medium text-gray-700 leading-tight">Wash & Iron</div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="washIron"
+                            value="na"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="washIron"
+                            value="24h"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="washIron"
+                            value="48h"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="washIron"
+                            value="48h+"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pressing / Ironing Row */}
+                  <div className="bg-inputBg rounded-lg border border-gray-200 hover:border-theme-blue transition-colors">
+                    <div className="grid grid-cols-5 gap-4 items-center px-4 py-4">
+                      <div className="font-medium text-gray-700 leading-tight">Pressing / Ironing<br />(If Applicable)</div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="pressing"
+                            value="na"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="pressing"
+                            value="24h"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="pressing"
+                            value="48h"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
+                      <div className="flex justify-center">
+                        <label className="cursor-pointer">
+                          <input
+                            type="radio"
+                            name="pressing"
+                            value="48h+"
+                            className="accent-theme-blue w-5 h-5 cursor-pointer"
+                          />
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="shadow-theme-shadow-light rounded-xl px-6 py-8">
-              <div className="w-[565px] max-w-2xl font-sf space-y-6">
-                <p class="font-semibold text-xl">
-                  What is your Turnaround time (TAT)?
-                  <span class="text-red-500"> *</span>
-                </p>
 
-                <div class="grid grid-cols-6 gap-4 text-sm font-medium">
-                  <div class="col-start-3">N/A</div>
-                  <div class="">24h</div>
-                  <div class="">48h</div>
-                  <div class="">More than 48h</div>
-
-                  <div class="col-span-6 bg-inputBg rounded-md flex items-center px-4 py-3 gap-6">
-                    <div class="w-32">Wash & Fold</div>
-                    <div class="flex justify-around flex-1">
-                      <label>
-                        <input
-                          type="radio"
-                          name="washers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="washers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="washers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="washers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  <div class="col-span-6 bg-inputBg rounded-md flex items-center px-4 py-3 gap-6">
-                    <div class="w-32">Dry Cleaning</div>
-                    <div class="flex justify-around flex-1">
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryers"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  <div class="col-span-6 bg-inputBg rounded-md flex items-center px-4 py-3 gap-6">
-                    <div class="w-32 leading-tight">Wash & Iron</div>
-                    <div class="flex justify-around flex-1">
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryclean"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryclean"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryclean"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="dryclean"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                    </div>
-                  </div>
-
-                  <div class="col-span-6 bg-inputBg rounded-md flex items-center px-4 py-3 gap-6">
-                    <div class="w-32">Pressing / Ironing (If Applicable</div>
-                    <div class="flex justify-around flex-1">
-                      <label>
-                        <input
-                          type="radio"
-                          name="presser"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="presser"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="presser"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                      <label>
-                        <input
-                          type="radio"
-                          name="presser"
-                          class="accent-theme-blue"
-                        />
-                      </label>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-4">
-                  <ButtonContinueWith
-                    text="Continue"
-                    bg="bg-theme-blue"
-                    color="text-white"
-                    size="text-xl"
-                    onClick={() => setStep(4)}
-                  />
-                </div>
-              </div>
+            {/* Continue Button */}
+            <div className="pt-4">
+              <ButtonContinueWith
+                text="Continue"
+                bg="bg-theme-blue"
+                color="text-white"
+                size="text-xl"
+                onClick={() => setStep(4)}
+              />
             </div>
           </div>
         ) : (
           <div className="mx-auto h-96 flex justify-center items-center">
-          <MiniLoader/>
+            <MiniLoader />
           </div>
         )}
       </div>

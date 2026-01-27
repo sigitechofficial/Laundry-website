@@ -45,10 +45,15 @@ export default function Payment() {
   const customerId =
     typeof window !== "undefined" && localStorage.getItem("stripeCustomerId");
   const { data, isLoading } = useGetServicesQuery();
-  const { data: addressData } = useGetChargesQuery({
-    lat: orderData?.collectionData?.lat,
-    lng: orderData?.collectionData?.lng,
-  });
+  const { data: addressData } = useGetChargesQuery(
+    {
+      lat: orderData?.collectionData?.lat,
+      lng: orderData?.collectionData?.lng,
+    },
+    {
+      skip: !orderData?.collectionData?.lat || !orderData?.collectionData?.lng,
+    }
+  );
   // Example: Get all charge values (replace with your real data)
   const minimumOrderCharge =
     parseFloat(addressData?.data?.zoneUpfrontAmount) || 0;

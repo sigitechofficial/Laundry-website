@@ -123,7 +123,7 @@ export const api = createApi({
     }),
     getCharges: builder.query({
       query: ({ lat, lng }) => ({
-        url: `customer/fetchZoneAndCharges?lat=31.486481351267308&lng=74.21796094626188`,
+        url: `customer/fetchZoneAndCharges?lat=${lat}&lng=${lng}`,
         method: "GET",
       }),
     }),
@@ -192,6 +192,13 @@ export const api = createApi({
       }),
       invalidatesTags: ['Orders'], // Invalidate orders cache after cancellation
     }),
+
+    getAddressesByPostcode: builder.query({
+      query: (postcode) => ({
+        url: `customer/postcode/${postcode}`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
@@ -220,4 +227,6 @@ export const {
   useGetCancellationPoliciesQuery,
   useGetAllReasonsQuery,
   useCancelBookingMutation,
+  useGetAddressesByPostcodeQuery,
+  useLazyGetAddressesByPostcodeQuery,
 } = api;

@@ -255,6 +255,16 @@ const Header = ({ type }) => {
                 <li>
                   <Link
                     onClick={() => {
+                      handleNavigate("/blog");
+                    }}
+                    href="/blog"
+                  >
+                    Blog
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    onClick={() => {
                       handleNavigate("/contact-us");
                     }}
                     href="/contact-us"
@@ -372,7 +382,7 @@ const Header = ({ type }) => {
             />
           </div>
         )}
-        
+
       </div>
 
       {/* Only show drawer for logged-in users */}

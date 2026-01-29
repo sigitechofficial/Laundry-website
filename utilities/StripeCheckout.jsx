@@ -25,14 +25,12 @@ if (typeof window !== "undefined") {
 
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
-let amount = "";
-const CheckoutForm = ({ setModal, modal, booking, onOpen }) => {
+const CheckoutForm = ({ setModal, modal, booking, onOpen, intentMode = "payment", intentId = "", displayAmount = "" }) => {
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setProcessing] = useState(false);
   const [message, setMessage] = useState("");
   const [isPaymentElementReady, setIsPaymentElementReady] = useState(false);
-  // const [amount, setAmount] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,7 +40,6 @@ const CheckoutForm = ({ setModal, modal, booking, onOpen }) => {
       return;
     }
 
-    // Check if PaymentElement is mounted and ready
     if (!isPaymentElementReady) {
       setMessage("Payment form is not ready. Please wait...");
       return;
@@ -52,30 +49,44 @@ const CheckoutForm = ({ setModal, modal, booking, onOpen }) => {
     setMessage("");
 
     try {
+      if (intentMode === "setup") {
+        const { error, setupIntent } = await stripe.confirmSetup({
+          elements,
+          redirect: "if_required",
+        });
+
+        if (error) {
+          setMessage(error.message);
+          setProcessing(false);
+          return;
+        }
+
+        if (setupIntent?.status === "succeeded") {
+          booking({
+            setupIntentId: setupIntent?.id || intentId, // Use confirmed ID or fallback to extracted ID
+            paymentMethodId: setupIntent?.payment_method,
+          });
+          setProcessing(false);
+          setMessage("");
+          setModal({ page: "success", modType: "success" });
+          onOpen();
+        } else {
+          setMessage(`Setup status: ${setupIntent?.status}`);
+          setProcessing(false);
+        }
+        return;
+      }
+
       const { error, paymentIntent } = await stripe.confirmPayment({
         elements,
-        // confirmParams: {
-        //   return_url: "http://localhost:3000/", // redirect after payment
-        // },
         redirect: "if_required",
       });
 
-      if (paymentIntent?.status === "requires_capture") {
+      if (paymentIntent?.status === "requires_capture" || paymentIntent?.status === "succeeded") {
         booking({
-          paymentIntentId: paymentIntent?.id,
+          paymentIntentId: paymentIntent?.id || intentId, // Use confirmed ID or fallback to extracted ID
           paymentMethodId: paymentIntent?.payment_method,
         });
-        amount = "";
-        setProcessing(false);
-        setMessage("");
-        setModal({ page: "success", modType: "success" });
-        onOpen();
-      } else if (paymentIntent?.status === "succeeded") {
-        booking({
-          paymentIntentId: paymentIntent?.id,
-          paymentMethodId: paymentIntent?.payment_method,
-        });
-        amount = "";
         setProcessing(false);
         setMessage("");
         setModal({ page: "success", modType: "success" });
@@ -124,8 +135,10 @@ const CheckoutForm = ({ setModal, modal, booking, onOpen }) => {
               variant="simple"
             />
           </div>
+        ) : intentMode === "setup" ? (
+          "Save card"
         ) : (
-          `Pay Now ${amount}`
+          displayAmount ? `Pay Now ${displayAmount}` : "Pay Now"
         )}
       </button>
       {message && <div className="text-red-500 mt-2">{message}</div>}
@@ -143,8 +156,19 @@ const StripeCheckout = ({
   customerId,
 }) => {
   const [clientSecret, setClientSecret] = useState("");
+  const [intentMode, setIntentMode] = useState("payment"); // "payment" | "setup"
+  const [intentId, setIntentId] = useState(""); // Payment Intent ID or Setup Intent ID extracted from client secret
+  const [displayAmount, setDisplayAmount] = useState(""); // Formatted amount for button (empty for Setup Intent)
   const [createPaymentIntent, { data, isSuccess, isLoading }] =
     useCreateIntentMutation();
+
+  const formatAmount = (value) => {
+    if (value == null || value === "") return "";
+    const num = typeof value === "number" ? value : parseFloat(value);
+    if (Number.isNaN(num)) return "";
+    const dollars = num >= 1000 ? num / 100 : num;
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(dollars);
+  };
 
   const getIntent = async () => {
     try {
@@ -157,25 +181,28 @@ const StripeCheckout = ({
         console.log("Payment Intent created:", res?.data);
         const clientSecret = res?.data?.clientSecret;
 
-        // Verify client secret format
-        if (!clientSecret || !clientSecret.startsWith('pi_')) {
+        // Accept Payment Intent (pi_) or Setup Intent (seti_) from API
+        if (!clientSecret || (!clientSecret.startsWith('pi_') && !clientSecret.startsWith('seti_'))) {
           console.error("Invalid client secret format:", clientSecret);
           addToast({
             title: "Payment Error",
-            description: "Invalid payment intent received from server",
+            description: "Invalid payment or setup intent received from server",
             color: "danger",
           });
           return;
         }
 
-        // Extract payment intent ID for debugging
-        const paymentIntentId = clientSecret.split('_secret_')[0];
-        console.log("Payment Intent ID:", paymentIntentId);
+        const isSetupIntent = clientSecret.startsWith('seti_');
+        // Extract Intent ID from client secret: "pi_xxx_secret_yyy" -> "pi_xxx" or "seti_xxx_secret_yyy" -> "seti_xxx"
+        const extractedIntentId = clientSecret.split('_secret_')[0];
+        console.log(isSetupIntent ? "Setup Intent ID:" : "Payment Intent ID:", extractedIntentId);
         console.log("Using Publishable Key:", stripePublishableKey?.substring(0, 30) + "...");
         console.log("⚠️ IMPORTANT: Ensure your backend uses the SECRET KEY that matches this publishable key!");
 
         setClientSecret(clientSecret);
-        amount = res?.data?.amount;
+        setIntentMode(isSetupIntent ? "setup" : "payment");
+        setIntentId(extractedIntentId); // Store the extracted intent ID
+        setDisplayAmount(res?.data?.amount != null ? formatAmount(res.data.amount) : "");
         setModal({ ...modal, page: "stripe" });
       } else {
         console.error("Failed to create payment intent:", res);
@@ -244,6 +271,9 @@ const StripeCheckout = ({
             modal={modal}
             booking={booking}
             onOpen={onOpen}
+            intentMode={intentMode}
+            intentId={intentId}
+            displayAmount={displayAmount}
           />
         </Elements>
       )}

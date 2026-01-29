@@ -82,7 +82,7 @@ export default function Payment() {
     page: "payment",
   });
 
-  const handleModalScroll = (e) => {};
+  const handleModalScroll = (e) => { };
 
   const handleCreateBooking = async (payData) => {
     const bookingData = {
@@ -146,7 +146,8 @@ export default function Payment() {
         ?.filter((item) => item?.serviceId)
         ?.map((item) => ({ serviceId: item.serviceId })),
       totalItems: 5,
-      paymentIntentId: payData?.paymentIntentId,
+      paymentIntentId: payData?.paymentIntentId ?? null,
+      setupIntentId: payData?.setupIntentId ?? null,
       paymentMethodId: payData?.paymentMethodId,
       stripeCustomerId: localStorage.getItem("stripeCustomerId"),
     };
@@ -155,10 +156,22 @@ export default function Payment() {
     if (response?.status === "1") {
       // Clear all cart data (address, preferences, etc.)
       dispatch(clearCartData());
-      
+
+      // Capture booking/payment IDs from response when backend returns them
+      const bookingId = response?.data?.bookingId ?? response?.data?.booking_id;
+      const paymentId = response?.data?.paymentId ?? response?.data?.payment_id ?? response?.data?.bookingPaymentId;
+
+      const description = [
+        response?.message,
+        bookingId && `Booking ID: ${bookingId}`,
+        paymentId && `Payment ID: ${paymentId}`,
+      ]
+        .filter(Boolean)
+        .join(" • ");
+
       addToast({
         title: "Create Booking",
-        description: response?.message,
+        description,
         color: "success",
       });
 
@@ -328,41 +341,37 @@ export default function Payment() {
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 my-4">
                     <div
                       onClick={() => dispatch(setFrequency("Just once"))}
-                      className={`rounded-lg border-2 border-theme-gray px-4 h-[56px] flex justify-center items-center cursor-pointer ${
-                        orderData?.frequency === "Just once"
-                          ? "bg-theme-blue text-white"
-                          : ""
-                      }`}
+                      className={`rounded-lg border-2 border-theme-gray px-4 h-[56px] flex justify-center items-center cursor-pointer ${orderData?.frequency === "Just once"
+                        ? "bg-theme-blue text-white"
+                        : ""
+                        }`}
                     >
                       Just once
                     </div>
                     <div
                       onClick={() => dispatch(setFrequency("Weekly"))}
-                      className={`rounded-lg border-2 border-theme-gray px-4 h-[56px] flex justify-center items-center cursor-pointer ${
-                        orderData?.frequency === "Weekly"
-                          ? "bg-theme-blue text-white"
-                          : ""
-                      }`}
+                      className={`rounded-lg border-2 border-theme-gray px-4 h-[56px] flex justify-center items-center cursor-pointer ${orderData?.frequency === "Weekly"
+                        ? "bg-theme-blue text-white"
+                        : ""
+                        }`}
                     >
                       Weekly
                     </div>
                     <div
                       onClick={() => dispatch(setFrequency("Every Two Weeks"))}
-                      className={`rounded-lg border-2 border-theme-gray px-4 h-[56px] flex justify-center items-center cursor-pointer ${
-                        orderData?.frequency === "Every Two Weeks"
-                          ? "bg-theme-blue text-white"
-                          : ""
-                      }`}
+                      className={`rounded-lg border-2 border-theme-gray px-4 h-[56px] flex justify-center items-center cursor-pointer ${orderData?.frequency === "Every Two Weeks"
+                        ? "bg-theme-blue text-white"
+                        : ""
+                        }`}
                     >
                       Every Two Weeks
                     </div>
                     <div
                       onClick={() => dispatch(setFrequency("Every Four Weeks"))}
-                      className={`rounded-lg border-2 border-theme-gray px-4 h-[56px] flex justify-center items-center cursor-pointer ${
-                        orderData?.frequency === "Every Four Weeks"
-                          ? "bg-theme-blue text-white"
-                          : ""
-                      }`}
+                      className={`rounded-lg border-2 border-theme-gray px-4 h-[56px] flex justify-center items-center cursor-pointer ${orderData?.frequency === "Every Four Weeks"
+                        ? "bg-theme-blue text-white"
+                        : ""
+                        }`}
                     >
                       Every Four Weeks
                     </div>
@@ -738,11 +747,10 @@ export default function Payment() {
                 <p className="font-sf text-lg">After ironing:</p>
                 <div className="grid grid-cols-2 h-[53px]">
                   <div
-                    className={`flex justify-center items-center cursor-pointer ${
-                      true === "hung"
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                    }`}
+                    className={`flex justify-center items-center cursor-pointer ${true === "hung"
+                      ? "bg-theme-blue text-white"
+                      : "bg-theme-gray"
+                      }`}
                   >
                     Hung
                   </div>
@@ -753,11 +761,10 @@ export default function Payment() {
                         ironingAfter: "folded",
                       }))
                     }
-                    className={`flex justify-center items-center cursor-pointer ${
-                      preferences.ironingAfter === "folded"
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                    }`}
+                    className={`flex justify-center items-center cursor-pointer ${preferences.ironingAfter === "folded"
+                      ? "bg-theme-blue text-white"
+                      : "bg-theme-gray"
+                      }`}
                   >
                     Folded
                   </div>
@@ -774,11 +781,10 @@ export default function Payment() {
                           ironingTemperature: temp,
                         }))
                       }
-                      className={`flex justify-center items-center cursor-pointer ${
-                        preferences.ironingTemperature === temp
-                          ? "bg-theme-blue text-white"
-                          : "bg-theme-gray"
-                      }`}
+                      className={`flex justify-center items-center cursor-pointer ${preferences.ironingTemperature === temp
+                        ? "bg-theme-blue text-white"
+                        : "bg-theme-gray"
+                        }`}
                     >
                       {temp}
                     </div>

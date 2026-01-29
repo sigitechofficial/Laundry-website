@@ -98,6 +98,7 @@ export default function Pricing() {
                 data?.data?.serviceData?.map((item) => {
                   return item?.id === 1 ? (
                     <CategoryCard
+                      key={item?.id}
                       onClick={() => handleServiceDetail(item?.id)}
                       bg="2"
                       h={item?.name}
@@ -107,6 +108,7 @@ export default function Pricing() {
                     />
                   ) : item?.id === 2 ? (
                     <CategoryCard
+                      key={item?.id}
                       onClick={() => handleServiceDetail(item?.id)}
                       bg="1"
                       h={item?.name}
@@ -116,6 +118,7 @@ export default function Pricing() {
                     />
                   ) : item?.id === 3 ? (
                     <CategoryCard
+                      key={item?.id}
                       onClick={() => handleServiceDetail(item?.id)}
                       bg="4"
                       h={item?.name}
@@ -125,6 +128,7 @@ export default function Pricing() {
                     />
                   ) : item?.id === 4 ? (
                     <CategoryCard
+                      key={item?.id}
                       onClick={() => handleServiceDetail(item?.id)}
                       bg="4"
                       h={item?.name}
@@ -134,6 +138,7 @@ export default function Pricing() {
                     />
                   ) : item?.id === 5 ? (
                     <CategoryCard
+                      key={item?.id}
                       onClick={() => handleServiceDetail(item?.id)}
                       bg="5"
                       h={item?.name}
@@ -142,12 +147,20 @@ export default function Pricing() {
                       right="-right-6"
                     />
                   ) : (
-                    "loading..."
+                    <CategoryCard
+                      key={item?.id}
+                      onClick={() => handleServiceDetail(item?.id)}
+                      bg="1"
+                      h={item?.name}
+                      Icon={MdOutlineDryCleaning}
+                      src="/images/pricing/c1.png"
+                      right="-right-16"
+                    />
                   );
                 })
               ) : (
                 <div className="col-span-2 text-xl font-semibold animate-pulse w-max mx-auto">
-                <MiniLoader/>
+                  <MiniLoader />
                 </div>
               )}
             </div>

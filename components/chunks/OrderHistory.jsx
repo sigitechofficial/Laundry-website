@@ -137,19 +137,19 @@ export default function OrderHistory() {
   // Get status badge color classes based on status
   const getStatusColorClasses = (statusTitle) => {
     if (!statusTitle) return "bg-theme-skyBlue text-[#0391C4]"; // Default blue
-    
+
     const status = statusTitle.toLowerCase();
-    
+
     // Cancelled status - red
     if (status.includes("cancel") || status.includes("cancelled")) {
       return "bg-red-100 text-red-600";
     }
-    
+
     // On Hold statuses - yellow/warning
     if (status.includes("on hold") || status.includes("waiting for") || status.includes("onhold")) {
       return "bg-yellow-100 text-yellow-700";
     }
-    
+
     // Default - blue (for normal statuses like created, confirmed, processing, etc.)
     return "bg-theme-skyBlue text-[#0391C4]";
   };
@@ -311,11 +311,11 @@ export default function OrderHistory() {
   // Helper function to get image URL from proof object
   const getImageUrl = (imgUpload) => {
     if (!imgUpload) return null;
-    
+
     if (typeof imgUpload === 'string') {
       return imgUpload.startsWith('http') ? imgUpload : BASE_URL + imgUpload;
     }
-    
+
     return null;
   };
 
@@ -506,142 +506,147 @@ export default function OrderHistory() {
 
         {/* Order Details Section - Always visible below Manage Order button */}
         <div className="space-y-3 mt-8">
-            <div className="flex justify-between items-center border-b py-2">
-              <div className="font-sf">
-                <h6 className="font-semibold text-xl">Order details</h6>
-                <p className="text-theme-psGray">
-                  {bookingDtails?.data?.totalItems || bookingDtails?.data?.customerSelectedServices?.length || 0} items
-                </p>
-              </div>
-              <MdKeyboardArrowRight size="25" />
+          <div className="flex justify-between items-center border-b py-2">
+            <div className="font-sf">
+              <h6 className="font-semibold text-xl">Order details</h6>
+              <p className="text-theme-psGray">
+                {bookingDtails?.data?.totalItems || bookingDtails?.data?.customerSelectedServices?.length || 0} items
+              </p>
             </div>
-            <div className="space-y-1 font-sf border-b pb-3">
-              <div className="flex justify-between items-center ">
-                <h4 className="font-semibold">Subtotal</h4>
-                <p className="font-semibold">
-                  ${bookingDtails?.data?.subTotal || bookingDtails?.data?.orderAmount || "0.00"}
-                </p>
-              </div>
-              {bookingDtails?.data?.zone?.serviceCharge && (
-                <div className="flex justify-between items-center">
-                  <h4 className="text-sm text-theme-psGray">Service fee</h4>
-                  <p className="text-sm text-theme-psGray">${bookingDtails.data.zone.serviceCharge}</p>
-                </div>
-              )}
+            <MdKeyboardArrowRight size="25" />
+          </div>
+          <div className="space-y-1 font-sf border-b pb-3">
+            <div className="flex justify-between items-center ">
+              <h4 className="font-semibold">Subtotal</h4>
+              <p className="font-semibold">
+                ${bookingDtails?.data?.subTotal || bookingDtails?.data?.orderAmount || "0.00"}
+              </p>
             </div>
-            {bookingDtails?.data?.paymentMethodId && (
-              <div className="space-y-1 font-sf border-b pb-3">
-                <h4 className="font-semibold text-2xl">Payment</h4>
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h6>
-                      {bookingDtails?.data?.paymentMethodId?.startsWith("pm_") 
-                        ? `Card ending in ${bookingDtails.data.paymentMethodId.slice(-4)}`
-                        : bookingDtails?.data?.paymentMethodId || "Payment Method"}
-                    </h6>
-                    {bookingDtails?.data?.createdAt && (
-                      <p className="text-sm text-theme-psGray">
-                        {formatDate(bookingDtails.data.createdAt)}
-                      </p>
-                    )}
-                  </div>
-                  <p className="font-semibold">${bookingDtails?.data?.orderAmount || "0.00"}</p>
-                </div>
-                <div className="py-2">
-                  <PurpleButton text="Send receipt to email" />
-                </div>
-              </div>
-            )}
-            {/* Proof of Collection Section */}
-            {getProofOfCollection().length > 0 && (
-              <div className="space-y-1 font-sf pb-3 border-b">
-                <h4 className="font-semibold text-2xl">Proof of Collection</h4>
-                <div className="py-3">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
-                    {getProofOfCollection().map((proof, index) => {
-                      const imageUrl = getImageUrl(proof.imgUpload);
-                      if (!imageUrl) return null;
-                      
-                      return (
-                        <div key={proof.id || index} className="space-y-2">
-                          <div className="relative bg-gray-200 rounded-lg overflow-hidden aspect-square">
-                            <img
-                              src={imageUrl}
-                              alt={`Proof of collection ${index + 1}`}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                          </div>
-                          {proof.noOfItems !== undefined && proof.noOfItems !== null && (
-                            <p className="text-xs text-theme-psGray text-center">
-                              Items: {proof.noOfItems}
-                            </p>
-                          )}
-                          {proof.note && (
-                            <p className="text-xs text-theme-psGray text-center line-clamp-2">
-                              {proof.note}
-                            </p>
-                          )}
-                          {proof.createdAt && (
-                            <p className="text-xs text-theme-psGray text-center">
-                              {formatDate(proof.createdAt)}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Proof of Delivery Section */}
-            {getProofOfDelivery().length > 0 && (
-              <div className="space-y-1 font-sf pb-3 border-b">
-                <h4 className="font-semibold text-2xl">Proof of Delivery</h4>
-                <div className="py-3">
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
-                    {getProofOfDelivery().map((proof, index) => {
-                      const imageUrl = getImageUrl(proof.imgUpload);
-                      if (!imageUrl) return null;
-                      
-                      return (
-                        <div key={proof.id || index} className="space-y-2">
-                          <div className="relative bg-gray-200 rounded-lg overflow-hidden aspect-square">
-                            <img
-                              src={imageUrl}
-                              alt={`Proof of delivery ${index + 1}`}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                          </div>
-                          {proof.noOfItems !== undefined && proof.noOfItems !== null && (
-                            <p className="text-xs text-theme-psGray text-center">
-                              Items: {proof.noOfItems}
-                            </p>
-                          )}
-                          {proof.note && (
-                            <p className="text-xs text-theme-psGray text-center line-clamp-2">
-                              {proof.note}
-                            </p>
-                          )}
-                          {proof.createdAt && (
-                            <p className="text-xs text-theme-psGray text-center">
-                              {formatDate(proof.createdAt)}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+            {bookingDtails?.data?.zone?.serviceCharge && (
+              <div className="flex justify-between items-center">
+                <h4 className="text-sm text-theme-psGray">Service fee</h4>
+                <p className="text-sm text-theme-psGray">${bookingDtails.data.zone.serviceCharge}</p>
               </div>
             )}
           </div>
+          {(bookingDtails?.data?.paymentMethodId || bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId) && (
+            <div className="space-y-1 font-sf border-b pb-3">
+              <h4 className="font-semibold text-2xl">Payment</h4>
+              <div className="flex justify-between items-center">
+                <div>
+                  <h6>
+                    {bookingDtails?.data?.paymentMethodId?.startsWith("pm_")
+                      ? `Card ending in ${bookingDtails.data.paymentMethodId.slice(-4)}`
+                      : bookingDtails?.data?.paymentMethodId || "Payment Method"}
+                  </h6>
+                  {(bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId) && (
+                    <p className="text-sm text-theme-psGray">
+                      Payment ID: {bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId}
+                    </p>
+                  )}
+                  {bookingDtails?.data?.createdAt && (
+                    <p className="text-sm text-theme-psGray">
+                      {formatDate(bookingDtails.data.createdAt)}
+                    </p>
+                  )}
+                </div>
+                <p className="font-semibold">${bookingDtails?.data?.orderAmount || "0.00"}</p>
+              </div>
+              <div className="py-2">
+                <PurpleButton text="Send receipt to email" />
+              </div>
+            </div>
+          )}
+          {/* Proof of Collection Section */}
+          {getProofOfCollection().length > 0 && (
+            <div className="space-y-1 font-sf pb-3 border-b">
+              <h4 className="font-semibold text-2xl">Proof of Collection</h4>
+              <div className="py-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
+                  {getProofOfCollection().map((proof, index) => {
+                    const imageUrl = getImageUrl(proof.imgUpload);
+                    if (!imageUrl) return null;
+
+                    return (
+                      <div key={proof.id || index} className="space-y-2">
+                        <div className="relative bg-gray-200 rounded-lg overflow-hidden aspect-square">
+                          <img
+                            src={imageUrl}
+                            alt={`Proof of collection ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                        {proof.noOfItems !== undefined && proof.noOfItems !== null && (
+                          <p className="text-xs text-theme-psGray text-center">
+                            Items: {proof.noOfItems}
+                          </p>
+                        )}
+                        {proof.note && (
+                          <p className="text-xs text-theme-psGray text-center line-clamp-2">
+                            {proof.note}
+                          </p>
+                        )}
+                        {proof.createdAt && (
+                          <p className="text-xs text-theme-psGray text-center">
+                            {formatDate(proof.createdAt)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Proof of Delivery Section */}
+          {getProofOfDelivery().length > 0 && (
+            <div className="space-y-1 font-sf pb-3 border-b">
+              <h4 className="font-semibold text-2xl">Proof of Delivery</h4>
+              <div className="py-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
+                  {getProofOfDelivery().map((proof, index) => {
+                    const imageUrl = getImageUrl(proof.imgUpload);
+                    if (!imageUrl) return null;
+
+                    return (
+                      <div key={proof.id || index} className="space-y-2">
+                        <div className="relative bg-gray-200 rounded-lg overflow-hidden aspect-square">
+                          <img
+                            src={imageUrl}
+                            alt={`Proof of delivery ${index + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                        {proof.noOfItems !== undefined && proof.noOfItems !== null && (
+                          <p className="text-xs text-theme-psGray text-center">
+                            Items: {proof.noOfItems}
+                          </p>
+                        )}
+                        {proof.note && (
+                          <p className="text-xs text-theme-psGray text-center line-clamp-2">
+                            {proof.note}
+                          </p>
+                        )}
+                        {proof.createdAt && (
+                          <p className="text-xs text-theme-psGray text-center">
+                            {formatDate(proof.createdAt)}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </>
     );
   };
@@ -738,164 +743,164 @@ export default function OrderHistory() {
                 <>
                   <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4">Active Bookings</h3>
                   {activeBookings.map((order) => {
-                const isCancelled = isOrderCancelled(order);
-                return (
-                  <div
-                    key={order.id}
-                    onClick={() => {
-                      if (!isCancelled) {
-                        setManageOrder({ ...manageOrder, orderId: order?.id });
-                        // Open modal on mobile screens
-                        if (typeof window !== "undefined" && window.innerWidth < 768) {
-                          onOrderDetailsModalOpen();
-                        }
-                      }
-                    }}
-                    className={`w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 ${isCancelled ? "cursor-default opacity-75" : "cursor-pointer"
-                      }`}
-                  >
-                    <h6 className="font-youth font-bold text-base sm:text-lg">
-                      Order ID: {order?.orderTrackId}
-                    </h6>
+                    const isCancelled = isOrderCancelled(order);
+                    return (
+                      <div
+                        key={order.id}
+                        onClick={() => {
+                          if (!isCancelled) {
+                            setManageOrder({ ...manageOrder, orderId: order?.id });
+                            // Open modal on mobile screens
+                            if (typeof window !== "undefined" && window.innerWidth < 768) {
+                              onOrderDetailsModalOpen();
+                            }
+                          }
+                        }}
+                        className={`w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 ${isCancelled ? "cursor-default opacity-75" : "cursor-pointer"
+                          }`}
+                      >
+                        <h6 className="font-youth font-bold text-base sm:text-lg">
+                          Order ID: {order?.orderTrackId}
+                        </h6>
 
-                    <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-                      <button className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
-                        {order?.bookingStatus?.title}
-                      </button>
+                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+                          <button className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
+                            {order?.bookingStatus?.title}
+                          </button>
 
-                      <p className="font-youth font-bold text-sm sm:text-base">
-                        Est ${order?.orderAmount}
-                      </p>
-                    </div>
-
-                    <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
-                      <div className="flex gap-2 items-center py-2">
-                        <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                        <div>
-                          <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                            Pick up
-                          </p>
-                          <p className="font-sf text-base sm:text-xl">
-                            {formatDate(order?.collectionDate)}
+                          <p className="font-youth font-bold text-sm sm:text-base">
+                            Est ${order?.orderAmount}
                           </p>
                         </div>
-                      </div>
 
-                      <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                        <GoClock size={18} className="sm:w-5 sm:h-5" />
-                        {order?.collectionTimeFrom} - {order?.collectionTimeTo}
-                      </p>
-                    </div>
+                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
+                          <div className="flex gap-2 items-center py-2">
+                            <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+                            <div>
+                              <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+                                Pick up
+                              </p>
+                              <p className="font-sf text-base sm:text-xl">
+                                {formatDate(order?.collectionDate)}
+                              </p>
+                            </div>
+                          </div>
 
-                    <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-                      <div className="flex gap-2 items-center py-2">
-                        <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                        <div>
-                          <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                            Drop off
-                          </p>
-                          <p className="font-sf text-base sm:text-xl">
-                            {formatDate(order?.deliveryDate)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                        <GoClock size={18} className="sm:w-5 sm:h-5" />
-                        {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
-                      </p>
-                    </div>
-
-                    <p className="font-sf text-base text-theme-psGray">
-                      {order?.driverInstruction}
-                    </p>
-                  </div>
-                  );
-                })}
-              </>
-            )}
-
-            {/* Past Bookings Section */}
-            {pastBookings && (
-              <>
-                <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4 mt-6 sm:mt-8">Past Bookings</h3>
-                {pastBookings.map((order) => {
-                const isCancelled = isOrderCancelled(order);
-                return (
-                  <div
-                    key={order.id}
-                    onClick={() => {
-                      if (!isCancelled) {
-                        setManageOrder({ ...manageOrder, orderId: order?.id });
-                        // Open modal on mobile screens
-                        if (typeof window !== "undefined" && window.innerWidth < 768) {
-                          onOrderDetailsModalOpen();
-                        }
-                      }
-                    }}
-                    className={`w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 ${isCancelled ? "cursor-default opacity-75" : "cursor-pointer"
-                      }`}
-                  >
-                    <h6 className="font-youth font-bold text-base sm:text-lg">
-                      Order ID: {order?.orderTrackId}
-                    </h6>
-
-                    <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-                      <button className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
-                        {order?.bookingStatus?.title}
-                      </button>
-
-                      <p className="font-youth font-bold text-sm sm:text-base">
-                        Est ${order?.orderAmount}
-                      </p>
-                    </div>
-
-                    <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
-                      <div className="flex gap-2 items-center py-2">
-                        <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                        <div>
-                          <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                            Pick up
-                          </p>
-                          <p className="font-sf text-base sm:text-xl">
-                            {formatDate(order?.collectionDate)}
+                          <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+                            <GoClock size={18} className="sm:w-5 sm:h-5" />
+                            {order?.collectionTimeFrom} - {order?.collectionTimeTo}
                           </p>
                         </div>
-                      </div>
 
-                      <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                        <GoClock size={18} className="sm:w-5 sm:h-5" />
-                        {order?.collectionTimeFrom} - {order?.collectionTimeTo}
-                      </p>
-                    </div>
+                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                          <div className="flex gap-2 items-center py-2">
+                            <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+                            <div>
+                              <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+                                Drop off
+                              </p>
+                              <p className="font-sf text-base sm:text-xl">
+                                {formatDate(order?.deliveryDate)}
+                              </p>
+                            </div>
+                          </div>
 
-                    <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-                      <div className="flex gap-2 items-center py-2">
-                        <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                        <div>
-                          <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                            Drop off
-                          </p>
-                          <p className="font-sf text-base sm:text-xl">
-                            {formatDate(order?.deliveryDate)}
+                          <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+                            <GoClock size={18} className="sm:w-5 sm:h-5" />
+                            {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
                           </p>
                         </div>
+
+                        <p className="font-sf text-base text-theme-psGray">
+                          {order?.driverInstruction}
+                        </p>
                       </div>
+                    );
+                  })}
+                </>
+              )}
 
-                      <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                        <GoClock size={18} className="sm:w-5 sm:h-5" />
-                        {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
-                      </p>
-                    </div>
+              {/* Past Bookings Section */}
+              {pastBookings && (
+                <>
+                  <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4 mt-6 sm:mt-8">Past Bookings</h3>
+                  {pastBookings.map((order) => {
+                    const isCancelled = isOrderCancelled(order);
+                    return (
+                      <div
+                        key={order.id}
+                        onClick={() => {
+                          if (!isCancelled) {
+                            setManageOrder({ ...manageOrder, orderId: order?.id });
+                            // Open modal on mobile screens
+                            if (typeof window !== "undefined" && window.innerWidth < 768) {
+                              onOrderDetailsModalOpen();
+                            }
+                          }
+                        }}
+                        className={`w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 ${isCancelled ? "cursor-default opacity-75" : "cursor-pointer"
+                          }`}
+                      >
+                        <h6 className="font-youth font-bold text-base sm:text-lg">
+                          Order ID: {order?.orderTrackId}
+                        </h6>
 
-                    <p className="font-sf text-base text-theme-psGray">
-                      {order?.driverInstruction}
-                    </p>
-                  </div>
-                  );
-                })}
-              </>
-            )}
+                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+                          <button className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
+                            {order?.bookingStatus?.title}
+                          </button>
+
+                          <p className="font-youth font-bold text-sm sm:text-base">
+                            Est ${order?.orderAmount}
+                          </p>
+                        </div>
+
+                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
+                          <div className="flex gap-2 items-center py-2">
+                            <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+                            <div>
+                              <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+                                Pick up
+                              </p>
+                              <p className="font-sf text-base sm:text-xl">
+                                {formatDate(order?.collectionDate)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+                            <GoClock size={18} className="sm:w-5 sm:h-5" />
+                            {order?.collectionTimeFrom} - {order?.collectionTimeTo}
+                          </p>
+                        </div>
+
+                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                          <div className="flex gap-2 items-center py-2">
+                            <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+                            <div>
+                              <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+                                Drop off
+                              </p>
+                              <p className="font-sf text-base sm:text-xl">
+                                {formatDate(order?.deliveryDate)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+                            <GoClock size={18} className="sm:w-5 sm:h-5" />
+                            {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
+                          </p>
+                        </div>
+
+                        <p className="font-sf text-base text-theme-psGray">
+                          {order?.driverInstruction}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
             </>
           )}
         </div>

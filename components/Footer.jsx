@@ -27,7 +27,11 @@ export default function Footer() {
           <ul className="text-base sm:text-lg space-y-1.5 sm:space-y-3 text-black/70">
             <li>How it works</li>
             <li>Prices & Services</li>
-            <li>Help centre</li>
+            <li>
+              <Link href="/help-center" className="hover:text-theme-blue transition-colors">
+                Help centre
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -41,7 +45,6 @@ export default function Footer() {
         <div className="space-y-2 sm:space-y-5">
           <h4 className="font-semibold text-lg sm:text-2xl">Our Company</h4>
           <ul className="text-base sm:text-lg space-y-1.5 sm:space-y-3 text-black/70">
-            <li>About Just Dry Cleaners</li>
             <li>Locations</li>
             <li>Blog</li>
             <li>Customer reviews</li>
@@ -106,7 +109,7 @@ export default function Footer() {
           <a className="underline" href="#">
             Privacy policy
           </a>{" "}
-          and 
+          and
           <a className="underline" href="#">
             terms and conditions.
           </a>

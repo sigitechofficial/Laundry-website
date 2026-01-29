@@ -10,9 +10,9 @@ export default function BlogPage() {
           <Header type="blog" />
         </div>
 
-        <div className="max-w-[1290px] mx-auto px-5 sm:px-[45px] pt-10 md:pt-14 lg:pt-16 xl:pt-20">
+        <div className="max-w-[1290px] mx-auto px-5 sm:px-[45px] pt-20 sm:pt-24 lg:pt-28 pb-12 sm:pb-16">
           {/* Main Hero Image */}
-          <div className="h-[400px] sm:h-[500px] md:h-[529px] relative rounded-2xl overflow-hidden mb-[185px]">
+          <div className="h-[400px] sm:h-[500px] md:h-[529px] relative rounded-2xl overflow-hidden mb-8 sm:mb-10 lg:mb-12">
             <img
               className="w-full h-full object-cover"
               src="/images/blog/blog.jpg"
@@ -21,10 +21,10 @@ export default function BlogPage() {
           </div>
 
           {/* Main Article Section */}
-          <div className="flex flex-col gap-[185px] items-start w-full">
+          <div className="flex flex-col gap-8 sm:gap-10 lg:gap-12 items-start w-full">
             {/* First Content Block */}
-            <div className="flex flex-col gap-[38px] items-start py-6 w-full">
-              <div className="flex flex-col gap-[30px] items-start py-6 w-full">
+            <div className="flex flex-col gap-6 sm:gap-8 items-start w-full">
+              <div className="flex flex-col gap-6 sm:gap-8 items-start w-full">
                 {/* Article Title */}
                 <h1 className="font-sf font-semibold leading-normal text-[36px] sm:text-[42px] md:text-[48px] text-black w-full">
                   5 Mistakes You Might Be Making When Washing Your Gym Clothes
@@ -36,7 +36,7 @@ export default function BlogPage() {
                 </p>
 
                 {/* First Image */}
-                <div className="h-[400px] sm:h-[450px] md:h-[500px] relative rounded-xl overflow-hidden w-full max-w-[807px]">
+                <div className="h-[400px] sm:h-[450px] md:h-[500px] relative rounded-xl overflow-hidden w-full max-w-[807px] my-6 sm:my-8">
                   <img
                     className="w-full h-full object-cover rounded-xl"
                     src="/images/blog/blog2.png"
@@ -45,18 +45,18 @@ export default function BlogPage() {
                 </div>
 
                 {/* Share This */}
-                <p className="font-sf font-normal leading-normal text-[32px] sm:text-[36px] md:text-[40px] text-[rgba(0,0,0,0.7)] w-full max-w-[1240px]">
+                <p className="font-sf font-normal leading-normal text-[32px] sm:text-[36px] md:text-[40px] text-[rgba(0,0,0,0.7)] w-full max-w-[1240px] mt-4 sm:mt-6">
                   Share this:
                 </p>
               </div>
 
               {/* Mistakes List Section */}
-              <div className="flex flex-col gap-[185px] items-start w-full">
-                <div className="flex flex-col gap-[32px] items-start w-full">
+              <div className="flex flex-col gap-8 sm:gap-10 lg:gap-12 items-start w-full">
+                <div className="flex flex-col gap-6 sm:gap-8 items-start w-full">
                   {/* Mistakes 1-2 */}
-                  <div className="flex flex-col gap-[24px] items-start w-full">
+                  <div className="flex flex-col gap-6 sm:gap-8 items-start w-full">
                     {/* Mistake 1 */}
-                    <div className="flex flex-col gap-4 items-start w-full">
+                    <div className="flex flex-col gap-3 sm:gap-4 items-start w-full">
                       <h2 className="font-sf font-semibold leading-normal text-[28px] sm:text-[32px] md:text-[36px] text-[rgba(0,0,0,0.8)] w-full">
                         1. Using Fabric Softener
                       </h2>
@@ -71,7 +71,7 @@ export default function BlogPage() {
                     </div>
 
                     {/* Mistake 2 */}
-                    <div className="flex flex-col gap-4 items-start w-full">
+                    <div className="flex flex-col gap-3 sm:gap-4 items-start w-full">
                       <h2 className="font-sf font-semibold leading-normal text-[28px] sm:text-[32px] md:text-[36px] text-[rgba(0,0,0,0.8)] w-full">
                         2. Washing with Hot Water
                       </h2>
@@ -87,7 +87,7 @@ export default function BlogPage() {
                   </div>
 
                   {/* Second Image */}
-                  <div className="h-[400px] sm:h-[450px] md:h-[500px] relative rounded-xl overflow-hidden w-full max-w-[807px]">
+                  <div className="h-[400px] sm:h-[450px] md:h-[500px] relative rounded-xl overflow-hidden w-full max-w-[807px] my-6 sm:my-8">
                     <img
                       className="w-full h-full object-cover rounded-xl"
                       src="/images/blog/blog3.png"
@@ -96,9 +96,9 @@ export default function BlogPage() {
                   </div>
 
                   {/* Mistakes 3-5 */}
-                  <div className="flex flex-col gap-[24px] items-start w-full">
+                  <div className="flex flex-col gap-6 sm:gap-8 items-start w-full">
                     {/* Mistake 3 */}
-                    <div className="flex flex-col gap-4 items-start w-full">
+                    <div className="flex flex-col gap-3 sm:gap-4 items-start w-full">
                       <h2 className="font-sf font-semibold leading-normal text-[28px] sm:text-[32px] md:text-[36px] text-[rgba(0,0,0,0.8)] w-full">
                         3. Tumble Drying on High Heat
                       </h2>
@@ -113,7 +113,7 @@ export default function BlogPage() {
                     </div>
 
                     {/* Mistake 4 */}
-                    <div className="flex flex-col gap-4 items-start w-full">
+                    <div className="flex flex-col gap-3 sm:gap-4 items-start w-full">
                       <h2 className="font-sf font-semibold leading-normal text-[28px] sm:text-[32px] md:text-[36px] text-[rgba(0,0,0,0.8)] w-full">
                         4. Not Washing Immediately After Use
                       </h2>
@@ -128,7 +128,7 @@ export default function BlogPage() {
                     </div>
 
                     {/* Mistake 5 */}
-                    <div className="flex flex-col gap-4 items-start w-full">
+                    <div className="flex flex-col gap-3 sm:gap-4 items-start w-full">
                       <h2 className="font-sf font-semibold leading-normal text-[28px] sm:text-[32px] md:text-[36px] text-[rgba(0,0,0,0.8)] w-full">
                         5. Using Regular Detergent
                       </h2>
@@ -150,7 +150,7 @@ export default function BlogPage() {
                   </div>
 
                   {/* Third Image */}
-                  <div className="h-[400px] sm:h-[450px] md:h-[500px] relative rounded-xl overflow-hidden w-full max-w-[807px]">
+                  <div className="h-[400px] sm:h-[450px] md:h-[500px] relative rounded-xl overflow-hidden w-full max-w-[807px] my-6 sm:my-8">
                     <img
                       className="w-full h-full object-cover rounded-xl"
                       src="/images/blog/blog4.png"

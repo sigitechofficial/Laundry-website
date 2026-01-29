@@ -9,28 +9,28 @@ import {
   Button,
 } from "@heroui/react";
 import { useEffect, useState } from "react";
-import { IoNotificationsOutline } from "react-icons/io5";
 import DrawerItem from "./DrawerItem";
-import { LiaUserFriendsSolid } from "react-icons/lia";
 import {
   MdOutlineSupportAgent,
   MdOutlineTableRestaurant,
   MdPayment,
   MdLogout,
-  MdLanguage,
+  MdOutlineLanguage,
   MdPauseCircleOutline,
   MdAttachMoney,
   MdArticle,
+  MdOutlinePeople,
+  MdOutlineHistory,
+  MdOutlineAccountCircle,
+  MdOutlineNotifications,
+  MdOutlinePublic,
 } from "react-icons/md";
 import {
   FaBicycle,
   FaChevronLeft,
   FaRegAddressBook,
   FaUser,
-  FaGlobe,
 } from "react-icons/fa";
-import { RxCounterClockwiseClock } from "react-icons/rx";
-import { TbUserCircle } from "react-icons/tb";
 import { GrUserAdmin } from "react-icons/gr";
 import { FiLogOut } from "react-icons/fi";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -193,7 +193,7 @@ export default function CustomDrawer({
                         <FaChevronLeft />
                       </button>
                       <div>
-                        <IoNotificationsOutline size={26} />
+                        <MdOutlineNotifications size={26} />
                       </div>
                     </div>
 
@@ -313,7 +313,7 @@ export default function CustomDrawer({
                   <div className="space-y-6 my-2">
                     <div>
                       <DrawerItem
-                        Icon={LiaUserFriendsSolid}
+                        Icon={MdOutlinePeople}
                         text={"Invite Friends"}
                         onClick={() => {
                           handleNavigate("/profile?tab=invite-friend");
@@ -325,7 +325,7 @@ export default function CustomDrawer({
                       />
 
                       <DrawerItem
-                        Icon={RxCounterClockwiseClock}
+                        Icon={MdOutlineHistory}
                         text={"Order history"}
                         onClick={() => {
                           handleNavigate("/profile?tab=order-history");
@@ -340,7 +340,7 @@ export default function CustomDrawer({
                       />
 
                       <DrawerItem
-                        Icon={TbUserCircle}
+                        Icon={MdOutlineAccountCircle}
                         text={"My Account"}
                         onClick={() => {
                           handleNavigate("/profile?tab=my-account");
@@ -353,21 +353,21 @@ export default function CustomDrawer({
                       />
 
                       <DrawerItem
-                        Icon={IoNotificationsOutline}
+                        Icon={MdOutlineNotifications}
                         text={"Notifications"}
                         onClick={() => {
                           handleNavigate("/profile?tab=notifications");
                         }}
                       />
                       <DrawerItem
-                        Icon={FaGlobe}
+                        Icon={MdOutlinePublic}
                         text={"Country"}
                         onClick={() => {
                           router.push("/order-history");
                         }}
                       />
                       <DrawerItem
-                        Icon={MdLanguage}
+                        Icon={MdOutlineLanguage}
                         text={"Language"}
                         onClick={() => {
                           router.push("/order-history");

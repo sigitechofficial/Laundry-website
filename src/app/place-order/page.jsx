@@ -292,6 +292,64 @@ export default function orderRegistration() {
   }
 
   useEffect(() => {
+    // Check if orderData has been cleared (empty or only default values)
+    // Reset if orderData doesn't exist, or if collectionData has no meaningful user input
+    const isOrderDataEmpty = !orderData || 
+      !orderData.collectionData ||
+      (!orderData.collectionData?.streetAddress && 
+       !orderData.collectionData?.postalCode && 
+       (!orderData.collectionData?.collectionDate || orderData.collectionData?.collectionDate === ""));
+
+    if (isOrderDataEmpty) {
+      // Reset form to initial state when orderData is cleared
+      setCollectionData({
+        collectionDate: slots?.[0]?.date || "",
+        collectionTimeTo: slots?.[0]?.timeSlots?.[0]?.end || "",
+        collectionTimeFrom: slots?.[0]?.timeSlots?.[0]?.start || "",
+        driverInstructionOptions: "",
+        availableTimeSlots: slots?.[0]?.timeSlots || [],
+        title: "Home",
+        hotelName: null,
+        apartmentNumber: null,
+        floor: null,
+        streetAddress: "",
+        district: "",
+        city: "",
+        province: "",
+        country: "",
+        postalCode: "",
+        lat: null,
+        lng: null,
+        radius: 10,
+        addressType: "pickUp",
+        save: false,
+      });
+      setDeliveryData({
+        deliveryDate: slotsDelivery?.[0]?.date || "",
+        deliveryTimeTo: slotsDelivery?.[0]?.timeSlots?.[0]?.end || "",
+        deliveryTimeFrom: slotsDelivery?.[0]?.timeSlots?.[0]?.start || "",
+        driverInstructionOptions1: "",
+        availableTimeSlots: slotsDelivery?.[0]?.timeSlots || [],
+        title: "Home",
+        hotelName: null,
+        apartmentNumber: null,
+        floor: null,
+        streetAddress: "",
+        district: "",
+        city: "",
+        province: "",
+        country: "",
+        postalCode: "",
+        lat: null,
+        lng: null,
+        radius: 10,
+        addressType: "dropOff",
+      });
+      setDriverInstruction("");
+      setShowAddressDropdown(false);
+      return;
+    }
+
     if (orderData) {
       if (orderData.collectionData) {
         // Merge with defaults to preserve first date/time if not set
@@ -319,6 +377,8 @@ export default function orderRegistration() {
       }
       if (orderData.driverInstruction) {
         setDriverInstruction(orderData.driverInstruction);
+      } else {
+        setDriverInstruction("");
       }
     }
   }, [orderData]);

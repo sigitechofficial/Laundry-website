@@ -1,3 +1,5 @@
+"use client";
+import { useState } from "react";
 import Header from "../../components/Header";
 import { PiArrowRight } from "react-icons/pi";
 import Footer from "../../components/Footer";
@@ -8,6 +10,7 @@ import Link from "next/link";
 import { ClientBtn } from "../../utilities/HelperFunctions";
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState("wash-fold");
   return (
     <HomeClientWrapper>
       <div className="w-full relative">
@@ -143,77 +146,234 @@ export default function Home() {
             </div>
 
             <div className="w-full max-sm:max-w-[468px] overflow-scroll hideScrollbar sm:w-max mx-auto bg-black rounded-full p-2 flex gap-2 font-sf [&>div]:whitespace-nowrap [&>div]:text-sm sm:[&>div]:text-base [&>div]:px-2 [&>div]:py-2 [&>div]:rounded-full [&>div]:text-white [&>div]:cursor-pointer relative -bottom-7">
-              <div className="bg-white/35">Wash & Fold</div>
-              <div className="bg-white/35">Dry Cleaning</div>
-              <div className="bg-white/35">Ironing Service</div>
-              <div className="bg-white/35">Ironing Service</div>
+              <div 
+                onClick={() => setActiveTab("wash-fold")}
+                className={`transition-all duration-300 ${activeTab === "wash-fold" ? "bg-theme-blue text-white" : "bg-white/35"}`}
+              >
+                Wash & Fold
+              </div>
+              <div 
+                onClick={() => setActiveTab("dry-cleaning")}
+                className={`transition-all duration-300 ${activeTab === "dry-cleaning" ? "bg-theme-blue text-white" : "bg-white/35"}`}
+              >
+                Dry Cleaning
+              </div>
+              <div 
+                onClick={() => setActiveTab("ironing")}
+                className={`transition-all duration-300 ${activeTab === "ironing" ? "bg-theme-blue text-white" : "bg-white/35"}`}
+              >
+                Ironing Service
+              </div>
             </div>
 
             <div className="w-full rounded-[20px] bg-white px-4 sm:px-12 pb-5 pt-14 sm:py-14 flex gap-10 font-sf">
-              <div className="font-sf flex-1">
-                <h4 className="font-youth font-black text-2xl sm:text-4xl tracking-tighter uppercase">
-                  Effortless Laundry, <br /> Perfectly Folded
-                </h4>
-                <p className="text-sm sm:text-xl text-theme-gray-2 mt-4 md:leading-8">
-                  Our Wash & Fold service is designed to make your life easier.
-                  Simply drop off your laundry, and we’ll take care of the rest.
-                  From sorting and washing to drying and folding, we handle each
-                  step with precision and care.
-                </p>
+              {/* Wash & Fold Content */}
+              {activeTab === "wash-fold" && (
+                <div className="w-full flex gap-10 animate-fadeIn">
+                  <div className="font-sf flex-1">
+                    <h4 className="font-youth font-black text-2xl sm:text-4xl tracking-tighter uppercase">
+                      Effortless Laundry, <br /> Perfectly Folded
+                    </h4>
+                    <p className="text-sm sm:text-xl text-theme-gray-2 mt-4 md:leading-8">
+                      Our Wash & Fold service is designed to make your life easier.
+                      Simply drop off your laundry, and we'll take care of the rest.
+                      From sorting and washing to drying and folding, we handle each
+                      step with precision and care.
+                    </p>
 
-                <div className="rounded-xl overflow-hidden md:h-[469px] flex-1 mt-5 sm:mt-10 xl:hidden">
-                  <img
-                    className="w-full h-full object-cover hover:scale-105 duration-500"
-                    src="/images/landingPage/wash.png"
-                    alt="wash cloth"
-                  />
-                </div>
-                <h6 className="font-semibold uppercase text-xl mt-5 sm:mt-10 mb-5">
-                  What we offer
-                </h6>
-                <div className="grid grid-cols-2 gap-3 sm:gap-x-10 ">
-                  <div className="flex gap-2">
-                    <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                    <p className="text-theme-psGray text-sm sm:text-base">
-                      Comprehensive Cleaning
-                    </p>
+                    <div className="rounded-xl overflow-hidden md:h-[469px] flex-1 mt-5 sm:mt-10 xl:hidden">
+                      <img
+                        className="w-full h-full object-cover hover:scale-105 duration-500"
+                        src="/images/landingPage/wash.png"
+                        alt="wash & fold"
+                      />
+                    </div>
+                    <h6 className="font-semibold uppercase text-xl mt-5 sm:mt-10 mb-5">
+                      What we offer
+                    </h6>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-x-10 ">
+                      <div className="flex gap-2">
+                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                        <p className="text-theme-psGray text-sm sm:text-base">
+                          Comprehensive Cleaning
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                        <p className="text-theme-psGray text-sm sm:text-base">
+                          Perfect Folding
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                        <p className="text-theme-psGray text-sm sm:text-base">
+                          Attention to Detail
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                        <p className="text-theme-psGray text-sm sm:text-base">
+                          Convenient Pickup & Delivery
+                        </p>
+                      </div>
+                      <ClientBtn>
+                        <p
+                          //  href="/place-order"
+                          className="bg-theme-darkBlue rounded-full flex justify-center items-center sm:w-52 h-10 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl sm:mt-4"
+                        >
+                          Start Cleaning
+                        </p>
+                      </ClientBtn>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                    <p className="text-theme-psGray text-sm sm:text-base">
-                      Perfect Folding
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                    <p className="text-theme-psGray text-sm sm:text-base">
-                      Attention to Detail
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                    <p className="text-theme-psGray text-sm sm:text-base">
-                      Convenient Pickup & Delivery
-                    </p>
-                  </div>
-                  <ClientBtn>
-                    <p
-                      //  href="/place-order"
-                      className="bg-theme-darkBlue rounded-full flex justify-center items-center sm:w-52 h-10 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl sm:mt-4"
-                    >
-                      Start Cleaning
-                    </p>
-                  </ClientBtn>
-                </div>
-              </div>
 
-              <div className="rounded-xl overflow-hidden h-[469px] flex-1 max-xl:hidden">
-                <img
-                  className="w-full h-full object-cover hover:scale-105 duration-500"
-                  src="/images/landingPage/wash.png"
-                  alt="wash cloth"
-                />
-              </div>
+                  <div className="rounded-xl overflow-hidden h-[469px] flex-1 max-xl:hidden">
+                    <img
+                      className="w-full h-full object-cover hover:scale-105 duration-500"
+                      src="/images/landingPage/wash.png"
+                      alt="wash & fold"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Dry Cleaning Content */}
+              {activeTab === "dry-cleaning" && (
+                <div className="w-full flex gap-10 animate-fadeIn">
+                  <div className="font-sf flex-1">
+                    <h4 className="font-youth font-black text-2xl sm:text-4xl tracking-tighter uppercase">
+                      Professional Dry Cleaning, <br /> Expert Care
+                    </h4>
+                    <p className="text-sm sm:text-xl text-theme-gray-2 mt-4 md:leading-8">
+                      Our Dry Cleaning service provides professional care for your delicate and special garments.
+                      Using advanced techniques and eco-friendly solvents, we ensure your clothes look and feel their best.
+                      From suits to dresses, we handle each item with the utmost precision and attention.
+                    </p>
+
+                    <div className="rounded-xl overflow-hidden md:h-[469px] flex-1 mt-5 sm:mt-10 xl:hidden">
+                      <img
+                        className="w-full h-full object-cover hover:scale-105 duration-500"
+                        src="https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&h=600&fit=crop"
+                        alt="dry cleaning"
+                      />
+                    </div>
+                    <h6 className="font-semibold uppercase text-xl mt-5 sm:mt-10 mb-5">
+                      What we offer
+                    </h6>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-x-10 ">
+                      <div className="flex gap-2">
+                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                        <p className="text-theme-psGray text-sm sm:text-base">
+                          Professional Cleaning
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                        <p className="text-theme-psGray text-sm sm:text-base">
+                          Stain Removal
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                        <p className="text-theme-psGray text-sm sm:text-base">
+                          Expert Pressing
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                        <p className="text-theme-psGray text-sm sm:text-base">
+                          Delicate Fabric Care
+                        </p>
+                      </div>
+                      <ClientBtn>
+                        <p
+                          //  href="/place-order"
+                          className="bg-theme-darkBlue rounded-full flex justify-center items-center sm:w-52 h-10 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl sm:mt-4"
+                        >
+                          Start Cleaning
+                        </p>
+                      </ClientBtn>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl overflow-hidden h-[469px] flex-1 max-xl:hidden">
+                    <img
+                      className="w-full h-full object-cover hover:scale-105 duration-500"
+                      src="https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&h=600&fit=crop"
+                      alt="dry cleaning"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Ironing Service Content */}
+              {activeTab === "ironing" && (
+                <div className="w-full flex gap-10 animate-fadeIn">
+                  <div className="font-sf flex-1">
+                    <h4 className="font-youth font-black text-2xl sm:text-4xl tracking-tighter uppercase">
+                      Crisp & Professional, <br /> Perfectly Pressed
+                    </h4>
+                    <p className="text-sm sm:text-xl text-theme-gray-2 mt-4 md:leading-8">
+                      Our Ironing Service ensures your clothes look crisp and professional every time.
+                      With expert pressing techniques and attention to detail, we transform wrinkled garments
+                      into perfectly pressed pieces. From shirts to pants, we make sure you always look your best.
+                    </p>
+
+                    <div className="rounded-xl overflow-hidden md:h-[469px] flex-1 mt-5 sm:mt-10 xl:hidden">
+                      <img
+                        className="w-full h-full object-cover hover:scale-105 duration-500"
+                        src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=800&h=600&fit=crop"
+                        alt="ironing service"
+                      />
+                    </div>
+                    <h6 className="font-semibold uppercase text-xl mt-5 sm:mt-10 mb-5">
+                      What we offer
+                    </h6>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-x-10 ">
+                      <div className="flex gap-2">
+                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                        <p className="text-theme-psGray text-sm sm:text-base">
+                          Expert Pressing
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                        <p className="text-theme-psGray text-sm sm:text-base">
+                          Wrinkle Removal
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                        <p className="text-theme-psGray text-sm sm:text-base">
+                          Professional Finish
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
+                        <p className="text-theme-psGray text-sm sm:text-base">
+                          Quick Turnaround
+                        </p>
+                      </div>
+                      <ClientBtn>
+                        <p
+                          //  href="/place-order"
+                          className="bg-theme-darkBlue rounded-full flex justify-center items-center sm:w-52 h-10 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl sm:mt-4"
+                        >
+                          Start Cleaning
+                        </p>
+                      </ClientBtn>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl overflow-hidden h-[469px] flex-1 max-xl:hidden">
+                    <img
+                      className="w-full h-full object-cover hover:scale-105 duration-500"
+                      src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=800&h=600&fit=crop"
+                      alt="ironing service"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center py-12 sm:py-[100px] lg:gap-20 2xl:py-[200px]">

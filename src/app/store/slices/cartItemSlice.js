@@ -162,7 +162,56 @@ const cartItemSlice = createSlice({
       }
     },
     clearCartData: (state) => {
-      state.orderData = getInitialState().orderData;
+      // Reset to truly empty state (not from getInitialState which may have defaults)
+      state.orderData = {
+        collectionData: {
+          addressType: "pickUp",
+          apartmentNumber: null,
+          availableTimeSlots: [],
+          city: "",
+          collectionDate: "",
+          collectionTimeFrom: "",
+          collectionTimeTo: "",
+          country: "",
+          district: "",
+          driverInstruction: "",
+          driverInstructionOptions: "",
+          floor: null,
+          hotelName: null,
+          lat: null,
+          lng: null,
+          postalCode: "",
+          province: "",
+          radius: 10,
+          save: false,
+          streetAddress: "",
+          title: "Home",
+        },
+        deliveryData: {
+          deliveryDate: "",
+          deliveryTimeTo: "",
+          deliveryTimeFrom: "",
+          driverInstructionOptions1: "",
+          availableTimeSlots: [],
+          title: "Home",
+          hotelName: null,
+          apartmentNumber: null,
+          floor: null,
+          streetAddress: "",
+          district: "",
+          city: "",
+          province: "",
+          country: "",
+          postalCode: "",
+          lat: null,
+          lng: null,
+          radius: 10,
+          addressType: "dropOff",
+        },
+        driverInstruction: "",
+        frequency: "Just once",
+        driverTip: 0,
+      };
       state.preferences = [];
       state.page = "";
       if (typeof window !== "undefined") {

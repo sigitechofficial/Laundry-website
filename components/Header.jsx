@@ -60,7 +60,6 @@ const Header = ({ type }) => {
 
   const showShadow = [
     "how",
-    "aboutUs",
     "partner",
     "blog",
     "profile",

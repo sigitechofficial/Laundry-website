@@ -3,20 +3,21 @@ import React, { useEffect } from "react";
 import Header from "../../../components/Header";
 import { useState } from "react";
 import DrawerItem from "../../../components/DrawerItem";
-import { LiaUserFriendsSolid } from "react-icons/lia";
 import { 
   MdOutlineSupportAgent, 
   MdPayment, 
   MdLogout,
-  MdLanguage,
+  MdOutlineLanguage,
   MdPauseCircleOutline,
+  MdOutlinePeople,
+  MdOutlineHistory,
+  MdOutlineAccountCircle,
+  MdOutlineNotifications,
+  MdOutlinePublic,
 } from "react-icons/md";
-import { FaChevronLeft, FaRegAddressBook, FaUser, FaGlobe } from "react-icons/fa";
-import { RxCounterClockwiseClock } from "react-icons/rx";
-import { TbUserCircle } from "react-icons/tb";
+import { FaChevronLeft, FaRegAddressBook, FaUser } from "react-icons/fa";
 import { GrUserAdmin } from "react-icons/gr";
 import { FiLogOut } from "react-icons/fi";
-import { IoNotificationsOutline } from "react-icons/io5";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   useGetProfileQuery,
@@ -401,14 +402,14 @@ export default function Profile() {
               <div className="space-y-6 my-2">
                 <div>
                   <DrawerItem
-                    Icon={LiaUserFriendsSolid}
+                    Icon={MdOutlinePeople}
                     text={"Invite Friends"}
                     onClick={() => handleTabChange("invite-friend")}
                   />
                   <DrawerItem Icon={MdOutlineSupportAgent} text={"Support"} />
 
                   <DrawerItem
-                    Icon={RxCounterClockwiseClock}
+                    Icon={MdOutlineHistory}
                     text={"Order history"}
                     onClick={() => handleTabChange("order-history")}
                   />
@@ -419,7 +420,7 @@ export default function Profile() {
                   />
 
                   <DrawerItem
-                    Icon={TbUserCircle}
+                    Icon={MdOutlineAccountCircle}
                     text={"My Account"}
                     onClick={() => handleTabChange("my-account")}
                   />
@@ -427,7 +428,7 @@ export default function Profile() {
                 <DrawerItem Icon={FaRegAddressBook} text={"My addresses"} /> */}
 
                   <DrawerItem
-                    Icon={IoNotificationsOutline}
+                    Icon={MdOutlineNotifications}
                     text={"Notifications"}
                     // onClick={() => {
                     //   router.push("/profile?tab=notifications");
@@ -436,14 +437,14 @@ export default function Profile() {
                     onClick={() => handleTabChange("notifications")}
                   />
                   <DrawerItem
-                    Icon={FaGlobe}
+                    Icon={MdOutlinePublic}
                     text={"Country"}
                   // onClick={() => {
                   //   router.push("/order-history");
                   // }}
                   />
                   <DrawerItem
-                    Icon={MdLanguage}
+                    Icon={MdOutlineLanguage}
                     text={"Language"}
                   // onClick={() => {
                   //   router.push("");

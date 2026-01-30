@@ -25,6 +25,7 @@ import { useRouter } from "next/navigation";
 import HomeClientWrapper from "../../../../utilities/Test";
 import InputField from "../../../../components/InputHeroUi";
 import { MiniLoader } from "../../../../components/Loader";
+import { BASE_URL } from "../../../../utilities/URL";
 
 export default function Order() {
   const dispatch = useDispatch();
@@ -147,96 +148,68 @@ export default function Order() {
                 <div className={`w-full space-y-5 ${showMobileSummary ? 'lg:block hidden' : ''}`}>
                   {!isLoading ? (
                     data?.data?.serviceData?.map((item) => {
-                      return item?.id === 1 ? (
+                      // Construct dynamic image URL from API response
+                      const imageUrl = item?.image
+                        ? `${BASE_URL}${item.image}`
+                        : "/images/pricing/clothes.png"; // Fallback image if no image provided
+
+                      // Determine icon based on service name
+                      const getIcon = (serviceName) => {
+                        const name = serviceName?.toLowerCase() || "";
+                        if (name.includes("iron")) return TbIroning;
+                        if (name.includes("dry clean")) return MdOutlineDryCleaning;
+                        if (name.includes("press")) return TbIroningSteam;
+                        return TbWash;
+                      };
+
+                      // Determine background color based on service ID
+                      const getBg = (id) => {
+                        if (id === 1) return "2";
+                        if (id === 2) return "1";
+                        if (id === 3) return "4";
+                        if (id === 4) return "4";
+                        if (id === 5) return "5";
+                        return "1";
+                      };
+
+                      // Determine right positioning based on service ID
+                      const getRight = (id) => {
+                        if (id === 1) return "right-0";
+                        if (id === 2) return "-right-16";
+                        if (id === 3 || id === 4) return "-right-10";
+                        if (id === 5) return "-right-6";
+                        return "right-0";
+                      };
+
+                      // Determine modal type based on service ID
+                      const getModalType = (id) => {
+                        if (id === 1) return "iron";
+                        if (id === 2) return "dry cleaning";
+                        if (id === 3) return "wash";
+                        return "";
+                      };
+
+                      // Check if service is selected
+                      const isSelected = Array.isArray(preferencesData) &&
+                        preferencesData?.some((elem) => elem?.serviceId === item?.id);
+
+                      return (
                         <CategoryCard
+                          key={item?.id}
                           onClick={() => {
                             setCurrentServiceId(item?.id);
-                            setModal({ ...modal, modType: "iron" });
+                            setModal({ ...modal, modType: getModalType(item?.id, item?.name) });
                             onOpen();
                           }}
-                          bg="2"
+                          bg={getBg(item?.id)}
                           h={item?.name}
-                          Icon={TbIroning}
-                          src="/images/pricing/c2.png"
-                          right="right-0"
-                          type={
-                            Array.isArray(preferencesData) &&
-                              preferencesData?.some(
-                                (elem) => elem?.serviceId === 1
-                              )
-                              ? "check"
-                              : "plus"
-                          }
+                          Icon={getIcon(item?.name)}
+                          src={imageUrl}
+                          right={getRight(item?.id)}
+                          type={isSelected ? "check" : "plus"}
                           serviceId={item?.id}
                         />
-                      ) : item?.id === 2 ? (
-                        <CategoryCard
-                          onClick={() => {
-                            setCurrentServiceId(item?.id);
-                            setModal({ ...modal, modType: "dry cleaning" });
-                            onOpen();
-                          }}
-                          bg="1"
-                          h={item?.name}
-                          Icon={MdOutlineDryCleaning}
-                          src="/images/pricing/c1.png"
-                          right="-right-16"
-                          type={"plus"}
-                          serviceId={item?.id}
-                        />
-                      ) : item?.id === 3 ? (
-                        <CategoryCard
-                          onClick={() => {
-                            setCurrentServiceId(item?.id);
-                            setModal({ ...modal, modType: "wash" });
-                            onOpen();
-                          }}
-                          bg="4"
-                          h={item?.name}
-                          Icon={TbWash}
-                          src="/images/pricing/c4.png"
-                          right="-right-10"
-                          type={
-                            Array.isArray(preferencesData) &&
-                              preferencesData?.some(
-                                (elem) => elem?.serviceId === 3
-                              )
-                              ? "check"
-                              : "plus"
-                          }
-                          serviceId={item?.id}
-                        />
-                      ) : item?.id === 4 ? (
-                        <CategoryCard
-                          onClick={() => {
-                            setCurrentServiceId(item?.id);
-                            setModal({ ...modal, modType: "" });
-                            onOpen();
-                          }}
-                          bg="4"
-                          h={item?.name}
-                          Icon={TbWash}
-                          src="/images/pricing/c4.png"
-                          right="-right-10"
-                          type={"plus"}
-                          serviceId={item?.id}
-                        />
-                      ) : item?.id === 5 ? (
-                        <CategoryCard
-                          onClick={() => {
-                            setCurrentServiceId(item?.id);
-                            setModal({ ...modal, modType: "" });
-                            onOpen();
-                          }}
-                          bg="5"
-                          h={item?.name}
-                          Icon={TbIroningSteam}
-                          src="/images/pricing/c5.png"
-                          right="-right-6"
-                          type={"plus"}
-                          serviceId={item?.id}
-                        />
-                      ) : null;
+                      );
                     })
                   ) : (
                     <div className="col-span-2 text-xl font-semibold w-max mx-auto">

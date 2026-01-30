@@ -7,6 +7,8 @@ export const api = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: BASE_URL,
     credentials: "include",
+    // Add timeout to prevent hanging requests
+    timeout: 10000, // 10 seconds timeout
     prepareHeaders: (headers, { getState }) => {
       // Get access token from localStorage
       if (typeof window !== "undefined") {

@@ -103,6 +103,13 @@ export const api = createApi({
       }),
     }),
 
+    getServiceDetails: builder.query({
+      query: () => ({
+        url: "customer/serviceDetail",
+        method: "GET",
+      }),
+    }),
+
     getServiceWithPreferenceDetails: builder.query({
       query: (serviceId) => ({
         url: `customer/getAllServiceWithPreferenceDetails/${serviceId}`,
@@ -201,6 +208,27 @@ export const api = createApi({
         method: "GET",
       }),
     }),
+
+    getFAQs: builder.query({
+      query: () => ({
+        url: "admin/getAllFAQs",
+        method: "GET",
+      }),
+    }),
+
+    getBlogs: builder.query({
+      query: () => ({
+        url: "admin/getAllBlogs",
+        method: "GET",
+      }),
+    }),
+
+    getBlogById: builder.query({
+      query: (id) => ({
+        url: `admin/getBlog/${id}`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
@@ -216,6 +244,7 @@ export const {
   useUpdateProfileMutation,
   useGetServicesQuery,
   useGetServiceByIdQuery,
+  useGetServiceDetailsQuery,
   useGetServiceWithPreferenceDetailsQuery,
   useCreateBookingMutation,
   useGetAllAddressQuery,
@@ -231,4 +260,7 @@ export const {
   useCancelBookingMutation,
   useGetAddressesByPostcodeQuery,
   useLazyGetAddressesByPostcodeQuery,
+  useGetFAQsQuery,
+  useGetBlogsQuery,
+  useGetBlogByIdQuery,
 } = api;

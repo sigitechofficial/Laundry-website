@@ -24,11 +24,14 @@ import { MiniLoader } from "../../../components/Loader";
 
 const collection = [
   { key: "Collect from me in person", label: "Collect from me in person" },
+  { key: "Collect from Outside", label: "Collect from Outside" },
+  { key: "Collect from reception/Porter", label: "Collect from reception/Porter" },
   { key: "Collect from the reception", label: "Collect from the reception" },
 ];
 const delivery = [
   { key: "Deliver to me in person", label: "Deliver to me in person" },
-  { key: "Deliver from the reception", label: "Deliver from the reception" },
+  { key: "Leave at the door", label: "Leave at the door" },
+  { key: "Deliver to the Reception/Porter", label: "Deliver to the Reception/Porter" },
 ];
 
 export default function orderRegistration() {

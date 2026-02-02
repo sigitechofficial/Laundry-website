@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Header from "../../components/Header";
 import { PiArrowRight } from "react-icons/pi";
 import Footer from "../../components/Footer";
@@ -8,9 +8,35 @@ import FAQs from "../../components/FAQs";
 import HomeClientWrapper from "../../utilities/Test";
 import Link from "next/link";
 import { ClientBtn } from "../../utilities/HelperFunctions";
+import { useGetServiceDetailsQuery } from "./store/services/api";
+import { Spinner } from "@heroui/react";
+import { BASE_URL } from "../../utilities/URL";
+
+const getServiceImageUrl = (image) => {
+  if (!image) return "/images/landingPage/wash.png";
+  if (typeof image === "string" && image.startsWith("http")) return image;
+  if (typeof image === "string") return `${BASE_URL.replace(/\/$/, "")}/${image.replace(/^\//, "")}`;
+  return "/images/landingPage/wash.png";
+};
+
+const getServiceKey = (name) => {
+  if (!name) return "service";
+  return String(name).toLowerCase().replace(/\s*&\s*/g, "-").replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+};
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState("wash-fold");
+  const { data, isLoading, isError } = useGetServiceDetailsQuery();
+  const serviceData = data?.data?.serviceData ?? data?.serviceData ?? [];
+  const services = Array.isArray(serviceData) ? serviceData.filter((s) => s?.service?.status !== false) : [];
+
+  const firstServiceKey = useMemo(() => (services[0] ? getServiceKey(services[0].service?.name) : "wash-fold"), [services]);
+  const [activeTab, setActiveTab] = useState(firstServiceKey);
+
+  useEffect(() => {
+    if (services.length > 0 && !services.some((s) => getServiceKey(s.service?.name) === activeTab)) {
+      setActiveTab(firstServiceKey);
+    }
+  }, [services, firstServiceKey, activeTab]);
   return (
     <HomeClientWrapper>
       <div className="w-full relative">
@@ -145,236 +171,95 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="w-full max-sm:max-w-[468px] overflow-scroll hideScrollbar sm:w-max mx-auto bg-black rounded-full p-2 flex gap-2 font-sf [&>div]:whitespace-nowrap [&>div]:text-sm sm:[&>div]:text-base [&>div]:px-2 [&>div]:py-2 [&>div]:rounded-full [&>div]:text-white [&>div]:cursor-pointer relative -bottom-7">
-              <div 
-                onClick={() => setActiveTab("wash-fold")}
-                className={`transition-all duration-300 ${activeTab === "wash-fold" ? "bg-theme-blue text-white" : "bg-white/35"}`}
-              >
-                Wash & Fold
+            {isLoading ? (
+              <div className="min-h-[400px] flex justify-center items-center rounded-[20px] bg-white">
+                <Spinner size="lg" color="primary" />
               </div>
-              <div 
-                onClick={() => setActiveTab("dry-cleaning")}
-                className={`transition-all duration-300 ${activeTab === "dry-cleaning" ? "bg-theme-blue text-white" : "bg-white/35"}`}
-              >
-                Dry Cleaning
+            ) : isError ? (
+              <div className="min-h-[400px] flex justify-center items-center rounded-[20px] bg-white">
+                <p className="font-sf text-lg text-red-500">Unable to load services. Please try again later.</p>
               </div>
-              <div 
-                onClick={() => setActiveTab("ironing")}
-                className={`transition-all duration-300 ${activeTab === "ironing" ? "bg-theme-blue text-white" : "bg-white/35"}`}
-              >
-                Ironing Service
+            ) : services.length === 0 ? (
+              <div className="min-h-[400px] flex justify-center items-center rounded-[20px] bg-white">
+                <p className="font-sf text-lg text-theme-gray-3">No services available at the moment.</p>
               </div>
-            </div>
-
-            <div className="w-full rounded-[20px] bg-white px-4 sm:px-12 pb-5 pt-14 sm:py-14 flex gap-10 font-sf">
-              {/* Wash & Fold Content */}
-              {activeTab === "wash-fold" && (
-                <div className="w-full flex gap-10 animate-fadeIn">
-                  <div className="font-sf flex-1">
-                    <h4 className="font-youth font-black text-2xl sm:text-4xl tracking-tighter uppercase">
-                      Effortless Laundry, <br /> Perfectly Folded
-                    </h4>
-                    <p className="text-sm sm:text-xl text-theme-gray-2 mt-4 md:leading-8">
-                      Our Wash & Fold service is designed to make your life easier.
-                      Simply drop off your laundry, and we'll take care of the rest.
-                      From sorting and washing to drying and folding, we handle each
-                      step with precision and care.
-                    </p>
-
-                    <div className="rounded-xl overflow-hidden md:h-[469px] flex-1 mt-5 sm:mt-10 xl:hidden">
-                      <img
-                        className="w-full h-full object-cover hover:scale-105 duration-500"
-                        src="/images/landingPage/wash.png"
-                        alt="wash & fold"
-                      />
-                    </div>
-                    <h6 className="font-semibold uppercase text-xl mt-5 sm:mt-10 mb-5">
-                      What we offer
-                    </h6>
-                    <div className="grid grid-cols-2 gap-3 sm:gap-x-10 ">
-                      <div className="flex gap-2">
-                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                        <p className="text-theme-psGray text-sm sm:text-base">
-                          Comprehensive Cleaning
-                        </p>
+            ) : (
+              <>
+                <div className="w-full max-sm:max-w-[468px] overflow-scroll hideScrollbar sm:w-max mx-auto bg-black rounded-full p-2 flex gap-2 font-sf [&>div]:whitespace-nowrap [&>div]:text-sm sm:[&>div]:text-base [&>div]:px-2 [&>div]:py-2 [&>div]:rounded-full [&>div]:text-white [&>div]:cursor-pointer relative -bottom-7">
+                  {services.map((item) => {
+                    const key = getServiceKey(item.service?.name);
+                    return (
+                      <div
+                        key={item.serviceId ?? item.service?.id ?? key}
+                        onClick={() => setActiveTab(key)}
+                        className={`transition-all duration-300 ${activeTab === key ? "bg-theme-blue text-white" : "bg-white/35"}`}
+                      >
+                        {item.service?.name || "Service"}
                       </div>
-                      <div className="flex gap-2">
-                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                        <p className="text-theme-psGray text-sm sm:text-base">
-                          Perfect Folding
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                        <p className="text-theme-psGray text-sm sm:text-base">
-                          Attention to Detail
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                        <p className="text-theme-psGray text-sm sm:text-base">
-                          Convenient Pickup & Delivery
-                        </p>
-                      </div>
-                      <ClientBtn>
-                        <p
-                          //  href="/place-order"
-                          className="bg-theme-darkBlue rounded-full flex justify-center items-center sm:w-52 h-10 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl sm:mt-4"
-                        >
-                          Start Cleaning
-                        </p>
-                      </ClientBtn>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl overflow-hidden h-[469px] flex-1 max-xl:hidden">
-                    <img
-                      className="w-full h-full object-cover hover:scale-105 duration-500"
-                      src="/images/landingPage/wash.png"
-                      alt="wash & fold"
-                    />
-                  </div>
+                    );
+                  })}
                 </div>
-              )}
 
-              {/* Dry Cleaning Content */}
-              {activeTab === "dry-cleaning" && (
-                <div className="w-full flex gap-10 animate-fadeIn">
-                  <div className="font-sf flex-1">
-                    <h4 className="font-youth font-black text-2xl sm:text-4xl tracking-tighter uppercase">
-                      Professional Dry Cleaning, <br /> Expert Care
-                    </h4>
-                    <p className="text-sm sm:text-xl text-theme-gray-2 mt-4 md:leading-8">
-                      Our Dry Cleaning service provides professional care for your delicate and special garments.
-                      Using advanced techniques and eco-friendly solvents, we ensure your clothes look and feel their best.
-                      From suits to dresses, we handle each item with the utmost precision and attention.
-                    </p>
+                <div className="w-full rounded-[20px] bg-white px-4 sm:px-12 pb-5 pt-14 sm:py-14 flex gap-10 font-sf">
+                  {services.map((item) => {
+                    const key = getServiceKey(item.service?.name);
+                    if (activeTab !== key) return null;
 
-                    <div className="rounded-xl overflow-hidden md:h-[469px] flex-1 mt-5 sm:mt-10 xl:hidden">
-                      <img
-                        className="w-full h-full object-cover hover:scale-105 duration-500"
-                        src="https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&h=600&fit=crop"
-                        alt="dry cleaning"
-                      />
-                    </div>
-                    <h6 className="font-semibold uppercase text-xl mt-5 sm:mt-10 mb-5">
-                      What we offer
-                    </h6>
-                    <div className="grid grid-cols-2 gap-3 sm:gap-x-10 ">
-                      <div className="flex gap-2">
-                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                        <p className="text-theme-psGray text-sm sm:text-base">
-                          Professional Cleaning
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                        <p className="text-theme-psGray text-sm sm:text-base">
-                          Stain Removal
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                        <p className="text-theme-psGray text-sm sm:text-base">
-                          Expert Pressing
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                        <p className="text-theme-psGray text-sm sm:text-base">
-                          Delicate Fabric Care
-                        </p>
-                      </div>
-                      <ClientBtn>
-                        <p
-                          //  href="/place-order"
-                          className="bg-theme-darkBlue rounded-full flex justify-center items-center sm:w-52 h-10 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl sm:mt-4"
-                        >
-                          Start Cleaning
-                        </p>
-                      </ClientBtn>
-                    </div>
-                  </div>
+                    const description = item.categories?.[0]?.category?.description || `Our ${item.service?.name || "service"} provides professional care for your garments.`;
+                    const categories = item.categories || [];
 
-                  <div className="rounded-xl overflow-hidden h-[469px] flex-1 max-xl:hidden">
-                    <img
-                      className="w-full h-full object-cover hover:scale-105 duration-500"
-                      src="https://images.unsplash.com/photo-1556910103-1c02745aae4d?w=800&h=600&fit=crop"
-                      alt="dry cleaning"
-                    />
-                  </div>
+                    return (
+                      <div key={key} className="w-full flex gap-10 animate-fadeIn">
+                        <div className="font-sf flex-1">
+                          <h4 className="font-youth font-black text-2xl sm:text-4xl tracking-tighter uppercase">
+                            {item.service?.name || "Service"}
+                          </h4>
+                          <p className="text-sm sm:text-xl text-theme-gray-2 mt-4 md:leading-8 whitespace-pre-wrap">
+                            {description}
+                          </p>
+
+                          <div className="rounded-xl overflow-hidden md:h-[469px] flex-1 mt-5 sm:mt-10 xl:hidden">
+                            <img
+                              className="w-full h-full object-cover hover:scale-105 duration-500"
+                              src={getServiceImageUrl(item.service?.image)}
+                              alt={item.service?.name || "service"}
+                            />
+                          </div>
+                          <h6 className="font-semibold uppercase text-xl mt-5 sm:mt-10 mb-5">
+                            What we offer
+                          </h6>
+                          <div className="grid grid-cols-2 gap-3 sm:gap-x-10">
+                            {categories.slice(0, 4).map((cat) => (
+                              <div key={cat.categoryId ?? cat.category?.id} className="flex gap-2">
+                                <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                                <p className="text-theme-psGray text-sm sm:text-base">
+                                  {cat.category?.name || "Category"}
+                                </p>
+                              </div>
+                            ))}
+                            <ClientBtn>
+                              <p
+                                className="bg-theme-darkBlue rounded-full flex justify-center items-center sm:w-52 h-10 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl sm:mt-4 col-span-2"
+                              >
+                                Start Cleaning
+                              </p>
+                            </ClientBtn>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl overflow-hidden h-[469px] flex-1 max-xl:hidden">
+                          <img
+                            className="w-full h-full object-cover hover:scale-105 duration-500"
+                            src={getServiceImageUrl(item.service?.image)}
+                            alt={item.service?.name || "service"}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-
-              {/* Ironing Service Content */}
-              {activeTab === "ironing" && (
-                <div className="w-full flex gap-10 animate-fadeIn">
-                  <div className="font-sf flex-1">
-                    <h4 className="font-youth font-black text-2xl sm:text-4xl tracking-tighter uppercase">
-                      Crisp & Professional, <br /> Perfectly Pressed
-                    </h4>
-                    <p className="text-sm sm:text-xl text-theme-gray-2 mt-4 md:leading-8">
-                      Our Ironing Service ensures your clothes look crisp and professional every time.
-                      With expert pressing techniques and attention to detail, we transform wrinkled garments
-                      into perfectly pressed pieces. From shirts to pants, we make sure you always look your best.
-                    </p>
-
-                    <div className="rounded-xl overflow-hidden md:h-[469px] flex-1 mt-5 sm:mt-10 xl:hidden">
-                      <img
-                        className="w-full h-full object-cover hover:scale-105 duration-500"
-                        src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=800&h=600&fit=crop"
-                        alt="ironing service"
-                      />
-                    </div>
-                    <h6 className="font-semibold uppercase text-xl mt-5 sm:mt-10 mb-5">
-                      What we offer
-                    </h6>
-                    <div className="grid grid-cols-2 gap-3 sm:gap-x-10 ">
-                      <div className="flex gap-2">
-                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                        <p className="text-theme-psGray text-sm sm:text-base">
-                          Expert Pressing
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                        <p className="text-theme-psGray text-sm sm:text-base">
-                          Wrinkle Removal
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                        <p className="text-theme-psGray text-sm sm:text-base">
-                          Professional Finish
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <p className="size-6 rounded-md bg-theme-darkBlue  shrink-0"></p>
-                        <p className="text-theme-psGray text-sm sm:text-base">
-                          Quick Turnaround
-                        </p>
-                      </div>
-                      <ClientBtn>
-                        <p
-                          //  href="/place-order"
-                          className="bg-theme-darkBlue rounded-full flex justify-center items-center sm:w-52 h-10 sm:h-[60px] uppercase font-youth font-bold text-white text-sm sm:text-xl sm:mt-4"
-                        >
-                          Start Cleaning
-                        </p>
-                      </ClientBtn>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl overflow-hidden h-[469px] flex-1 max-xl:hidden">
-                    <img
-                      className="w-full h-full object-cover hover:scale-105 duration-500"
-                      src="https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=800&h=600&fit=crop"
-                      alt="ironing service"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+              </>
+            )}
 
             <div className="flex items-center py-12 sm:py-[100px] lg:gap-20 2xl:py-[200px]">
               <div className="flex-1 rounded-xl overflow-hidden max-h-[793px] max-lg:hidden">
@@ -525,150 +410,111 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="bg-white rounded-[20px] py-5 px-3 sm:p-5 flex gap-3 sm:gap-5 justify-between">
-              <div className="space-y-1 sm:space-y-3 font-sf">
-                <h6 className="font-semibold font-sf text-lg sm:text-xl tracking-tight uppercase">
-                  Dry Cleaning
-                </h6>
-                <h6 className="font-black font-sf text-sm tracking-tight uppercase">
-                  Includes
-                </h6>
+            {services.length > 0 ? (
+              services.map((item) => {
+                const categories = item.categories || [];
+                const includeItems = categories.slice(0, 3).map((c) => c.category?.name).filter(Boolean);
+                const allPrices = categories.flatMap((c) => (c.subCategories || []).map((s) => s?.price)).filter((p) => typeof p === "number");
+                const minPrice = allPrices.length > 0 ? Math.min(...allPrices) : null;
 
-                <div className="flex gap-2">
-                  <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
-                  <p className="text-theme-psGray text-sm sm:text-base">
-                    Sorting by color and fabric type
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
-                  <p className="text-theme-psGray text-sm sm:text-base">
-                    Eco-friendly detergent
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
-                  <p className="text-theme-psGray text-sm sm:text-base">
-                    Washing, drying, and neatly folding
-                  </p>
-                </div>
-              </div>
-
-              <div className="">
-                <div className="rounded-xl py-5 px-3 sm:p-5 text-white bg-theme-blue-2 w-[150px] sm:w-[223px]">
-                  <p className="text-sm font-sf text-white">Regular Laundry</p>
-                  <span className="text-[40px] font-black font-youth">
-                    $4.5
-                  </span>{" "}
-                  <span className="text-xs font-sf text-white">/lbs</span>
-                </div>
-
-                <ClientBtn>
-                  <p
-                    // href="/place-order"
-                    className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2"
+                return (
+                  <div
+                    key={item.serviceId ?? item.service?.id}
+                    className="bg-white rounded-[20px] py-5 px-3 sm:p-5 flex gap-3 sm:gap-5 justify-between"
                   >
-                    Start Cleaning
-                  </p>
-                </ClientBtn>
-              </div>
-            </div>
-            <div className="bg-white rounded-[20px] py-5 px-3 sm:p-5 flex gap-3 sm:gap-5 justify-between">
-              <div className="space-y-1 sm:space-y-3 font-sf">
-                <h6 className="font-semibold font-sf text-lg sm:text-xl  tracking-tight uppercase">
-                  Dry Cleaning
-                </h6>
-                <h6 className="font-black font-sf text-sm tracking-tight uppercase">
-                  Includes
-                </h6>
+                    <div className="space-y-1 sm:space-y-3 font-sf">
+                      <h6 className="font-semibold font-sf text-lg sm:text-xl tracking-tight uppercase">
+                        {item.service?.name || "Service"}
+                      </h6>
+                      <h6 className="font-black font-sf text-sm tracking-tight uppercase">
+                        Includes
+                      </h6>
 
-                <div className="flex gap-2">
-                  <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
-                  <p className="text-theme-psGray text-sm sm:text-base">
-                    Sorting by color and fabric type
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
-                  <p className="text-theme-psGray text-sm sm:text-base">
-                    Eco-friendly detergent
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
-                  <p className="text-theme-psGray text-sm sm:text-base">
-                    Washing, drying, and neatly folding
-                  </p>
-                </div>
-              </div>
+                      {includeItems.length > 0 ? (
+                        includeItems.map((name) => (
+                          <div key={name} className="flex gap-2">
+                            <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                            <p className="text-theme-psGray text-sm sm:text-base">{name}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <>
+                          <div className="flex gap-2">
+                            <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                            <p className="text-theme-psGray text-sm sm:text-base">Professional cleaning</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                            <p className="text-theme-psGray text-sm sm:text-base">Quality care</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                            <p className="text-theme-psGray text-sm sm:text-base">Convenient delivery</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
 
-              <div className="">
-                <div className="rounded-xl py-5 px-3 sm:p-5 text-white bg-theme-blue-2 w-[150px] sm:w-[223px]">
-                  <p className="text-sm font-sf text-white">Regular Laundry</p>
-                  <span className="text-[40px] font-black font-youth">
-                    $4.5
-                  </span>{" "}
-                  <span className="text-xs font-sf text-white">/lbs</span>
-                </div>
-                <ClientBtn>
-                  <p
-                    // href="/place-order"
-                    className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2"
-                  >
-                    Start Cleaning
-                  </p>
-                </ClientBtn>
-              </div>
-            </div>
+                    <div className="">
+                      <div className="rounded-xl py-5 px-3 sm:p-5 text-white bg-theme-blue-2 w-[150px] sm:w-[223px]">
+                        <p className="text-sm font-sf text-white">{item.service?.name || "Service"}</p>
+                        {minPrice != null ? (
+                          <>
+                            <span className="text-[40px] font-black font-youth">${minPrice}</span>{" "}
+                            <span className="text-xs font-sf text-white">from /item</span>
+                          </>
+                        ) : (
+                          <span className="text-lg font-sf text-white">Ask for quote</span>
+                        )}
+                      </div>
 
-            <div className="bg-white rounded-[20px] py-5 px-3 sm:p-5 flex gap-3 sm:gap-5 justify-between">
-              <div className="space-y-1 sm:space-y-3 font-sf">
-                <h6 className="font-semibold font-sf text-lg sm:text-xl  tracking-tight uppercase">
-                  Dry Cleaning
-                </h6>
-                <h6 className="font-black font-sf text-sm tracking-tight uppercase">
-                  Includes
-                </h6>
-
-                <div className="flex gap-2">
-                  <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
-                  <p className="text-theme-psGray text-sm sm:text-base">
-                    Sorting by color and fabric type
-                  </p>
+                      <ClientBtn>
+                        <p className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2">
+                          Start Cleaning
+                        </p>
+                      </ClientBtn>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              [1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="bg-white rounded-[20px] py-5 px-3 sm:p-5 flex gap-3 sm:gap-5 justify-between"
+                >
+                  <div className="space-y-1 sm:space-y-3 font-sf">
+                    <h6 className="font-semibold font-sf text-lg sm:text-xl tracking-tight uppercase">
+                      Service
+                    </h6>
+                    <h6 className="font-black font-sf text-sm tracking-tight uppercase">Includes</h6>
+                    <div className="flex gap-2">
+                      <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                      <p className="text-theme-psGray text-sm sm:text-base">Professional cleaning</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                      <p className="text-theme-psGray text-sm sm:text-base">Quality care</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
+                      <p className="text-theme-psGray text-sm sm:text-base">Convenient delivery</p>
+                    </div>
+                  </div>
+                  <div className="">
+                    <div className="rounded-xl py-5 px-3 sm:p-5 text-white bg-theme-blue-2 w-[150px] sm:w-[223px]">
+                      <p className="text-sm font-sf text-white">Service</p>
+                      <span className="text-lg font-sf text-white">Ask for quote</span>
+                    </div>
+                    <ClientBtn>
+                      <p className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2">
+                        Start Cleaning
+                      </p>
+                    </ClientBtn>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
-                  <p className="text-theme-psGray text-sm sm:text-base">
-                    Eco-friendly detergent
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <p className="size-6 rounded-md bg-theme-darkBlue shrink-0"></p>
-                  <p className="text-theme-psGray text-sm sm:text-base">
-                    Washing, drying, and neatly folding
-                  </p>
-                </div>
-              </div>
-
-              <div className="">
-                <div className="rounded-xl py-5 px-3 sm:p-5 text-white bg-theme-blue-2 w-[150px] sm:w-[223px]">
-                  <p className="text-sm font-sf text-white">Regular Laundry</p>
-                  <span className="text-[40px] font-black font-youth">
-                    $4.5
-                  </span>{" "}
-                  <span className="text-xs font-sf text-white">/lbs</span>
-                </div>
-
-                <ClientBtn>
-                  <p
-                    // href="/place-order"
-                    className="bg-black rounded-full flex justify-center items-center w-full h-[36px] sm:h-[55px] font-sf font-medium text-white text-sm sm:text-lg mt-2"
-                  >
-                    Start Cleaning
-                  </p>
-                </ClientBtn>
-              </div>
-            </div>
+              ))
+            )}
           </div>
         </div>
 

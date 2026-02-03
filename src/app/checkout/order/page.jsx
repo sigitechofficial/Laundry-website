@@ -673,7 +673,7 @@ export default function Order() {
                                     },
                                   }))
                                 }
-                                className={`h-[53px] flex justify-center items-center cursor-pointer ${isSelected
+                                className={`h-[53px] flex justify-center items-center cursor-pointer text-center rounded-lg text-sm ${isSelected
                                   ? "bg-theme-blue text-white"
                                   : "bg-theme-gray"
                                   }`}

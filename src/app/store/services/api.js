@@ -229,6 +229,28 @@ export const api = createApi({
         method: "GET",
       }),
     }),
+
+    registerAgent: builder.mutation({
+      query: (body) => ({
+        url: "admin/registerAgent",
+        method: "POST",
+        body,
+      }),
+    }),
+
+    getCountries: builder.query({
+      query: () => ({
+        url: "admin/getCountries",
+        method: "GET",
+      }),
+    }),
+
+    getCitiesByCountry: builder.query({
+      query: (countryId) => ({
+        url: `admin/getCities/${countryId}`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
@@ -263,4 +285,7 @@ export const {
   useGetFAQsQuery,
   useGetBlogsQuery,
   useGetBlogByIdQuery,
+  useRegisterAgentMutation,
+  useGetCountriesQuery,
+  useGetCitiesByCountryQuery,
 } = api;

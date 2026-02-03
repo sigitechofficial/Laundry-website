@@ -62,14 +62,19 @@ const CheckoutForm = ({ setModal, modal, booking, onOpen, intentMode = "payment"
         }
 
         if (setupIntent?.status === "succeeded") {
-          booking({
-            setupIntentId: setupIntent?.id || intentId, // Use confirmed ID or fallback to extracted ID
-            paymentMethodId: setupIntent?.payment_method,
-          });
-          setProcessing(false);
-          setMessage("");
-          setModal({ page: "success", modType: "success" });
-          onOpen();
+          try {
+            await booking({
+              setupIntentId: setupIntent?.id || intentId, // Use confirmed ID or fallback to extracted ID
+              paymentMethodId: setupIntent?.payment_method,
+            });
+            setProcessing(false);
+            setMessage("");
+            setModal({ page: "success", modType: "success" });
+            onOpen();
+          } catch (err) {
+            setMessage(err?.message || "Booking failed. Please try again.");
+            setProcessing(false);
+          }
         } else {
           setMessage(`Setup status: ${setupIntent?.status}`);
           setProcessing(false);
@@ -83,14 +88,19 @@ const CheckoutForm = ({ setModal, modal, booking, onOpen, intentMode = "payment"
       });
 
       if (paymentIntent?.status === "requires_capture" || paymentIntent?.status === "succeeded") {
-        booking({
-          paymentIntentId: paymentIntent?.id || intentId, // Use confirmed ID or fallback to extracted ID
-          paymentMethodId: paymentIntent?.payment_method,
-        });
-        setProcessing(false);
-        setMessage("");
-        setModal({ page: "success", modType: "success" });
-        onOpen();
+        try {
+          await booking({
+            paymentIntentId: paymentIntent?.id || intentId, // Use confirmed ID or fallback to extracted ID
+            paymentMethodId: paymentIntent?.payment_method,
+          });
+          setProcessing(false);
+          setMessage("");
+          setModal({ page: "success", modType: "success" });
+          onOpen();
+        } catch (err) {
+          setMessage(err?.message || "Booking failed. Please try again.");
+          setProcessing(false);
+        }
       } else {
         setMessage(`Payment status: ${paymentIntent?.status}`);
         setProcessing(false);
@@ -136,7 +146,7 @@ const CheckoutForm = ({ setModal, modal, booking, onOpen, intentMode = "payment"
             />
           </div>
         ) : intentMode === "setup" ? (
-          "Save card"
+          "Pay now"
         ) : (
           displayAmount ? `Pay Now ${displayAmount}` : "Pay Now"
         )}

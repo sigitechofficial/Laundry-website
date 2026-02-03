@@ -297,11 +297,11 @@ export default function orderRegistration() {
   useEffect(() => {
     // Check if orderData has been cleared (empty or only default values)
     // Reset if orderData doesn't exist, or if collectionData has no meaningful user input
-    const isOrderDataEmpty = !orderData || 
+    const isOrderDataEmpty = !orderData ||
       !orderData.collectionData ||
-      (!orderData.collectionData?.streetAddress && 
-       !orderData.collectionData?.postalCode && 
-       (!orderData.collectionData?.collectionDate || orderData.collectionData?.collectionDate === ""));
+      (!orderData.collectionData?.streetAddress &&
+        !orderData.collectionData?.postalCode &&
+        (!orderData.collectionData?.collectionDate || orderData.collectionData?.collectionDate === ""));
 
     if (isOrderDataEmpty) {
       // Reset form to initial state when orderData is cleared
@@ -415,7 +415,7 @@ export default function orderRegistration() {
   // Handle postcode submission
   const handlePostcodeSubmit = async (postcode) => {
     if (!postcode || postcode.trim().length === 0) return;
-    
+
     try {
       const result = await getAddressesByPostcode(postcode.trim().toUpperCase().replace(/\s/g, ''));
       console.log("Postcode API Response:", result);

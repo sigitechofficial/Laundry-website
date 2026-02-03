@@ -54,6 +54,9 @@ export default function Payment() {
       skip: !orderData?.collectionData?.lat || !orderData?.collectionData?.lng,
     }
   );
+
+  const currencySymbol = addressData?.data?.currency?.symbol ?? "$";
+
   // Example: Get all charge values (replace with your real data)
   const minimumOrderCharge =
     parseFloat(addressData?.data?.zoneUpfrontAmount) || 0;
@@ -85,103 +88,119 @@ export default function Payment() {
   const handleModalScroll = (e) => { };
 
   const handleCreateBooking = async (payData) => {
-    const bookingData = {
-      collectionDate: orderData?.collectionData?.collectionDate,
-      collectionTimeTo: to24Hour(orderData?.collectionData?.collectionTimeTo),
-      collectionTimeFrom: to24Hour(
-        orderData?.collectionData?.collectionTimeFrom
-      ),
-      driverInstruction: orderData?.driverInstruction,
-      frequency: orderData?.frequency,
-      deliveryDate: orderData?.deliveryData?.deliveryDate,
-      deliveryTimeTo: to24Hour(orderData?.deliveryData?.deliveryTimeTo),
-      deliveryTimeFrom: to24Hour(orderData?.deliveryData?.deliveryTimeFrom),
-      addressId: "",
-      driverInstructionOptions:
-        orderData?.collectionData?.driverInstructionOptions,
-      pickUpAddress: {
-        title: "Home", //'Office','Home','Other','Hotel'
-        hotelName: null,
-        apartmentNumber: null,
-        floor: null,
-        streetAddress: orderData?.collectionData?.streetAddress,
-        district: orderData?.collectionData?.district,
-        city: orderData?.collectionData?.city,
-        province: orderData?.collectionData?.province,
-        country: orderData?.collectionData?.country,
-        postalCode: orderData?.collectionData?.postalCode,
-        lat: orderData?.collectionData?.lat,
-        lng: orderData?.collectionData?.lng,
-        radius: orderData?.collectionData?.radius,
-        addressType: orderData?.collectionData?.addressType || "pickUp",
-        save: true,
-      },
-      // dropOffAddress: {
-      //   title: "Office", //'Office','Home','Other','Hotel'
-      //   hotelName: null,
-      //   apartmentNumber: null,
-      //   floor: null,
-      //   streetAddress: "456 Business Road",
-      //   district: "DHA",
-      //   city: "Lahore",
-      //   province: "Punjab",
-      //   country: "Pakistan",
-      //   postalCode: "54001",
-      //   lat: 31.5404,
-      //   lng: 74.3687,
-      //   radius: null,
-      //   addressType: "dropOff",
-      // },
-      driverInstructionOptions1:
-        orderData?.deliveryData?.driverInstructionOptions1,
-      addNewAddress: true,
-      addNewDropOffAddress: false,
-      dropOffSamePickUp: true,
-      dropOffAddressId: null,
-      pickUpAddressId: null,
-      preferencesArray: preferencesData
-        ?.filter((item) => item?.preferencesArray && Array.isArray(item.preferencesArray))
-        ?.flatMap((item) => item.preferencesArray) || [],
-      services: preferencesData
-        ?.filter((item) => item?.serviceId)
-        ?.map((item) => ({ serviceId: item.serviceId })),
-      totalItems: 5,
-      paymentIntentId: payData?.paymentIntentId ?? null,
-      setupIntentId: payData?.setupIntentId ?? null,
-      paymentMethodId: payData?.paymentMethodId,
-      stripeCustomerId: localStorage.getItem("stripeCustomerId"),
-    };
+    try {
+      const bookingData = {
+        collectionDate: orderData?.collectionData?.collectionDate,
+        collectionTimeTo: to24Hour(orderData?.collectionData?.collectionTimeTo),
+        collectionTimeFrom: to24Hour(
+          orderData?.collectionData?.collectionTimeFrom
+        ),
+        driverInstruction: orderData?.driverInstruction,
+        frequency: orderData?.frequency,
+        deliveryDate: orderData?.deliveryData?.deliveryDate,
+        deliveryTimeTo: to24Hour(orderData?.deliveryData?.deliveryTimeTo),
+        deliveryTimeFrom: to24Hour(orderData?.deliveryData?.deliveryTimeFrom),
+        addressId: "",
+        driverInstructionOptions:
+          orderData?.collectionData?.driverInstructionOptions,
+        pickUpAddress: {
+          title: "Home", //'Office','Home','Other','Hotel'
+          hotelName: null,
+          apartmentNumber: null,
+          floor: null,
+          streetAddress: orderData?.collectionData?.streetAddress,
+          district: orderData?.collectionData?.district,
+          city: orderData?.collectionData?.city,
+          province: orderData?.collectionData?.province,
+          country: orderData?.collectionData?.country,
+          postalCode: orderData?.collectionData?.postalCode,
+          lat: orderData?.collectionData?.lat,
+          lng: orderData?.collectionData?.lng,
+          radius: orderData?.collectionData?.radius,
+          addressType: orderData?.collectionData?.addressType || "pickUp",
+          save: true,
+        },
+        // dropOffAddress: {
+        //   title: "Office", //'Office','Home','Other','Hotel'
+        //   hotelName: null,
+        //   apartmentNumber: null,
+        //   floor: null,
+        //   streetAddress: "456 Business Road",
+        //   district: "DHA",
+        //   city: "Lahore",
+        //   province: "Punjab",
+        //   country: "Pakistan",
+        //   postalCode: "54001",
+        //   lat: 31.5404,
+        //   lng: 74.3687,
+        //   radius: null,
+        //   addressType: "dropOff",
+        // },
+        driverInstructionOptions1:
+          orderData?.deliveryData?.driverInstructionOptions1,
+        addNewAddress: true,
+        addNewDropOffAddress: false,
+        dropOffSamePickUp: true,
+        dropOffAddressId: null,
+        pickUpAddressId: null,
+        preferencesArray: preferencesData
+          ?.filter((item) => item?.preferencesArray && Array.isArray(item.preferencesArray))
+          ?.flatMap((item) => item.preferencesArray) || [],
+        services: preferencesData
+          ?.filter((item) => item?.serviceId)
+          ?.map((item) => ({ serviceId: item.serviceId })),
+        totalItems: 5,
+        paymentIntentId: payData?.paymentIntentId ?? null,
+        setupIntentId: payData?.setupIntentId ?? null,
+        paymentMethodId: payData?.paymentMethodId,
+        stripeCustomerId: localStorage.getItem("stripeCustomerId"),
+      };
 
-    const response = await createBooking(bookingData).unwrap();
-    if (response?.status === "1") {
-      // Clear all cart data (address, preferences, etc.)
-      dispatch(clearCartData());
+      const response = await createBooking(bookingData).unwrap();
+      if (response?.status === "1") {
+        // Clear all cart data (address, preferences, etc.)
+        dispatch(clearCartData());
 
-      // Capture booking/payment IDs from response when backend returns them
-      const bookingId = response?.data?.bookingId ?? response?.data?.booking_id;
-      const paymentId = response?.data?.paymentId ?? response?.data?.payment_id ?? response?.data?.bookingPaymentId;
+        // Capture booking/payment IDs from response when backend returns them
+        const bookingId = response?.data?.bookingId ?? response?.data?.booking_id;
+        const paymentId = response?.data?.paymentId ?? response?.data?.payment_id ?? response?.data?.bookingPaymentId;
 
-      const description = [
-        response?.message,
-        bookingId && `Booking ID: ${bookingId}`,
-        paymentId && `Payment ID: ${paymentId}`,
-      ]
-        .filter(Boolean)
-        .join(" • ");
+        const description = [
+          response?.message,
+          bookingId && `Booking ID: ${bookingId}`,
+          paymentId && `Payment ID: ${paymentId}`,
+        ]
+          .filter(Boolean)
+          .join(" • ");
 
+        addToast({
+          title: "Create Booking",
+          description,
+          color: "success",
+        });
+
+        router.replace("/");
+      } else {
+        const errorMsg = response?.error ?? response?.message ?? "Booking failed. Please try again.";
+        addToast({
+          title: "Create Booking",
+          description: errorMsg,
+          color: "danger",
+        });
+        throw new Error(errorMsg);
+      }
+    } catch (err) {
+      const errorMsg =
+        err?.data?.error ??
+        err?.data?.message ??
+        err?.message ??
+        "Something went wrong. Please try again.";
       addToast({
         title: "Create Booking",
-        description,
-        color: "success",
-      });
-
-      router.replace("/");
-    } else {
-      addToast({
-        title: "Create Booking",
-        description: response?.error,
+        description: errorMsg,
         color: "danger",
       });
+      throw err instanceof Error ? err : new Error(errorMsg);
     }
   };
 
@@ -393,7 +412,7 @@ export default function Payment() {
                       }
                       onClick={() => dispatch(setDriverTip(0))}
                     >
-                      $0
+                      {currencySymbol}0
                     </div>
                     <div
                       className={
@@ -403,7 +422,7 @@ export default function Payment() {
                       }
                       onClick={() => dispatch(setDriverTip(1))}
                     >
-                      $1
+                      {currencySymbol}1
                     </div>
                     <div
                       className={
@@ -413,7 +432,7 @@ export default function Payment() {
                       }
                       onClick={() => dispatch(setDriverTip(2))}
                     >
-                      $2
+                      {currencySymbol}2
                     </div>
                     <div
                       className={
@@ -423,7 +442,7 @@ export default function Payment() {
                       }
                       onClick={() => dispatch(setDriverTip(5))}
                     >
-                      $5
+                      {currencySymbol}5
                     </div>
                     <div
                       onClick={() => {
@@ -450,13 +469,13 @@ export default function Payment() {
                         Pay now (incl. tax)
                       </h4>
                       <h4 className="font-youth font-bold">
-                        ${totalAmount?.toFixed(2)}
+                        {currencySymbol}{totalAmount?.toFixed(2)}
                       </h4>
                     </div>
                     <div className="flex justify-between font-sf">
                       <h4 className="">Minimum order charge</h4>
                       <p className="">
-                        $
+                        {currencySymbol}
                         {parseFloat(
                           addressData?.data?.zoneUpfrontAmount
                         )?.toFixed(2) ?? "0.00"}
@@ -465,7 +484,7 @@ export default function Payment() {
                     <div className="flex justify-between font-sf">
                       <h4 className="">Service fee</h4>
                       <p className="">
-                        $
+                        {currencySymbol}
                         {parseFloat(
                           addressData?.data?.zoneSeviceCharge
                         )?.toFixed(2) ?? "0.00"}
@@ -474,7 +493,7 @@ export default function Payment() {
                     <div className="flex justify-between font-sf">
                       <h4 className="">Driver Tip</h4>
                       <p className="">
-                        ${parseFloat(orderData?.driverTip)?.toFixed(2)}
+                        {currencySymbol}{parseFloat(orderData?.driverTip)?.toFixed(2)}
                       </p>
                     </div>
                     <div className="flex justify-between font-sf">

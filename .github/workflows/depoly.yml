@@ -27,3 +27,5 @@ jobs:
             npm run build
             pm2 restart laundrynext || pm2 start npm --name "laundrynext" -- start
             pm2 save
+
+            

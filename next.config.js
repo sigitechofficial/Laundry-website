@@ -1,38 +1,29 @@
+/** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
-  },
-  // Improve build performance
-  experimental: {
-    optimizeCss: true,
-  },
-  // Enable Turbopack support while maintaining custom webpack config
-  turbopack: {},
-  // Webpack optimizations
-  webpack: (config, { dev, isServer }) => {
-    if (dev && !isServer) {
-      // Faster refresh in development
-      config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300,
-      };
-    }
-    return config;
-  },
-  images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: 'images.unsplash.com' },
-      { protocol: 'https', hostname: 'via.placeholder.com' },
-      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
-
-      // ✅ YOUR BACKEND
-      { protocol: 'https', hostname: 'prodlaundry.sigisolutions.net' },
-    ],
-  },
+    images: {
+        remotePatterns: [
+            {
+                protocol: 'https',
+                hostname: 'images.unsplash.com',
+            },
+            {
+                protocol: 'https',
+                hostname: 'via.placeholder.com',
+            },
+            {
+                protocol: 'https',
+                hostname: 'lh3.googleusercontent.com',
+            },
+            {
+                protocol: 'https',
+                hostname: 'prodlaundry.sigisolutions.net',
+            },
+        ],
+    },
+    // Ensure environment variables are properly exposed
+    env: {
+        NEXT_PUBLIC_GOOGLE_MAPS_KEY: process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY,
+    },
 };
 
 module.exports = nextConfig;
-
-
-

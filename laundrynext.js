@@ -4,7 +4,7 @@ const next = require('next');
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
-const port = process.env.PORT || 3888;
+const port = process.env.PORT || 2323;
 
 // Initialize Next.js app
 const app = next({ dev, hostname, port });

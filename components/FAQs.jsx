@@ -1,29 +1,7 @@
 "use client";
 import { Accordion, AccordionItem } from "@heroui/react";
-import { FiPlus, FiMinus } from "react-icons/fi";
+import { FiPlus, FiMinus, FiHelpCircle } from "react-icons/fi";
 import { useGetFAQsQuery } from "../src/app/store/services/api";
-
-const ICON_MAP = {
-  star: "/images/landingPage/starBadge.png",
-  dollar: "/images/landingPage/dollar.png",
-  car: "/images/landingPage/car.png",
-  card: "/images/landingPage/card.png",
-  bucket: "/images/landingPage/bitBucket.png",
-};
-
-const getIconFromName = (iconName = "", index) => {
-  if (!iconName) {
-    const icons = Object.values(ICON_MAP);
-    return icons[index % icons.length];
-  }
-  const lower = String(iconName).toLowerCase();
-  if (lower.includes("star") || lower.includes("care")) return ICON_MAP.star;
-  if (lower.includes("dollar") || lower.includes("pric") || lower.includes("payment")) return ICON_MAP.dollar;
-  if (lower.includes("car") || lower.includes("pickup") || lower.includes("drop")) return ICON_MAP.car;
-  if (lower.includes("card") || lower.includes("support")) return ICON_MAP.card;
-  if (lower.includes("bucket") || lower.includes("limit")) return ICON_MAP.bucket;
-  return ICON_MAP.star;
-};
 
 const extractFaqsArray = (data) => {
   if (!data) return [];
@@ -95,11 +73,7 @@ export default function FAQs() {
                     }
                     title={
                       <div className="flex items-center gap-2 sm:gap-x-4 font-sf font-medium text-base sm:text-xl px-2">
-                        <img
-                          className="w-6 sm:w-7"
-                          src={getIconFromName(faq.icon, index)}
-                          alt=""
-                        />
+                        <FiHelpCircle className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-black" aria-hidden />
                         <p>{faq.question}</p>
                       </div>
                     }

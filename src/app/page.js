@@ -47,7 +47,7 @@ export default function Home() {
         <div className="w-full h-[600px] sm:h-[750px]  2xl:h-[900px] flex items-center relative px-5 sm:px-[45px]">
           <div className="w-full max-w-[1290px] mx-auto pt-10 md:pt-14 lg:pt-16 xl:pt-0">
             <h4 className="uppercase font-youth font-black text-6xl md:text-7xl lg:text-[100px] xl:text-[120px] xl:leading-[120px] text-white">
-              <span className="text-theme-blue">Do</span> your <br /> laundry <br />
+              <span className="text-white">Do</span> your <br /> laundry <br />
               <span className="text-theme-darkBlue">smartly</span>
             </h4>
 

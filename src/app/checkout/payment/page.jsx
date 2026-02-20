@@ -8,9 +8,11 @@ import { AiOutlinePercentage } from "react-icons/ai";
 import { ButtonYouth70018, PurpleButton } from "../../../../components/Buttons";
 import {
   IoBagCheck,
-  IoCheckmarkSharp,
   IoLocation,
   IoShirt,
+  IoWalletOutline,
+  IoCardOutline,
+  IoHandLeftOutline,
 } from "react-icons/io5";
 import {
   useCreateBookingMutation,
@@ -82,7 +84,7 @@ export default function Payment() {
   const [modalScroll, setModalScroll] = useState(false);
   const [modal, setModal] = useState({
     modType: "wash",
-    page: "payment",
+    page: "stripe",
   });
 
   const handleModalScroll = (e) => { };
@@ -218,119 +220,9 @@ export default function Payment() {
             </h4>
 
             <div className="flex flex-col lg:flex-row gap-10 2xl:gap-20 pt-10">
-              {/* PAYMENT */}
-              {modal?.page === "payment" ? (
-                <div className="w-full px-4 py-4 shadow-theme-shadow-light rounded-[20px] h-max">
-                  <h4 className="font-youth font-bold text-2xl text-center py-4">
-                    Payment Methods
-                  </h4>
-
-                  <div className="space-y-3 pt-3">
-                    <div
-                      onClick={() =>
-                        setModal({ ...modal, paymentMethod: "twink" })
-                      }
-                      className="flex items-center justify-between px-2 h-[64px] rounded-lg border-2 border-theme-gray cursor-pointer"
-                    >
-                      <div
-                        onClick={() =>
-                          setModal({ ...modal, paymentMethod: "twink" })
-                        }
-                        className="flex items-center gap-3"
-                      >
-                        <img src="/images/payment/twink.png" alt="twink" />
-                        <p className="font-sf text-xl font-normal">Twint</p>
-                      </div>
-                      {modal?.paymentMethod === "twink" ? (
-                        <IoCheckmarkSharp color="green" size={25} />
-                      ) : (
-                        ""
-                      )}
-                    </div>
-                    <div
-                      onClick={() =>
-                        setModal({ ...modal, paymentMethod: "paypal" })
-                      }
-                      className="flex items-center justify-between px-2 h-[64px] rounded-lg border-2 border-theme-gray cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <img src="/images/payment/paypal.png" alt="paypal" />
-                        <p className="font-sf text-xl font-normal">Paypal</p>
-                      </div>
-                      {modal?.paymentMethod === "paypal" ? (
-                        <IoCheckmarkSharp color="green" size={25} />
-                      ) : (
-                        ""
-                      )}
-                    </div>
-                    <div
-                      onClick={() =>
-                        setModal({ ...modal, paymentMethod: "card" })
-                      }
-                      className="flex items-center justify-between px-2 h-[64px] rounded-lg border-2 border-theme-gray cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <img src="/images/payment/cards.png" alt="cards" />
-                        <p className="font-sf text-xl font-normal">Cards</p>
-                      </div>
-                      {modal?.paymentMethod === "card" ? (
-                        <IoCheckmarkSharp color="green" size={25} />
-                      ) : (
-                        ""
-                      )}
-                    </div>
-                    <div
-                      onClick={() =>
-                        setModal({ ...modal, paymentMethod: "apple pay" })
-                      }
-                      className="flex items-center justify-between px-2 h-[64px] rounded-lg border-2 border-theme-gray cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src="/images/payment/applepay.png"
-                          alt="apple pay"
-                        />
-                        <p className="font-sf text-xl font-normal">Apple Pay</p>
-                      </div>
-                      {modal?.paymentMethod === "apple pay" ? (
-                        <IoCheckmarkSharp color="green" size={25} />
-                      ) : (
-                        ""
-                      )}
-                    </div>
-                    <div
-                      onClick={() =>
-                        setModal({ ...modal, paymentMethod: "google pay" })
-                      }
-                      className="flex items-center justify-between px-2 h-[64px] rounded-lg border-2 border-theme-gray cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <img src="/images/payment/gpay.png" alt="google pay" />
-                        <p className="font-sf text-xl font-normal">
-                          Google Pay
-                        </p>
-                      </div>
-                      {modal?.paymentMethod === "google pay" ? (
-                        <IoCheckmarkSharp color="green" size={25} />
-                      ) : (
-                        ""
-                      )}
-                    </div>
-
-                    <p className="font-sf text-theme-psGray">
-                      A service fee will be charged.
-                    </p>
-
-                    <div className="pt-3">
-                      <ButtonYouth70018
-                        text="Complete Order"
-                        onClick={() => setModal({ ...modal, page: "stripe" })}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ) : modal?.page === "stripe" ? (
-                <div className="w-full">
+              {/* PAYMENT - Stripe sheet only */}
+              {modal?.page === "stripe" ? (
+                <div className="w-full space-y-6">
                   <StripeCheckout
                     paymentMethod={modal?.paymentMethod}
                     setModal={setModal}
@@ -340,6 +232,38 @@ export default function Payment() {
                     onOpen={onOpen}
                     customerId={customerId}
                   />
+                  {/* How much do I pay? - policy box */}
+                  <div className="w-full rounded-2xl border border-theme-gray overflow-hidden bg-white shadow-theme-shadow-light">
+                    <div className="bg-theme-gray px-4 py-3">
+                      <h4 className="font-sf font-bold text-base sm:text-lg text-black">
+                        How much do I pay?
+                      </h4>
+                    </div>
+                    <div className="px-4 py-4 space-y-4 font-sf text-sm sm:text-base text-black">
+                      <div className="flex items-start gap-3">
+                        <span className="shrink-0 mt-0.5 text-theme-gray-3">
+                          <IoHandLeftOutline className="size-5" />
+                        </span>
+                        <p>You&apos;ll pay nothing when placing the order.</p>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="shrink-0 mt-0.5 text-theme-gray-3">
+                          <IoWalletOutline className="size-5" />
+                        </span>
+                        <p>Our local cleaning partner will check your bags and issue an itemised online receipt.</p>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="shrink-0 mt-0.5 text-theme-gray-3">
+                          <IoCardOutline className="size-5" />
+                        </span>
+                        <p>
+                          You&apos;ll pay the order total after we clean your items. Service fee {currencySymbol}
+                          {parseFloat(addressData?.data?.zoneSeviceCharge)?.toFixed(2) ?? "2.99"}, minimum order {currencySymbol}
+                          {parseFloat(addressData?.data?.zoneUpfrontAmount)?.toFixed(2) ?? "20"}.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="w-full">Thanks for payement</div>

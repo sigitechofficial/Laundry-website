@@ -6,7 +6,8 @@ import { MdKeyboardArrowRight, MdOutlineDryCleaning } from "react-icons/md";
 import { TbIroning, TbWash, TbIroningSteam } from "react-icons/tb";
 import { AiOutlinePercentage } from "react-icons/ai";
 import { ButtonYouth70018, PurpleButton } from "../../../../components/Buttons";
-import { IoBagCheck, IoLocation, IoShirt, IoCalendarOutline, IoTimeOutline, IoInformationCircleOutline, IoLocationOutline, IoBagOutline } from "react-icons/io5";
+import { IoBagCheck, IoLocation, IoShirt, IoCalendarOutline, IoTimeOutline, IoInformationCircleOutline, IoLocationOutline, IoBagOutline, IoCheckmarkSharp, IoFlask } from "react-icons/io5";
+import { MdThermostat } from "react-icons/md";
 import { useGetServicesQuery, useGetServiceWithPreferenceDetailsQuery } from "@/app/store/services/api";
 import { useDisclosure } from "@heroui/react";
 import ReusableModal from "../../../../components/Modal";
@@ -537,7 +538,20 @@ export default function Order() {
                               )}
                             </div>
                           ) : (
-                            "in progress..."
+                            <div
+                              key={idx}
+                              className="font-sf pt-3 border-b-2 border-theme-gray pb-3"
+                            >
+                              {item?.serviceName && (
+                                <>
+                                  <p className="text-theme-psGray font-sf">Service</p>
+                                  <p className="text-sm font-medium capitalize">{item?.serviceName}</p>
+                                </>
+                              )}
+                              {!item?.serviceName && (
+                                <p className="text-sm font-medium text-theme-gray-2">Selected</p>
+                              )}
+                            </div>
                           )
                         )}
                       </div>
@@ -640,7 +654,7 @@ export default function Order() {
               </div>
             ) : servicePreferencesData && servicePreferencesData.length > 0 ? (
               <div className="w-full px-6 py-6 font-sf">
-                <div className="space-y-4">
+                <div className="space-y-6">
                   {servicePreferencesData.map((pref) => {
                     const prefName = pref.preferenceType?.name?.toLowerCase();
                     const prefKey = prefName || `pref_${pref.preferenceTypeId}`;
@@ -651,17 +665,25 @@ export default function Order() {
                       if (count <= 4) return "grid-cols-4";
                       return "grid-cols-2";
                     };
+                    const PreferenceIcon = prefName?.includes("wash") || prefName?.includes("type")
+                      ? IoShirt
+                      : prefName?.includes("temp")
+                        ? MdThermostat
+                        : prefName?.includes("detergent")
+                          ? IoFlask
+                          : IoShirt;
 
                     return (
-                      <div key={pref.id} className="space-y-2">
-                        <p className="font-sf text-lg capitalize">
-                          {pref.preferenceType?.name || "Preference"}
+                      <div key={pref.id} className="space-y-3">
+                        <p className="font-sf font-semibold text-base sm:text-lg text-theme-gray-3">
+                          Please select your preference for {pref.preferenceType?.name || "Preference"}
                         </p>
-                        <div className={`grid ${getGridClass(values.length)} gap-2`}>
+                        <div className={`grid ${getGridClass(values.length)} gap-2 sm:gap-3`}>
                           {values.map((value) => {
                             const isSelected = currentPref?.preferenceValueId === value.id;
                             return (
-                              <div
+                              <button
+                                type="button"
                                 key={value.id}
                                 onClick={() =>
                                   setPreferences((prev) => ({
@@ -673,13 +695,36 @@ export default function Order() {
                                     },
                                   }))
                                 }
-                                className={`h-[53px] flex justify-center items-center cursor-pointer text-center rounded-lg text-sm leading-[21px] ${isSelected
-                                  ? "bg-theme-blue text-white"
-                                  : "bg-theme-gray"
-                                  }`}
+                                className={`relative flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border-2 cursor-pointer text-left transition-all min-h-[80px] sm:min-h-[88px] ${
+                                  isSelected
+                                    ? "border-theme-blue bg-theme-skyBlue/30"
+                                    : "border-theme-gray bg-white hover:border-theme-gray-2"
+                                }`}
                               >
-                                {value.value}
-                              </div>
+                                {isSelected && (
+                                  <span className="absolute top-1.5 right-1.5 flex items-center justify-center size-5 rounded-full bg-theme-blue text-white">
+                                    <IoCheckmarkSharp className="size-3" />
+                                  </span>
+                                )}
+                                <span className="flex items-center justify-center size-8 sm:size-9 rounded-full bg-theme-skyBlue text-theme-blue mb-1 sm:mb-1.5">
+                                  <PreferenceIcon className="size-4 sm:size-5" />
+                                </span>
+                                <span className="font-sf font-medium text-[11px] sm:text-xs text-theme-gray-3 text-center leading-tight">
+                                  {value.value}
+                                </span>
+                                {(value.temperature || value.meta) && (
+                                  <span className="mt-1 inline-flex items-center rounded-full bg-theme-skyBlue px-2 py-0.5 font-sf text-[10px] sm:text-xs text-theme-blue">
+                                    {value.temperature || value.meta}
+                                  </span>
+                                )}
+                                {(value.price != null || value.weight != null) && (
+                                  <span className="mt-0.5 font-sf text-[10px] text-theme-gray-2">
+                                    {value.price != null && `£${value.price}`}
+                                    {value.price != null && value.weight != null && " / "}
+                                    {value.weight != null && `${value.weight}kg`}
+                                  </span>
+                                )}
+                              </button>
                             );
                           })}
                         </div>

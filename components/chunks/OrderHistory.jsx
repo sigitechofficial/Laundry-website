@@ -11,7 +11,7 @@ import {
   useGetAllReasonsQuery,
   useCancelBookingMutation,
 } from "@/app/store/services/api";
-import { formatDate } from "../../utilities/ConversionFunction";
+import { formatDate, formatTimeToAmPm } from "../../utilities/ConversionFunction";
 import ReusableModal from "../Modal";
 import { useDisclosure, Spinner, addToast } from "@heroui/react";
 import SelectHero from "../SelectHero";
@@ -432,7 +432,7 @@ export default function OrderHistory() {
                 <IoTimeOutline size="16" />
               </div>
               <p className="text-sm font-medium">
-                {bookingDtails?.data?.collectionTimeFrom} - {bookingDtails?.data?.collectionTimeTo}
+                {formatTimeToAmPm(bookingDtails?.data?.collectionTimeFrom)} - {formatTimeToAmPm(bookingDtails?.data?.collectionTimeTo)}
               </p>
             </div>
             <div className="flex gap-2 items-center">
@@ -459,7 +459,7 @@ export default function OrderHistory() {
                 <IoTimeOutline size="16" />
               </div>
               <p className="text-sm font-medium">
-                {bookingDtails?.data?.deliveryTimeFrom} - {bookingDtails?.data?.deliveryTimeTo}
+                {formatTimeToAmPm(bookingDtails?.data?.deliveryTimeFrom)} - {formatTimeToAmPm(bookingDtails?.data?.deliveryTimeTo)}
               </p>
             </div>
             <div className="flex gap-2 items-center">
@@ -767,10 +767,6 @@ export default function OrderHistory() {
                           <button className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
                             {order?.bookingStatus?.title}
                           </button>
-
-                          <p className="font-youth font-bold text-sm sm:text-base">
-                            Est ${order?.orderAmount}
-                          </p>
                         </div>
 
                         <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
@@ -788,7 +784,7 @@ export default function OrderHistory() {
 
                           <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
                             <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {order?.collectionTimeFrom} - {order?.collectionTimeTo}
+                            {formatTimeToAmPm(order?.collectionTimeFrom)} - {formatTimeToAmPm(order?.collectionTimeTo)}
                           </p>
                         </div>
 
@@ -807,7 +803,7 @@ export default function OrderHistory() {
 
                           <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
                             <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
+                            {formatTimeToAmPm(order?.deliveryTimeFrom)} - {formatTimeToAmPm(order?.deliveryTimeTo)}
                           </p>
                         </div>
 
@@ -849,10 +845,6 @@ export default function OrderHistory() {
                           <button className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
                             {order?.bookingStatus?.title}
                           </button>
-
-                          <p className="font-youth font-bold text-sm sm:text-base">
-                            Est ${order?.orderAmount}
-                          </p>
                         </div>
 
                         <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
@@ -870,7 +862,7 @@ export default function OrderHistory() {
 
                           <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
                             <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {order?.collectionTimeFrom} - {order?.collectionTimeTo}
+                            {formatTimeToAmPm(order?.collectionTimeFrom)} - {formatTimeToAmPm(order?.collectionTimeTo)}
                           </p>
                         </div>
 
@@ -889,7 +881,7 @@ export default function OrderHistory() {
 
                           <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
                             <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {order?.deliveryTimeFrom} - {order?.deliveryTimeTo}
+                            {formatTimeToAmPm(order?.deliveryTimeFrom)} - {formatTimeToAmPm(order?.deliveryTimeTo)}
                           </p>
                         </div>
 

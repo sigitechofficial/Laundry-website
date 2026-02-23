@@ -113,6 +113,12 @@ export default function orderRegistration() {
     addressType: "dropOff",
   });
 
+  // Delivery date must be on or after collection date
+  const isDeliveryBeforeCollection =
+    !!collectionData?.collectionDate &&
+    !!deliveryData?.deliveryDate &&
+    new Date(deliveryData.deliveryDate) < new Date(collectionData.collectionDate);
+
   const handlePlaceChanged = (type) => {
     const place = autocompleteRef.current.getPlace();
 
@@ -411,6 +417,29 @@ export default function orderRegistration() {
       }
     }
   }, [modal?.modType, deliveryData?.deliveryDate]);
+
+  // If collection date is after delivery date, reset delivery to first valid date
+  useEffect(() => {
+    if (
+      !collectionData?.collectionDate ||
+      !deliveryData?.deliveryDate ||
+      !slotsDelivery?.length
+    )
+      return;
+    const collection = new Date(collectionData.collectionDate);
+    const delivery = new Date(deliveryData.deliveryDate);
+    if (delivery >= collection) return;
+    const firstValid = slotsDelivery.find((slot) => new Date(slot.date) >= collection);
+    if (firstValid) {
+      setDeliveryData((prev) => ({
+        ...prev,
+        deliveryDate: firstValid.date,
+        deliveryTimeFrom: firstValid.timeSlots?.[0]?.start || prev.deliveryTimeFrom,
+        deliveryTimeTo: firstValid.timeSlots?.[0]?.end || prev.deliveryTimeTo,
+        availableTimeSlots: firstValid.timeSlots || [],
+      }));
+    }
+  }, [collectionData?.collectionDate]);
 
   // Handle postcode submission
   const handlePostcodeSubmit = async (postcode) => {
@@ -758,6 +787,11 @@ export default function orderRegistration() {
                           </span>
                         }
                       />
+                      {isDeliveryBeforeCollection && (
+                        <p className="font-sf text-sm text-red-600 mt-1">
+                          Delivery date must be on or after collection date.
+                        </p>
+                      )}
                     </div>
                     <SelectHero
                       label="Select delivery method"
@@ -793,15 +827,14 @@ export default function orderRegistration() {
                       <ButtonYouth70018
                         text="Continue"
                         isDisabled={
-                          collectionData?.collectionDate &&
-                            collectionData?.collectionTimeTo &&
-                            deliveryData?.deliveryDate &&
-                            deliveryData?.deliveryTimeTo &&
-                            collectionData?.streetAddress &&
-                            collectionData?.driverInstructionOptions &&
-                            deliveryData?.driverInstructionOptions1
-                            ? false
-                            : true
+                          isDeliveryBeforeCollection ||
+                          !collectionData?.collectionDate ||
+                          !collectionData?.collectionTimeTo ||
+                          !deliveryData?.deliveryDate ||
+                          !deliveryData?.deliveryTimeTo ||
+                          !collectionData?.streetAddress ||
+                          !collectionData?.driverInstructionOptions ||
+                          !deliveryData?.driverInstructionOptions1
                         }
                         onClick={() => {
                           const orderData = {
@@ -1146,7 +1179,14 @@ export default function orderRegistration() {
 
                   <div className="flex gap-5 items-center font-sf">
                     <div className="flex gap-5 items-center font-sf">
-                      {slotsDelivery?.map((item, idx) => {
+                      {(collectionData?.collectionDate
+                        ? slotsDelivery?.filter(
+                            (item) =>
+                              new Date(item?.date) >=
+                              new Date(collectionData.collectionDate)
+                          )
+                        : slotsDelivery
+                      )?.map((item, idx) => {
                         return (
                           <div
                             key={idx}

@@ -113,11 +113,41 @@ export default function orderRegistration() {
     addressType: "dropOff",
   });
 
+  // Parse time string to minutes since midnight for comparison (handles "1:00 PM", "10:00 AM", or "13:00:00")
+  const parseTimeToMinutes = (timeStr) => {
+    if (!timeStr || typeof timeStr !== "string") return 0;
+    const s = timeStr.trim();
+    const hasAmPm = /AM|PM/i.test(s);
+    if (hasAmPm) {
+      const match = s.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!match) return 0;
+      let [, h, m, ap] = match;
+      h = parseInt(h, 10);
+      m = parseInt(m, 10) || 0;
+      if (ap.toUpperCase() === "PM" && h !== 12) h += 12;
+      if (ap.toUpperCase() === "AM" && h === 12) h = 0;
+      return h * 60 + m;
+    }
+    const parts = s.split(":");
+    const h = parseInt(parts[0], 10) || 0;
+    const m = parseInt(parts[1], 10) || 0;
+    return h * 60 + m;
+  };
+
   // Delivery date must be on or after collection date
   const isDeliveryBeforeCollection =
     !!collectionData?.collectionDate &&
     !!deliveryData?.deliveryDate &&
     new Date(deliveryData.deliveryDate) < new Date(collectionData.collectionDate);
+
+  // On same day, delivery time must be after collection time (delivery must start after collection ends)
+  const isSameDayDeliveryBeforeCollection =
+    !!collectionData?.collectionDate &&
+    !!deliveryData?.deliveryDate &&
+    collectionData.collectionDate === deliveryData.deliveryDate &&
+    !!collectionData?.collectionTimeTo &&
+    !!deliveryData?.deliveryTimeFrom &&
+    parseTimeToMinutes(deliveryData.deliveryTimeFrom) < parseTimeToMinutes(collectionData.collectionTimeTo);
 
   const handlePlaceChanged = (type) => {
     const place = autocompleteRef.current.getPlace();
@@ -440,6 +470,37 @@ export default function orderRegistration() {
       }));
     }
   }, [collectionData?.collectionDate]);
+
+  // Same day: if delivery time is before collection end, reset to first valid delivery slot
+  useEffect(() => {
+    if (
+      collectionData?.collectionDate !== deliveryData?.deliveryDate ||
+      !collectionData?.collectionTimeTo ||
+      !deliveryData?.deliveryTimeFrom
+    )
+      return;
+    const collectionEndMins = parseTimeToMinutes(collectionData.collectionTimeTo);
+    const deliveryStartMins = parseTimeToMinutes(deliveryData.deliveryTimeFrom);
+    if (deliveryStartMins >= collectionEndMins) return;
+    const slotSource =
+      deliveryData?.availableTimeSlots?.length > 0
+        ? deliveryData.availableTimeSlots
+        : slotsDelivery?.find((s) => s.date === deliveryData?.deliveryDate)?.timeSlots || [];
+    const firstValidSlot = slotSource.find(
+      (item) => parseTimeToMinutes(item?.start) >= collectionEndMins
+    );
+    if (firstValidSlot) {
+      setDeliveryData((prev) => ({
+        ...prev,
+        deliveryTimeFrom: firstValidSlot.start,
+        deliveryTimeTo: firstValidSlot.end,
+      }));
+    }
+  }, [
+    collectionData?.collectionDate,
+    collectionData?.collectionTimeTo,
+    deliveryData?.deliveryDate,
+  ]);
 
   // Handle postcode submission
   const handlePostcodeSubmit = async (postcode) => {
@@ -792,6 +853,11 @@ export default function orderRegistration() {
                           Delivery date must be on or after collection date.
                         </p>
                       )}
+                      {isSameDayDeliveryBeforeCollection && (
+                        <p className="font-sf text-sm text-red-600 mt-1">
+                          On the same day, delivery time must be after collection time.
+                        </p>
+                      )}
                     </div>
                     <SelectHero
                       label="Select delivery method"
@@ -828,6 +894,7 @@ export default function orderRegistration() {
                         text="Continue"
                         isDisabled={
                           isDeliveryBeforeCollection ||
+                          isSameDayDeliveryBeforeCollection ||
                           !collectionData?.collectionDate ||
                           !collectionData?.collectionTimeTo ||
                           !deliveryData?.deliveryDate ||
@@ -1225,11 +1292,23 @@ export default function orderRegistration() {
                 </div>
 
                 <div className="space-y-4 pt-3">
-                  {(deliveryData?.availableTimeSlots?.length > 0
-                    ? deliveryData.availableTimeSlots
-                    : slotsDelivery?.find((slot) => slot.date === deliveryData?.deliveryDate)?.timeSlots || []
-                  )?.map((item, idx) => {
-                    return (
+                  {(() => {
+                    const rawSlots =
+                      deliveryData?.availableTimeSlots?.length > 0
+                        ? deliveryData.availableTimeSlots
+                        : slotsDelivery?.find((slot) => slot.date === deliveryData?.deliveryDate)?.timeSlots || [];
+                    const isSameDay =
+                      deliveryData?.deliveryDate === collectionData?.collectionDate &&
+                      !!collectionData?.collectionTimeTo;
+                    const slots =
+                      isSameDay && collectionData?.collectionTimeTo
+                        ? rawSlots.filter(
+                            (item) =>
+                              parseTimeToMinutes(item?.start) >=
+                              parseTimeToMinutes(collectionData.collectionTimeTo)
+                          )
+                        : rawSlots;
+                    return slots?.map((item, idx) => (
                       <div
                         key={idx}
                         onClick={() => {
@@ -1257,8 +1336,8 @@ export default function orderRegistration() {
                           </span>
                         </div>
                       </div>
-                    );
-                  })}
+                    ));
+                  })()}
                 </div>
               </div>
             </div>

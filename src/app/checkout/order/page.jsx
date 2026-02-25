@@ -37,7 +37,6 @@ export default function Order() {
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const [modalScroll, setModalScroll] = useState(false);
   const [currentServiceId, setCurrentServiceId] = useState(null);
-  const [servicePreferencesData, setServicePreferencesData] = useState(null);
   const [modal, setModal] = useState({
     modType: "wash",
     step: "",
@@ -50,22 +49,14 @@ export default function Order() {
       skip: !currentServiceId,
     });
 
-  // Update service preferences data when API response changes
-  useEffect(() => {
-    if (preferencesResponse?.data?.preferencesData) {
-      setServicePreferencesData(preferencesResponse.data.preferencesData);
-    } else if (preferencesResponse && !preferencesResponse?.data?.preferencesData) {
-      // Reset if response doesn't have preferencesData
-      setServicePreferencesData([]);
-    }
-  }, [preferencesResponse]);
+  const servicePreferencesData = preferencesResponse?.data?.preferencesData || [];
 
   // Initialize preferences state based on fetched data
   const [preferences, setPreferences] = useState({});
 
   // Initialize preferences when service preferences data is loaded
   useEffect(() => {
-    if (servicePreferencesData && servicePreferencesData.length > 0) {
+    if (servicePreferencesData.length > 0) {
       const initialPrefs = {};
       servicePreferencesData.forEach((pref) => {
         const prefName = pref.preferenceType?.name?.toLowerCase();
@@ -82,8 +73,10 @@ export default function Order() {
       // Add additional instructions field
       initialPrefs.additionalInstructions = "";
       setPreferences(initialPrefs);
+    } else {
+      setPreferences({});
     }
-  }, [servicePreferencesData]);
+  }, [servicePreferencesData, currentServiceId]);
 
   function handleModalScroll(e) {
     const isScrolled = e.target.scrollTop > 50;
@@ -124,7 +117,6 @@ export default function Order() {
       // Reset state
       setPreferences({});
       setCurrentServiceId(null);
-      setServicePreferencesData(null);
     }
     setModal({ ...modal, modType: "" });
     onClose();
@@ -604,7 +596,6 @@ export default function Order() {
           if (!open) {
             // Reset state when modal closes
             setCurrentServiceId(null);
-            setServicePreferencesData(null);
             setPreferences({});
             setModal({ ...modal, modType: "" });
           }

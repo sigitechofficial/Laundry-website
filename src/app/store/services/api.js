@@ -185,6 +185,12 @@ export const api = createApi({
         method: "GET",
       }),
     }),
+    getActivePolicies: builder.query({
+      query: () => ({
+        url: "admin/getActivePolicies",
+        method: "GET",
+      }),
+    }),
 
     getAllReasons: builder.query({
       query: () => ({
@@ -278,6 +284,7 @@ export const {
   useGetOnHoldBookingByIdQuery,
   useUpdateOnHoldBookingMutation,
   useGetCancellationPoliciesQuery,
+  useGetActivePoliciesQuery,
   useGetAllReasonsQuery,
   useCancelBookingMutation,
   useGetAddressesByPostcodeQuery,

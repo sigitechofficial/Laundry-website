@@ -16,6 +16,7 @@ import {
 } from "react-icons/io5";
 import {
   useCreateBookingMutation,
+  useGetActivePoliciesQuery,
   useGetChargesQuery,
   useGetServicesQuery,
 } from "@/app/store/services/api";
@@ -56,6 +57,7 @@ export default function Payment() {
       skip: !orderData?.collectionData?.lat || !orderData?.collectionData?.lng,
     }
   );
+  const { data: activePoliciesData } = useGetActivePoliciesQuery();
 
   const currencySymbol = addressData?.data?.currency?.symbol ?? "$";
 
@@ -80,6 +82,112 @@ export default function Payment() {
     () => charges.reduce((sum, item) => sum + item.value, 0),
     [charges]
   );
+  const policyContent = useMemo(() => {
+    const policies = activePoliciesData?.data || {};
+    const cancellationConfig =
+      policies?.activeCancellationPolicy?.cancellationConfig;
+    const rescheduleConfig = policies?.activeReschedulePolicy?.rescheduleConfig;
+    const noShowConfig = policies?.activeNoShowPolicy?.noShowPolicyConfig;
+
+    const formatWindow = (minutes) => {
+      const mins = Number(minutes);
+      if (!Number.isFinite(mins) || mins <= 0) return null;
+      if (mins % 60 === 0) {
+        const hours = mins / 60;
+        return `${hours} hour${hours === 1 ? "" : "s"}`;
+      }
+      return `${mins} minute${mins === 1 ? "" : "s"}`;
+    };
+
+    const formatMoney = (currency, amount) => {
+      const value = Number.parseFloat(amount);
+      if (!Number.isFinite(value)) return null;
+      return `${currency || ""} ${value.toFixed(2)}`.trim();
+    };
+
+    const formatPercent = (value) => {
+      const num = Number.parseFloat(value);
+      if (!Number.isFinite(num) || num <= 0) return null;
+      return `${num}%`;
+    };
+
+    const cancellationWindow = formatWindow(
+      cancellationConfig?.prePickupFreeChargeWindowMinutes
+    );
+    const cancellationFee =
+      formatMoney(
+        cancellationConfig?.prePickupAbsoluteCurrency,
+        cancellationConfig?.prePickupAbsoluteAmount
+      ) ||
+      (formatPercent(cancellationConfig?.prePickupPercentage)
+        ? `${formatPercent(cancellationConfig?.prePickupPercentage)} of order value`
+        : null);
+
+    const pickupRescheduleFee =
+      formatMoney(
+        rescheduleConfig?.atPickupAbsoluteCurrency,
+        rescheduleConfig?.atPickupAbsoluteAmount
+      ) ||
+      (formatPercent(rescheduleConfig?.atPickupPercentage)
+        ? `${formatPercent(rescheduleConfig?.atPickupPercentage)}`
+        : null);
+
+    const deliveryRescheduleFee =
+      formatMoney(
+        rescheduleConfig?.atDeliveryAbsoluteCurrency,
+        rescheduleConfig?.atDeliveryAbsoluteAmount
+      ) ||
+      (formatPercent(rescheduleConfig?.atDeliveryPercentage)
+        ? `${formatPercent(rescheduleConfig?.atDeliveryPercentage)}`
+        : null);
+
+    const noShowFee = noShowConfig?.useUnifiedFee
+      ? formatMoney(noShowConfig?.currency, noShowConfig?.pickupNoShowFee)
+      : null;
+    const pickupNoShowFee = formatMoney(
+      noShowConfig?.currency,
+      noShowConfig?.pickupNoShowFee
+    );
+    const deliveryNoShowFee = formatMoney(
+      noShowConfig?.currency,
+      noShowConfig?.deliveryNoShowFee
+    );
+    const graceMinutes = Number(noShowConfig?.graceMinutesOnSite);
+    const graceText =
+      Number.isFinite(graceMinutes) && graceMinutes > 0
+        ? `${graceMinutes} minute${graceMinutes === 1 ? "" : "s"}`
+        : null;
+    const storagePerDay = formatMoney(
+      noShowConfig?.currency,
+      noShowConfig?.storageFeePerDay
+    );
+
+    const hasAnyPolicy =
+      Boolean(cancellationConfig) ||
+      Boolean(rescheduleConfig) ||
+      Boolean(noShowConfig);
+
+    return {
+      hasAnyPolicy,
+      activeNames: [
+        policies?.activeCancellationPolicy?.name ? "Cancellation" : null,
+        policies?.activeReschedulePolicy?.name ? "Reschedule" : null,
+        policies?.activeNoShowPolicy?.name ? "No-show" : null,
+      ].filter(Boolean),
+      cancellationLine1: cancellationWindow
+        ? `Cancel at least ${cancellationWindow} before pickup to avoid extra charges.`
+        : "This policy has no free cancellation window before pickup.",
+      cancellationLine2: cancellationFee
+        ? `Late cancellation fee: ${cancellationFee}.`
+        : "Late cancellations may still be charged based on order status.",
+      rescheduleLine1:
+        "Reschedule before dispatch to avoid additional charges.",
+      rescheduleLine2: `After dispatch, reschedule fee is ${pickupRescheduleFee || "policy-based"} at pickup and ${deliveryRescheduleFee || "policy-based"} at delivery.`,
+      noShowLine: noShowConfig?.useUnifiedFee
+        ? `No-show fee: ${noShowFee || "policy-based"}${graceText ? ` after a ${graceText} grace period` : ""}.${storagePerDay ? ` Storage fee: ${storagePerDay} per day.` : ""}`
+        : `No-show fee: pickup ${pickupNoShowFee || "policy-based"}, delivery ${deliveryNoShowFee || "policy-based"}${graceText ? `, with a ${graceText} grace period` : ""}.${storagePerDay ? ` Storage fee: ${storagePerDay} per day.` : ""}`,
+    };
+  }, [activePoliciesData]);
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const [modalScroll, setModalScroll] = useState(false);
   const [modal, setModal] = useState({
@@ -425,6 +533,37 @@ export default function Payment() {
                       <p className="">Free</p>
                     </div>
                   </div>
+
+                  {policyContent?.hasAnyPolicy && (
+                    <div className="pt-3 space-y-4">
+                      <div>
+                        <h4 className="font-youth font-bold text-2xl">
+                          Laundry Policies
+                        </h4>
+                        {policyContent.activeNames?.length > 0 && (
+                          <p className="font-sf text-sm text-theme-psGray mt-1">
+                            Active policies: {policyContent.activeNames.join(", ")}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="font-sf text-theme-psGray space-y-3">
+                        <p className="text-sm leading-6">
+                          {policyContent.cancellationLine1}
+                          <br />
+                          {policyContent.cancellationLine2}
+                        </p>
+                        <p className="text-sm leading-6">
+                          {policyContent.rescheduleLine1}
+                          <br />
+                          {policyContent.rescheduleLine2}
+                        </p>
+                        <p className="text-sm leading-6">
+                          {policyContent.noShowLine}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* ///////////////Order details///////////// */}

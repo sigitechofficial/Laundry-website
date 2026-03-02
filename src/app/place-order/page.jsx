@@ -66,13 +66,35 @@ export default function orderRegistration() {
     startAfterHours: 24, // default: 1 hour ahead (for collection)
   });
 
+  const getLocalDateString = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const initialCollectionSlot = React.useMemo(() => {
+    const today = getLocalDateString();
+    return slots?.find((slot) => slot.date === today) || slots?.[0] || null;
+  }, [slots]);
+
+  const initialDeliverySlot = React.useMemo(() => {
+    const baseDate = initialCollectionSlot?.date || getLocalDateString();
+    return (
+      slotsDelivery?.find((slot) => new Date(slot.date) > new Date(baseDate)) ||
+      slotsDelivery?.[0] ||
+      null
+    );
+  }, [slotsDelivery, initialCollectionSlot]);
+
   const [driverInstruction, setDriverInstruction] = useState("");
   const [collectionData, setCollectionData] = useState({
-    collectionDate: slots?.[0]?.date || "",
-    collectionTimeTo: slots?.[0]?.timeSlots?.[0]?.end || "",
-    collectionTimeFrom: slots?.[0]?.timeSlots?.[0]?.start || "",
+    collectionDate: initialCollectionSlot?.date || "",
+    collectionTimeTo: initialCollectionSlot?.timeSlots?.[0]?.end || "",
+    collectionTimeFrom: initialCollectionSlot?.timeSlots?.[0]?.start || "",
     driverInstructionOptions: "",
-    availableTimeSlots: slots?.[0]?.timeSlots || [],
+    availableTimeSlots: initialCollectionSlot?.timeSlots || [],
     title: "Home", // 'Home', 'Office', 'Hotel', or 'Other'
     hotelName: null,
     apartmentNumber: null,
@@ -92,11 +114,11 @@ export default function orderRegistration() {
   console.log("🚀 ~ orderRegistration ~ collectionData:", collectionData);
 
   const [deliveryData, setDeliveryData] = useState({
-    deliveryDate: slotsDelivery?.[0]?.date || "",
-    deliveryTimeTo: slotsDelivery?.[0]?.timeSlots?.[0]?.end || "",
-    deliveryTimeFrom: slotsDelivery?.[0]?.timeSlots?.[0]?.start || "",
+    deliveryDate: initialDeliverySlot?.date || "",
+    deliveryTimeTo: initialDeliverySlot?.timeSlots?.[0]?.end || "",
+    deliveryTimeFrom: initialDeliverySlot?.timeSlots?.[0]?.start || "",
     driverInstructionOptions1: "",
-    availableTimeSlots: slotsDelivery?.[0]?.timeSlots || [],
+    availableTimeSlots: initialDeliverySlot?.timeSlots || [],
     title: "Home", // 'Home', 'Office', 'Hotel', or 'Other'
     hotelName: null,
     apartmentNumber: null,
@@ -134,13 +156,13 @@ export default function orderRegistration() {
     return h * 60 + m;
   };
 
-  // Delivery date must be on or after collection date
-  const isDeliveryBeforeCollection =
+  // Delivery date must be strictly after collection date
+  const isDeliverySameOrBeforeCollection =
     !!collectionData?.collectionDate &&
     !!deliveryData?.deliveryDate &&
-    new Date(deliveryData.deliveryDate) < new Date(collectionData.collectionDate);
+    new Date(deliveryData.deliveryDate) <= new Date(collectionData.collectionDate);
 
-  // On same day, delivery time must be after collection time (delivery must start after collection ends)
+  // Kept as a guard, though delivery is now enforced to next day.
   const isSameDayDeliveryBeforeCollection =
     !!collectionData?.collectionDate &&
     !!deliveryData?.deliveryDate &&
@@ -342,11 +364,11 @@ export default function orderRegistration() {
     if (isOrderDataEmpty) {
       // Reset form to initial state when orderData is cleared
       setCollectionData({
-        collectionDate: slots?.[0]?.date || "",
-        collectionTimeTo: slots?.[0]?.timeSlots?.[0]?.end || "",
-        collectionTimeFrom: slots?.[0]?.timeSlots?.[0]?.start || "",
+        collectionDate: initialCollectionSlot?.date || "",
+        collectionTimeTo: initialCollectionSlot?.timeSlots?.[0]?.end || "",
+        collectionTimeFrom: initialCollectionSlot?.timeSlots?.[0]?.start || "",
         driverInstructionOptions: "",
-        availableTimeSlots: slots?.[0]?.timeSlots || [],
+        availableTimeSlots: initialCollectionSlot?.timeSlots || [],
         title: "Home",
         hotelName: null,
         apartmentNumber: null,
@@ -364,11 +386,11 @@ export default function orderRegistration() {
         save: false,
       });
       setDeliveryData({
-        deliveryDate: slotsDelivery?.[0]?.date || "",
-        deliveryTimeTo: slotsDelivery?.[0]?.timeSlots?.[0]?.end || "",
-        deliveryTimeFrom: slotsDelivery?.[0]?.timeSlots?.[0]?.start || "",
+        deliveryDate: initialDeliverySlot?.date || "",
+        deliveryTimeTo: initialDeliverySlot?.timeSlots?.[0]?.end || "",
+        deliveryTimeFrom: initialDeliverySlot?.timeSlots?.[0]?.start || "",
         driverInstructionOptions1: "",
-        availableTimeSlots: slotsDelivery?.[0]?.timeSlots || [],
+        availableTimeSlots: initialDeliverySlot?.timeSlots || [],
         title: "Home",
         hotelName: null,
         apartmentNumber: null,
@@ -396,10 +418,26 @@ export default function orderRegistration() {
           ...prev,
           ...orderData.collectionData,
           // Preserve default first date/time if not in orderData
-          collectionDate: orderData.collectionData.collectionDate || prev.collectionDate || slots?.[0]?.date || "",
-          collectionTimeFrom: orderData.collectionData.collectionTimeFrom || prev.collectionTimeFrom || slots?.[0]?.timeSlots?.[0]?.start || "",
-          collectionTimeTo: orderData.collectionData.collectionTimeTo || prev.collectionTimeTo || slots?.[0]?.timeSlots?.[0]?.end || "",
-          availableTimeSlots: orderData.collectionData.availableTimeSlots || prev.availableTimeSlots || slots?.[0]?.timeSlots || [],
+          collectionDate:
+            orderData.collectionData.collectionDate ||
+            prev.collectionDate ||
+            initialCollectionSlot?.date ||
+            "",
+          collectionTimeFrom:
+            orderData.collectionData.collectionTimeFrom ||
+            prev.collectionTimeFrom ||
+            initialCollectionSlot?.timeSlots?.[0]?.start ||
+            "",
+          collectionTimeTo:
+            orderData.collectionData.collectionTimeTo ||
+            prev.collectionTimeTo ||
+            initialCollectionSlot?.timeSlots?.[0]?.end ||
+            "",
+          availableTimeSlots:
+            orderData.collectionData.availableTimeSlots ||
+            prev.availableTimeSlots ||
+            initialCollectionSlot?.timeSlots ||
+            [],
         }));
       }
       if (orderData.deliveryData) {
@@ -408,10 +446,26 @@ export default function orderRegistration() {
           ...prev,
           ...orderData.deliveryData,
           // Preserve default first date/time if not in orderData
-          deliveryDate: orderData.deliveryData.deliveryDate || prev.deliveryDate || slotsDelivery?.[0]?.date || "",
-          deliveryTimeFrom: orderData.deliveryData.deliveryTimeFrom || prev.deliveryTimeFrom || slotsDelivery?.[0]?.timeSlots?.[0]?.start || "",
-          deliveryTimeTo: orderData.deliveryData.deliveryTimeTo || prev.deliveryTimeTo || slotsDelivery?.[0]?.timeSlots?.[0]?.end || "",
-          availableTimeSlots: orderData.deliveryData.availableTimeSlots || prev.availableTimeSlots || slotsDelivery?.[0]?.timeSlots || [],
+          deliveryDate:
+            orderData.deliveryData.deliveryDate ||
+            prev.deliveryDate ||
+            initialDeliverySlot?.date ||
+            "",
+          deliveryTimeFrom:
+            orderData.deliveryData.deliveryTimeFrom ||
+            prev.deliveryTimeFrom ||
+            initialDeliverySlot?.timeSlots?.[0]?.start ||
+            "",
+          deliveryTimeTo:
+            orderData.deliveryData.deliveryTimeTo ||
+            prev.deliveryTimeTo ||
+            initialDeliverySlot?.timeSlots?.[0]?.end ||
+            "",
+          availableTimeSlots:
+            orderData.deliveryData.availableTimeSlots ||
+            prev.availableTimeSlots ||
+            initialDeliverySlot?.timeSlots ||
+            [],
         }));
       }
       if (orderData.driverInstruction) {
@@ -448,19 +502,18 @@ export default function orderRegistration() {
     }
   }, [modal?.modType, deliveryData?.deliveryDate]);
 
-  // If collection date is after delivery date, reset delivery to first valid date
+  // Delivery must always be the next available date after collection date.
   useEffect(() => {
-    if (
-      !collectionData?.collectionDate ||
-      !deliveryData?.deliveryDate ||
-      !slotsDelivery?.length
-    )
-      return;
+    if (!collectionData?.collectionDate || !slotsDelivery?.length) return;
     const collection = new Date(collectionData.collectionDate);
-    const delivery = new Date(deliveryData.deliveryDate);
-    if (delivery >= collection) return;
-    const firstValid = slotsDelivery.find((slot) => new Date(slot.date) >= collection);
+    const delivery = deliveryData?.deliveryDate
+      ? new Date(deliveryData.deliveryDate)
+      : null;
+    const firstValid = slotsDelivery.find((slot) => new Date(slot.date) > collection);
     if (firstValid) {
+      const shouldUpdate =
+        !delivery || delivery <= collection || deliveryData.deliveryDate !== firstValid.date;
+      if (!shouldUpdate) return;
       setDeliveryData((prev) => ({
         ...prev,
         deliveryDate: firstValid.date,
@@ -469,7 +522,7 @@ export default function orderRegistration() {
         availableTimeSlots: firstValid.timeSlots || [],
       }));
     }
-  }, [collectionData?.collectionDate]);
+  }, [collectionData?.collectionDate, slotsDelivery]);
 
   // Same day: if delivery time is before collection end, reset to first valid delivery slot
   useEffect(() => {
@@ -848,9 +901,9 @@ export default function orderRegistration() {
                           </span>
                         }
                       />
-                      {isDeliveryBeforeCollection && (
+                      {isDeliverySameOrBeforeCollection && (
                         <p className="font-sf text-sm text-red-600 mt-1">
-                          Delivery date must be on or after collection date.
+                          Delivery date must be after collection date.
                         </p>
                       )}
                       {isSameDayDeliveryBeforeCollection && (
@@ -893,7 +946,7 @@ export default function orderRegistration() {
                       <ButtonYouth70018
                         text="Continue"
                         isDisabled={
-                          isDeliveryBeforeCollection ||
+                          isDeliverySameOrBeforeCollection ||
                           isSameDayDeliveryBeforeCollection ||
                           !collectionData?.collectionDate ||
                           !collectionData?.collectionTimeTo ||
@@ -1249,7 +1302,7 @@ export default function orderRegistration() {
                       {(collectionData?.collectionDate
                         ? slotsDelivery?.filter(
                             (item) =>
-                              new Date(item?.date) >=
+                              new Date(item?.date) >
                               new Date(collectionData.collectionDate)
                           )
                         : slotsDelivery

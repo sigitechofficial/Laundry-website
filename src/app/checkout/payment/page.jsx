@@ -662,11 +662,7 @@ export default function Payment() {
 
                         <p
                           onClick={() => {
-                            history.replaceState(
-                              { customData: { step: "get-started" } },
-                              ""
-                            );
-                            router.push("/order-registration");
+                            router.push("/place-order");
                           }}
                           className="uppercase cursor-pointer text-theme-blue font-sf font-normal px-2 py-1 border border-black rounded-full shrink-0 text-sm"
                         >

@@ -7,7 +7,7 @@ import { MdKeyboardArrowRight } from "react-icons/md";
 import {
   useBookingDetailByIdQuery,
   useGetAllOrdersQuery,
-  useGetCancellationPoliciesQuery,
+  useGetCustomerActivePoliciesQuery,
   useGetAllReasonsQuery,
   useCancelBookingMutation,
 } from "@/app/store/services/api";
@@ -95,7 +95,8 @@ export default function OrderHistory() {
     }
   }, [manageOrder?.manage]);
 
-  const { data: cancellationPolicy } = useGetCancellationPoliciesQuery();
+  // Fetch active customer policies as soon as Order History tab/page is loaded.
+  const { data: activePoliciesData } = useGetCustomerActivePoliciesQuery();
   const { data: reasonsData, isLoading: isLoadingReasons } = useGetAllReasonsQuery();
   const [cancelBooking, { isLoading: isCancelling }] = useCancelBookingMutation();
 
@@ -155,22 +156,9 @@ export default function OrderHistory() {
   };
 
   // Check if order can be cancelled based on cancellation policy
-  const canCancelOrder = (order, policy) => {
-    if (!order || !policy) return { canCancel: true, reason: null }; // Allow if no policy
-
-    const policyData = policy?.data?.policies?.[0];
-    if (!policyData) return { canCancel: true, reason: null };
-
-    const config = policyData?.cancellationConfig;
+  const canCancelOrder = (order, config) => {
+    if (!order) return { canCancel: true, reason: null };
     if (!config) return { canCancel: true, reason: null };
-
-    // Check policy expiry
-    if (policyData.expiry_date) {
-      const expiryDate = new Date(policyData.expiry_date);
-      if (expiryDate < new Date()) {
-        return { canCancel: false, reason: 'Cancellation policy has expired' };
-      }
-    }
 
     // Check order status - if processed, cannot cancel
     const orderStatus = order?.bookingStatus?.title?.toLowerCase() || "";
@@ -202,7 +190,9 @@ export default function OrderHistory() {
     setIsCheckingCancellation(true);
 
     // Check cancellation eligibility
-    const eligibility = canCancelOrder(bookingDtails.data, cancellationPolicy);
+    const cancellationConfig =
+      activePoliciesData?.data?.activeCancellationPolicy?.cancellationConfig;
+    const eligibility = canCancelOrder(bookingDtails.data, cancellationConfig);
 
     if (!eligibility.canCancel) {
       addToast({
@@ -317,6 +307,28 @@ export default function OrderHistory() {
     }
 
     return null;
+  };
+
+  const formatMinutesWindow = (minutes) => {
+    const value = Number(minutes);
+    if (!Number.isFinite(value) || value <= 0) return "No free window";
+    if (value % 60 === 0) {
+      const hours = value / 60;
+      return `${hours} hour${hours === 1 ? "" : "s"}`;
+    }
+    return `${value} minute${value === 1 ? "" : "s"}`;
+  };
+
+  const formatChargeWithFallback = (amount, currency, percentage) => {
+    const numericAmount = Number.parseFloat(amount);
+    if (Number.isFinite(numericAmount)) {
+      return `${currency || ""} ${numericAmount.toFixed(2)}`.trim();
+    }
+    const numericPercentage = Number.parseFloat(percentage);
+    if (Number.isFinite(numericPercentage) && numericPercentage > 0) {
+      return `${numericPercentage}% of order value`;
+    }
+    return "N/A";
   };
 
   // Memoize active bookings - always compute, regardless of loading state
@@ -494,6 +506,101 @@ export default function OrderHistory() {
               {bookingDtails?.data?.frequency}
             </p>
           </div>
+
+          {/* Cancellation policy attached to this booking */}
+          {bookingDtails?.data?.cancellationPolicy && (
+            <div className="font-sf space-y-3 border-t pt-4">
+              <p className="font-youth font-bold">Cancellation Policy (Attached)</p>
+              <div className="space-y-2 text-sm">
+                <p>
+                  <span className="text-theme-psGray">Policy: </span>
+                  <span className="font-medium">
+                    {bookingDtails.data.cancellationPolicy.name || "N/A"}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-theme-psGray">Description: </span>
+                  <span className="font-medium">
+                    {bookingDtails.data.cancellationPolicy.description || "N/A"}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-theme-psGray">Free cancellation window: </span>
+                  <span className="font-medium">
+                    {formatMinutesWindow(
+                      bookingDtails.data.cancellationPolicy
+                        .freeCancellationWindowMinutes
+                    )}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-theme-psGray">Late cancellation charge: </span>
+                  <span className="font-medium">
+                    {formatChargeWithFallback(
+                      bookingDtails.data.cancellationPolicy.prePickupChargeAmount,
+                      bookingDtails.data.cancellationPolicy.prePickupChargeCurrency,
+                      bookingDtails.data.cancellationPolicy.prePickupChargePercentage
+                    )}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-theme-psGray">First cancellation free: </span>
+                  <span className="font-medium">
+                    {bookingDtails.data.cancellationPolicy.firstCancellationFree
+                      ? "Yes"
+                      : "No"}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-theme-psGray">Unprocessed cancellation: </span>
+                  <span className="font-medium">
+                    {bookingDtails.data.cancellationPolicy.allowCancelUnprocessed
+                      ? "Allowed"
+                      : "Not allowed"}
+                  </span>
+                </p>
+                {bookingDtails.data.cancellationPolicy.allowCancelUnprocessed && (
+                  <p>
+                    <span className="text-theme-psGray">Unprocessed charge: </span>
+                    <span className="font-medium">
+                      {formatChargeWithFallback(
+                        bookingDtails.data.cancellationPolicy
+                          .unprocessedChargeAmount,
+                        bookingDtails.data.cancellationPolicy
+                          .unprocessedChargeCurrency,
+                        bookingDtails.data.cancellationPolicy
+                          .unprocessedChargePercentage
+                      )}
+                      {Number(bookingDtails.data.cancellationPolicy.unprocessedAfterPickupMinutes) >
+                      0
+                        ? ` after ${bookingDtails.data.cancellationPolicy.unprocessedAfterPickupMinutes} minute(s) from pickup`
+                        : ""}
+                    </span>
+                  </p>
+                )}
+                <p>
+                  <span className="text-theme-psGray">Courtesy rules: </span>
+                  <span className="font-medium">
+                    {bookingDtails.data.cancellationPolicy.courtesyCount || 0} time(s) in{" "}
+                    {bookingDtails.data.cancellationPolicy.courtesyWindowDays || 0} day(s), cap{" "}
+                    {formatChargeWithFallback(
+                      bookingDtails.data.cancellationPolicy.courtesyCapAmount,
+                      bookingDtails.data.cancellationPolicy.prePickupChargeCurrency,
+                      null
+                    )}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-theme-psGray">Customer leniency: </span>
+                  <span className="font-medium">
+                    {bookingDtails.data.cancellationPolicy.customerLeniencyEnabled
+                      ? "Enabled"
+                      : "Disabled"}
+                  </span>
+                </p>
+              </div>
+            </div>
+          )}
           {!isOrderCancelled(bookingDtails?.data) && (
             <PurpleButton
               text="Manage Order"
@@ -716,6 +823,56 @@ export default function OrderHistory() {
     router.push("/place-order");
   };
 
+  const cancellationPolicySummary = React.useMemo(() => {
+    const activeCancellationPolicy =
+      activePoliciesData?.data?.activeCancellationPolicy;
+    const cfg = activeCancellationPolicy?.cancellationConfig;
+    if (!cfg) return null;
+
+    const formatWindow = (mins) => {
+      const value = Number(mins);
+      if (!Number.isFinite(value) || value <= 0) return "no free window";
+      if (value % 60 === 0) {
+        const hrs = value / 60;
+        return `${hrs} hour${hrs === 1 ? "" : "s"}`;
+      }
+      return `${value} minute${value === 1 ? "" : "s"}`;
+    };
+
+    const formatAmount = (currency, amount) => {
+      const value = Number.parseFloat(amount);
+      if (!Number.isFinite(value)) return null;
+      return `${currency || ""} ${value.toFixed(2)}`.trim();
+    };
+
+    const formatPercent = (value) => {
+      const num = Number.parseFloat(value);
+      if (!Number.isFinite(num) || num <= 0) return null;
+      return `${num}% of order value`;
+    };
+
+    const lateFee =
+      formatAmount(cfg.prePickupAbsoluteCurrency, cfg.prePickupAbsoluteAmount) ||
+      formatPercent(cfg.prePickupPercentage) ||
+      "policy-based";
+    const unprocessedFee =
+      formatAmount(
+        cfg.unprocessedAbsoluteCurrency,
+        cfg.unprocessedAbsoluteAmount
+      ) ||
+      formatPercent(cfg.unprocessedPercentage) ||
+      "policy-based";
+
+    return {
+      name: activeCancellationPolicy?.name || "Cancellation Policy",
+      freeWindow: formatWindow(cfg.prePickupFreeChargeWindowMinutes),
+      lateFee,
+      allowUnprocessed: cfg.allowCancelUnprocessed,
+      unprocessedFee,
+      unprocessedAfterMinutes: Number(cfg.unprocessedAfterPickupMinutes) || 0,
+    };
+  }, [activePoliciesData]);
+
   return (
     <section className="w-full md:mt-6 px-4 sm:px-6 md:px-10 pb-4 sm:pb-6 md:pb-10">
       <h2 className="font-youth font-medium text-2xl sm:text-3xl md:text-[40px] mb-4 pt-4 sm:pt-8 md:pt-4">
@@ -743,21 +900,17 @@ export default function OrderHistory() {
                 <>
                   <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4">Active Bookings</h3>
                   {activeBookings.map((order) => {
-                    const isCancelled = isOrderCancelled(order);
                     return (
                       <div
                         key={order.id}
                         onClick={() => {
-                          if (!isCancelled) {
-                            setManageOrder({ ...manageOrder, orderId: order?.id });
-                            // Open modal on mobile screens
-                            if (typeof window !== "undefined" && window.innerWidth < 768) {
-                              onOrderDetailsModalOpen();
-                            }
+                          setManageOrder({ ...manageOrder, orderId: order?.id });
+                          // Open modal on mobile screens
+                          if (typeof window !== "undefined" && window.innerWidth < 768) {
+                            onOrderDetailsModalOpen();
                           }
                         }}
-                        className={`w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 ${isCancelled ? "cursor-default opacity-75" : "cursor-pointer"
-                          }`}
+                        className="w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
                       >
                         <h6 className="font-youth font-bold text-base sm:text-lg">
                           Order ID: {order?.orderTrackId}
@@ -821,21 +974,17 @@ export default function OrderHistory() {
                 <>
                   <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4 mt-6 sm:mt-8">Past Bookings</h3>
                   {pastBookings.map((order) => {
-                    const isCancelled = isOrderCancelled(order);
                     return (
                       <div
                         key={order.id}
                         onClick={() => {
-                          if (!isCancelled) {
-                            setManageOrder({ ...manageOrder, orderId: order?.id });
-                            // Open modal on mobile screens
-                            if (typeof window !== "undefined" && window.innerWidth < 768) {
-                              onOrderDetailsModalOpen();
-                            }
+                          setManageOrder({ ...manageOrder, orderId: order?.id });
+                          // Open modal on mobile screens
+                          if (typeof window !== "undefined" && window.innerWidth < 768) {
+                            onOrderDetailsModalOpen();
                           }
                         }}
-                        className={`w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 ${isCancelled ? "cursor-default opacity-75" : "cursor-pointer"
-                          }`}
+                        className="w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
                       >
                         <h6 className="font-youth font-bold text-base sm:text-lg">
                           Order ID: {order?.orderTrackId}
@@ -1255,6 +1404,32 @@ export default function OrderHistory() {
                 your order status and cancellation policy.
               </p>
             </div>
+
+            {/* Active Cancellation Policy */}
+            {cancellationPolicySummary && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+                <p className="font-sf text-sm font-semibold text-gray-800">
+                  Active Cancellation Policy ({cancellationPolicySummary.name})
+                </p>
+                <p className="font-sf text-xs text-gray-700">
+                  Free cancellation window: {cancellationPolicySummary.freeWindow}
+                </p>
+                <p className="font-sf text-xs text-gray-700">
+                  Late cancellation fee: {cancellationPolicySummary.lateFee}
+                </p>
+                <p className="font-sf text-xs text-gray-700">
+                  Unprocessed bookings:{" "}
+                  {cancellationPolicySummary.allowUnprocessed ? "Allowed" : "Not allowed"}
+                  {cancellationPolicySummary.allowUnprocessed
+                    ? ` (fee ${cancellationPolicySummary.unprocessedFee}${
+                      cancellationPolicySummary.unprocessedAfterMinutes > 0
+                        ? ` after ${cancellationPolicySummary.unprocessedAfterMinutes} minutes from pickup`
+                        : ""
+                    })`
+                    : ""}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </ReusableModal>

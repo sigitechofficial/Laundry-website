@@ -49,14 +49,14 @@ export default function Order() {
       skip: !currentServiceId,
     });
 
-  const servicePreferencesData = preferencesResponse?.data?.preferencesData || [];
+  const servicePreferencesData = preferencesResponse?.data?.preferencesData;
 
   // Initialize preferences state based on fetched data
   const [preferences, setPreferences] = useState({});
 
   // Initialize preferences when service preferences data is loaded
   useEffect(() => {
-    if (servicePreferencesData.length > 0) {
+    if (Array.isArray(servicePreferencesData) && servicePreferencesData.length > 0) {
       const initialPrefs = {};
       servicePreferencesData.forEach((pref) => {
         const prefName = pref.preferenceType?.name?.toLowerCase();
@@ -73,7 +73,7 @@ export default function Order() {
       // Add additional instructions field
       initialPrefs.additionalInstructions = "";
       setPreferences(initialPrefs);
-    } else {
+    } else if (servicePreferencesData) {
       setPreferences({});
     }
   }, [servicePreferencesData, currentServiceId]);
@@ -323,10 +323,6 @@ export default function Order() {
 
                           <p
                             onClick={() => {
-                              history.replaceState(
-                                { customData: { step: "get-started" } },
-                                ""
-                              );
                               router.push("/place-order");
                             }}
                             className="uppercase cursor-pointer text-theme-blue font-sf font-normal px-2 py-1 border border-black rounded-full shrink-0 text-sm"

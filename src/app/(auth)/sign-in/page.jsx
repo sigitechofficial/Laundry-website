@@ -793,55 +793,15 @@ export default function page() {
           errorData?.message?.toLowerCase().includes("already exists");
 
         if (isUserExists) {
-          // User already exists - try to login
-          try {
-            const loginRes = await userLogin({
-              email: register?.email,
-              password: register?.password,
-              signedFrom: "",
-              dvToken: devToken || "",
-            }).unwrap();
-
-            if (loginRes?.status === "1") {
-              // Login successful
-              localStorage.removeItem("otpId");
-              localStorage.removeItem("type");
-              localStorage.setItem("loginStatus", "true");
-              localStorage.setItem("stripeCustomerId", loginRes.data.stripeCustomerId);
-              localStorage.setItem("userId", loginRes.data.userId);
-              localStorage.setItem("email", loginRes.data.email);
-              localStorage.setItem("phoneNum", loginRes?.data?.phoneNum || "");
-              localStorage.setItem(
-                "userName",
-                loginRes.data.firstName + " " + loginRes.data.lastName
-              );
-              // Store access token from login response
-              if (loginRes.data.accessToken) {
-                localStorage.setItem("accessToken", loginRes.data.accessToken);
-              }
-
-              addToast({
-                title: "Login Successful",
-                description: "User already exists. Logged in successfully",
-                color: "success",
-              });
-
-              dispatch(setPage(true));
-              router.replace("/");
-            } else {
-              addToast({
-                title: "Registration Failed",
-                description: errorData?.error || errorData?.message || "User already exists but login failed",
-                color: "danger",
-              });
-            }
-          } catch (loginError) {
-            addToast({
-              title: "Registration Failed",
-              description: errorData?.error || errorData?.message || "User already exists but login failed",
-              color: "danger",
-            });
-          }
+          // Keep user on signup and show backend message only.
+          addToast({
+            title: "User Registration",
+            description:
+              errorData?.error ||
+              errorData?.message ||
+              "User with this email already exists",
+            color: "warning",
+          });
         } else {
           addToast({
             title: "User Registration",

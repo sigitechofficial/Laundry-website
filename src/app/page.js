@@ -396,17 +396,17 @@ export default function Home() {
         </div>
 
         {/*theme dark blue section  */}
-        <div className="w-full xl:h-[670px] bg-theme-darkBlue flex items-center px-5 md:px-[45px] py-8 sm:py-16 xl:py-0">
+        <div className="w-full bg-theme-darkBlue flex items-center px-5 md:px-[45px] py-8 sm:py-16">
           <div className="w-full max-w-[1290px] mx-auto grid grid-cols-1 xl:grid-cols-2 gap-6">
             <div className="flex flex-col justify-center text-white">
               <h4 className="uppercase font-youth font-black tracking-tight text-2xl sm:text-5xl">
                 pricing
               </h4>
 
-              <p className="text-sm sm:text-xl tracking-tight py-4 font-sf md:leading-9">
-                We providing top-quality services at affordable prices. <br />{" "}
-                Our transparent pricing structure ensures you get the <br />{" "}
-                best value for your money without any hidden fees.
+              <p className="max-w-[560px] text-sm sm:text-lg xl:text-xl tracking-tight py-4 font-sf leading-7 sm:leading-8 xl:leading-9">
+                We provide top-quality services at affordable prices. Our transparent
+                pricing structure ensures you get the best value for your money
+                without any hidden fees.
               </p>
             </div>
 

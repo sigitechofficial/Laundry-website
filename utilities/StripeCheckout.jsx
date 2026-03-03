@@ -171,6 +171,7 @@ const StripeCheckout = ({
   const [displayAmount, setDisplayAmount] = useState(""); // Formatted amount for button (empty for Setup Intent)
   const [createPaymentIntent, { data, isSuccess, isLoading }] =
     useCreateIntentMutation();
+  const [initError, setInitError] = useState("");
 
   const formatAmount = (value) => {
     if (value == null || value === "") return "";
@@ -181,9 +182,14 @@ const StripeCheckout = ({
   };
 
   const getIntent = async () => {
+    if (!customerId) {
+      setInitError("Customer profile is missing. Please sign in again to continue.");
+      return;
+    }
+
     try {
       const res = await createPaymentIntent({
-        amount: totalAmount,
+        amount: Number.isFinite(Number(totalAmount)) ? Number(totalAmount) : 0,
         customerId,
       }).unwrap();
 
@@ -210,6 +216,7 @@ const StripeCheckout = ({
         console.log("⚠️ IMPORTANT: Ensure your backend uses the SECRET KEY that matches this publishable key!");
 
         setClientSecret(clientSecret);
+        setInitError("");
         setIntentMode(isSetupIntent ? "setup" : "payment");
         setIntentId(extractedIntentId); // Store the extracted intent ID
         setDisplayAmount(res?.data?.amount != null ? formatAmount(res.data.amount) : "");
@@ -221,19 +228,23 @@ const StripeCheckout = ({
           description: res?.message || "Failed to initialize payment",
           color: "danger",
         });
+        setInitError(res?.message || "Failed to initialize payment");
       }
     } catch (error) {
       console.error("Error creating payment intent:", error);
+      const errorMessage =
+        error?.data?.message || error?.message || "Failed to initialize payment";
       addToast({
         title: "Payment Error",
-        description: error?.data?.message || error?.message || "Failed to initialize payment",
+        description: errorMessage,
         color: "danger",
       });
+      setInitError(errorMessage);
     }
   };
 
   useEffect(() => {
-    if (totalAmount && customerId) {
+    if (customerId) {
       getIntent();
     }
   }, [totalAmount, customerId]);
@@ -267,7 +278,7 @@ const StripeCheckout = ({
   if (!clientSecret && !isLoading) {
     return (
       <div className="mx-auto p-4 text-red-500">
-        Failed to initialize payment. Please try again.
+        {initError || "Failed to initialize payment. Please try again."}
       </div>
     );
   }

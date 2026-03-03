@@ -65,6 +65,7 @@ export default function Order() {
           // Set first value as default
           initialPrefs[prefName] = {
             preferenceTypeId: pref.preferenceTypeId,
+            preferenceTypeName: pref.preferenceType?.name || prefName,
             preferenceValueId: prefValues[0].id,
             value: prefValues[0].value,
           };
@@ -90,12 +91,18 @@ export default function Order() {
     if (currentServiceId) {
       // Build preferences array with preferenceTypeId and preferenceValueId
       const preferencesArray = [];
+      const preferencesDisplay = [];
       Object.keys(preferences).forEach((key) => {
         if (key !== "additionalInstructions" && preferences[key]?.preferenceTypeId) {
           preferencesArray.push({
             preferenceTypeId: preferences[key].preferenceTypeId,
             preferenceValueId: preferences[key].preferenceValueId,
             serviceId: currentServiceId,
+          });
+          preferencesDisplay.push({
+            preferenceTypeName:
+              preferences[key].preferenceTypeName || key,
+            value: preferences[key].value || "",
           });
         }
       });
@@ -108,6 +115,7 @@ export default function Order() {
       const prefsData = {
         serviceName,
         preferencesArray,
+        preferencesDisplay,
         additionalInstructions: preferences.additionalInstructions || "",
       };
 
@@ -174,14 +182,6 @@ export default function Order() {
                         return "right-0";
                       };
 
-                      // Determine modal type based on service ID
-                      const getModalType = (id) => {
-                        if (id === 1) return "iron";
-                        if (id === 2) return "dry cleaning";
-                        if (id === 3) return "wash";
-                        return "";
-                      };
-
                       // Check if service is selected
                       const isSelected = Array.isArray(preferencesData) &&
                         preferencesData?.some((elem) => elem?.serviceId === item?.id);
@@ -191,7 +191,7 @@ export default function Order() {
                           key={item?.id}
                           onClick={() => {
                             setCurrentServiceId(item?.id);
-                            setModal({ ...modal, modType: getModalType(item?.id, item?.name) });
+                            setModal({ ...modal, modType: "servicePreferences" });
                             onOpen();
                           }}
                           bg={getBg(item?.id)}
@@ -397,151 +397,41 @@ export default function Order() {
 
                     {preferencesData?.length > 0 ? (
                       <div>
-                        {preferencesData?.map((item, idx) =>
-                          item?.serviceId == 3 ? (
-                            <div
-                              key={idx}
-                              className="font-sf pt-3 border-b-2 border-theme-gray pb-3"
-                            >
-                              {/* Service Name as heading */}
-                              {item?.washService && (
-                                <>
-                                  <p className="text-theme-psGray font-sf">
-                                    Service
-                                  </p>
-                                  <p className="text-sm font-medium capitalize">
-                                    {item?.serviceName}
-                                  </p>
-                                </>
-                              )}
-                              {/* Preferences Listing */}
-                              {item?.washService && (
-                                <>
-                                  <p className="text-theme-psGray font-sf">
-                                    Preferences
-                                  </p>
-                                  <p className="text-sm font-medium capitalize">
-                                    {item?.washService}
-                                  </p>
-                                </>
-                              )}
-                              {item?.temperature && (
-                                <>
-                                  <p className="text-theme-psGray font-sf">
-                                    Temperature
-                                  </p>
-                                  <p className="text-sm font-medium capitalize">
-                                    {item?.temperature}
-                                  </p>
-                                </>
-                              )}
-                              {item?.detergent && (
-                                <>
-                                  <p className="text-theme-psGray font-sf">
-                                    Detergent
-                                  </p>
-                                  <p className="text-sm font-medium capitalize">
-                                    {item?.detergent}
-                                  </p>
-                                </>
-                              )}
-                              {"fabricSoftener" in item && (
-                                <>
-                                  <p className="text-theme-psGray font-sf">
-                                    Fabric Softener
-                                  </p>
-                                  <p className="text-sm font-medium capitalize">
-                                    {item?.fabricSoftener ? "Yes" : "No"}
-                                  </p>
-                                </>
-                              )}
-                              {"oxiClean" in item && (
-                                <>
-                                  <p className="text-theme-psGray font-sf">
-                                    Oxi Clean
-                                  </p>
-                                  <p className="text-sm font-medium capitalize">
-                                    {item?.oxiClean ? "Yes" : "No"}
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                          ) : item?.serviceId == 1 ? (
-                            <div
-                              key={idx}
-                              className="font-sf pt-3 border-b-2 border-theme-gray pb-3"
-                            >
-                              {/* Ironing preferences */}
+                        {preferencesData?.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className="font-sf pt-3 border-b-2 border-theme-gray pb-3"
+                          >
+                            <p className="text-theme-psGray font-sf">Service</p>
+                            <p className="text-sm font-medium capitalize">
+                              {item?.serviceName || "Selected"}
+                            </p>
 
-                              {item?.serviceName && (
-                                <>
+                            {Array.isArray(item?.preferencesDisplay) &&
+                              item.preferencesDisplay.length > 0 &&
+                              item.preferencesDisplay.map((pref, prefIdx) => (
+                                <React.Fragment key={`${idx}-${prefIdx}`}>
                                   <p className="text-theme-psGray font-sf">
-                                    Service
+                                    {pref?.preferenceTypeName || "Preference"}
                                   </p>
                                   <p className="text-sm font-medium capitalize">
-                                    {item?.serviceName}
+                                    {pref?.value || "-"}
                                   </p>
-                                </>
-                              )}
+                                </React.Fragment>
+                              ))}
 
-                              {item?.ironingAfter && (
-                                <>
-                                  <p className="text-theme-psGray font-sf">
-                                    After Ironing
-                                  </p>
-                                  <p className="text-sm font-medium capitalize">
-                                    {item?.ironingAfter}
-                                  </p>
-                                </>
-                              )}
-                              {item?.ironingTemperature && (
-                                <>
-                                  <p className="text-theme-psGray font-sf">
-                                    Iron Temperature
-                                  </p>
-                                  <p className="text-sm font-medium capitalize">
-                                    {item?.ironingTemperature}
-                                  </p>
-                                </>
-                              )}
-                              {item?.additionalInstructions && (
-                                <>
-                                  <p className="text-theme-psGray font-sf">
-                                    Instructions
-                                  </p>
-                                  <p className="text-sm font-medium capitalize">
-                                    {item?.additionalInstructions}
-                                  </p>
-                                </>
-                              )}
-                              {item?.additionalInstructionsIroning && (
-                                <>
-                                  <p className="text-theme-psGray font-sf">
-                                    Instructions
-                                  </p>
-                                  <p className="text-sm font-medium capitalize">
-                                    {item?.additionalInstructionsIroning}
-                                  </p>
-                                </>
-                              )}
-                            </div>
-                          ) : (
-                            <div
-                              key={idx}
-                              className="font-sf pt-3 border-b-2 border-theme-gray pb-3"
-                            >
-                              {item?.serviceName && (
-                                <>
-                                  <p className="text-theme-psGray font-sf">Service</p>
-                                  <p className="text-sm font-medium capitalize">{item?.serviceName}</p>
-                                </>
-                              )}
-                              {!item?.serviceName && (
-                                <p className="text-sm font-medium text-theme-gray-2">Selected</p>
-                              )}
-                            </div>
-                          )
-                        )}
+                            {item?.additionalInstructions && (
+                              <>
+                                <p className="text-theme-psGray font-sf">
+                                  Instructions
+                                </p>
+                                <p className="text-sm font-medium capitalize">
+                                  {item?.additionalInstructions}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     ) : (
                       <div className="font-sf pt-3">
@@ -617,7 +507,7 @@ export default function Order() {
         backdrop="blur"
         className="custom-modal-class max-h-[90vh] overflow-auto"
       >
-        {(modal?.modType === "wash" || modal?.modType === "iron" || modal?.modType === "dry cleaning") && currentServiceId ? (
+        {modal?.modType === "servicePreferences" && currentServiceId ? (
           <div
             onScroll={handleModalScroll}
             className="modal-scroll overflow-auto"
@@ -677,6 +567,8 @@ export default function Order() {
                                     ...prev,
                                     [prefKey]: {
                                       preferenceTypeId: pref.preferenceTypeId,
+                                      preferenceTypeName:
+                                        pref.preferenceType?.name || prefKey,
                                       preferenceValueId: value.id,
                                       value: value.value,
                                     },
@@ -755,7 +647,7 @@ export default function Order() {
             )}
           </div>
         ) : modal.modType === "dry cleaning" ? (
-          "Dry cleaning preferences will be added soon."
+          ""
         ) : modal.modType === "driverInstructions" ? (
           <div className="">
             <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">

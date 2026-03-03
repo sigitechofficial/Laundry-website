@@ -256,27 +256,67 @@ export default function orderRegistration() {
     }
   };
 
+  const parseCoordinate = (value) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
   const handleUseCurrentLocation = (add) => {
     if (add?.id) {
-      setCollectionData((prev) => ({
-        ...prev,
-        id: add?.id,
-        streetAddress: add.streetAddress,
-        district: add?.district,
-        title: add?.title,
-        addressType: add?.addressType,
-        province: add?.province,
-        hotelName: null,
-        apartmentNumber: null,
-        floor: null,
-        city: "",
-        country: "",
-        postalCode: "",
-        lat: null,
-        lng: null,
-      }));
-      setModal({ ...modal, modType: "" });
-      onClose();
+      const applySavedAddress = (lat, lng) => {
+        setCollectionData((prev) => ({
+          ...prev,
+          id: add?.id,
+          streetAddress: add?.streetAddress || "",
+          district: add?.district || "",
+          title: add?.title || prev?.title || "Home",
+          addressType: add?.addressType || prev?.addressType || "pickUp",
+          province: add?.province || "",
+          hotelName: null,
+          apartmentNumber: null,
+          floor: null,
+          city: add?.city || "",
+          country: add?.country || "",
+          postalCode: add?.postalCode || add?.postcode || "",
+          lat,
+          lng,
+        }));
+        setModal({ ...modal, modType: "" });
+        onClose();
+      };
+
+      const savedLat = parseCoordinate(add?.lat ?? add?.latitude);
+      const savedLng = parseCoordinate(add?.lng ?? add?.longitude);
+
+      if (savedLat !== null && savedLng !== null) {
+        applySavedAddress(savedLat, savedLng);
+        return;
+      }
+
+      const fallbackAddress = add?.streetAddress || [
+        add?.district,
+        add?.province,
+        add?.country,
+        add?.postalCode || add?.postcode,
+      ]
+        .filter(Boolean)
+        .join(", ");
+
+      if (fallbackAddress && window?.google?.maps?.Geocoder) {
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address: fallbackAddress }, (results, status) => {
+          if (status === "OK" && results?.[0]?.geometry?.location) {
+            const geoLat = parseCoordinate(results[0].geometry.location.lat());
+            const geoLng = parseCoordinate(results[0].geometry.location.lng());
+            applySavedAddress(geoLat, geoLng);
+            return;
+          }
+
+          applySavedAddress(null, null);
+        });
+      } else {
+        applySavedAddress(null, null);
+      }
     } else {
       if (!navigator.geolocation) {
         setError("Geolocation is not supported by your browser");

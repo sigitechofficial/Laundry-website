@@ -224,16 +224,6 @@ const Header = ({ type }) => {
                 <li>
                   <Link
                     onClick={() => {
-                      handleNavigate("/");
-                    }}
-                    href="/"
-                  >
-                    Home
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    onClick={() => {
                       handleNavigate("/pricing");
                     }}
                     href="/pricing"

@@ -9,9 +9,6 @@ export default function PhoneInputComp({
   country = "pk",
   error,
 }) {
-
-
-  console.log(error,"errorerror")
   const [isFocused, setIsFocused] = useState(false);
 const active = value?.length>0 || isFocused
   return (
@@ -34,6 +31,9 @@ const active = value?.length>0 || isFocused
           paddingRight: "12px",
           border: active ? "2px solid #000099" : "none",
           background: active ? "#fff" : "#E8E7E3",
+          fontSize: "18px",
+          fontWeight: 400,
+          fontFamily: "var(--font-sf-pro)",
         }}
         buttonStyle={{
           background: "transparent",

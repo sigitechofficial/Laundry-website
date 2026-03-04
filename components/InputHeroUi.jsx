@@ -2,6 +2,7 @@
 
 import { Input } from "@heroui/react";
 import React from "react";
+import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 
 export default function InputField({
   label = "Enter value...",
@@ -21,6 +22,12 @@ export default function InputField({
   endContent,
   classNames: customClassNames,
 }) {
+  const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
+  const isPasswordField = type === "password";
+  const resolvedType = isPasswordField
+    ? (isPasswordVisible ? "text" : "password")
+    : type;
+
   const isActive = value?.length > 0;
   const defaultClassNames = {
     label: [
@@ -60,7 +67,7 @@ export default function InputField({
   return (
     <Input
       label={label}
-      type={type}
+      type={resolvedType}
       value={value}
       onChange={onChange}
       onFocus={onFocus}
@@ -73,7 +80,24 @@ export default function InputField({
       isInvalid={isInvalid}
       isDisabled={isDisabled}
       isRequired={isRequired}
-      endContent={endContent}
+      endContent={
+        isPasswordField ? (
+          <button
+            type="button"
+            onClick={() => setIsPasswordVisible((prev) => !prev)}
+            className="text-theme-gray-2 hover:text-theme-blue transition-colors"
+            aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+          >
+            {isPasswordVisible ? (
+              <AiOutlineEyeInvisible size={20} />
+            ) : (
+              <AiOutlineEye size={20} />
+            )}
+          </button>
+        ) : (
+          endContent
+        )
+      }
       classNames={mergedClassNames}
     />
   );

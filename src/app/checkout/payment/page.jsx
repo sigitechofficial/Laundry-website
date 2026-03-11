@@ -260,6 +260,7 @@ export default function Payment() {
           ?.filter((item) => item?.serviceId)
           ?.map((item) => ({ serviceId: item.serviceId })),
         totalItems: 5,
+        tipAmount: Number.isFinite(driverTip) ? driverTip : 0,
         paymentIntentId: payData?.paymentIntentId ?? null,
         setupIntentId: payData?.setupIntentId ?? null,
         paymentMethodId: payData?.paymentMethodId,

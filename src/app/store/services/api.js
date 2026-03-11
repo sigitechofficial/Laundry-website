@@ -123,6 +123,7 @@ export const api = createApi({
         method: "POST",
         body,
       }),
+      invalidatesTags: ['Orders'],
     }),
     getAllAddress: builder.query({
       query: () => ({

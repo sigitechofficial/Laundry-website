@@ -56,7 +56,7 @@ export default function orderRegistration() {
     daysCount: 4,
     slotDurationInHours: 1,
     lastHour: 19, // 7 PM
-    startAfterHours: 1, // default: 1 hour ahead (for collection)
+    startAfterHours: 2, // show slots starting 2 hours ahead
   });
 
   const slotsDelivery = generateCollectionSlots({

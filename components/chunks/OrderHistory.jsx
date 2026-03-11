@@ -23,7 +23,13 @@ import { BASE_URL } from "../../utilities/URL";
 export default function OrderHistory() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const { data, isLoading, refetch: refetchOrders } = useGetAllOrdersQuery();
+  const { data, isLoading, refetch: refetchOrders } = useGetAllOrdersQuery(
+    undefined,
+    {
+      refetchOnMountOrArgChange: true,
+      refetchOnFocus: true,
+    }
+  );
   const [order, setOrder] = useState("");
   const [modalScroll, setModalScroll] = useState(false);
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
@@ -56,6 +62,7 @@ export default function OrderHistory() {
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [showManageDetails, setShowManageDetails] = useState(false);
   const [shouldRenderManageDetails, setShouldRenderManageDetails] = useState(false);
+  const [isOrderItemsExpanded, setIsOrderItemsExpanded] = useState(true);
 
   const { data: bookingDtails, isLoading: bookingDetailsLoading } =
     useBookingDetailByIdQuery(manageOrder?.orderId, {
@@ -67,6 +74,7 @@ export default function OrderHistory() {
     if (bookingDtails?.data && !bookingDetailsLoading) {
       // Reset animation state first
       setShowOrderDetails(false);
+      setIsOrderItemsExpanded(true);
       // Small delay to trigger animation
       setTimeout(() => {
         setShowOrderDetails(true);
@@ -331,6 +339,12 @@ export default function OrderHistory() {
     return "N/A";
   };
 
+  const formatItemAmount = (value) => {
+    const numericValue = Number.parseFloat(value);
+    if (!Number.isFinite(numericValue)) return null;
+    return `$${numericValue.toFixed(2)}`;
+  };
+
   // Memoize active bookings - always compute, regardless of loading state
   const activeBookings = React.useMemo(() => {
     if (!data?.data || !Array.isArray(data.data)) return null;
@@ -403,6 +417,61 @@ export default function OrderHistory() {
   // Render order details content (reusable for both modal and side panel)
   const renderOrderDetailsContent = () => {
     if (!bookingDtails?.data) return null;
+    const selectedServices = Array.isArray(
+      bookingDtails?.data?.customerSelectedServices
+    )
+      ? bookingDtails.data.customerSelectedServices
+      : [];
+    const subTotalValue = Number.parseFloat(bookingDtails?.data?.subTotal);
+    const serviceFeeValue = Number.parseFloat(
+      bookingDtails?.data?.billingDetail?.serviceCharge ??
+        bookingDtails?.data?.zone?.serviceCharge
+    );
+    const upfrontAmountValue = Number.parseFloat(
+      bookingDtails?.data?.billingDetail?.upfrontAmount
+    );
+    const tipValue = Number.parseFloat(bookingDtails?.data?.tips?.[0]?.amount);
+    const orderAmountValue = Number.parseFloat(bookingDtails?.data?.orderAmount);
+
+    const displaySubTotal = Number.isFinite(subTotalValue) ? subTotalValue : 0;
+    const displayServiceFee = Number.isFinite(serviceFeeValue) ? serviceFeeValue : 0;
+    const displayUpfrontAmount = Number.isFinite(upfrontAmountValue)
+      ? upfrontAmountValue
+      : 0;
+    const displayTip = Number.isFinite(tipValue) ? tipValue : 0;
+    const displayTotal =
+      Number.isFinite(orderAmountValue) && orderAmountValue > 0
+        ? orderAmountValue
+        : displaySubTotal;
+
+    const groupedSelectedServices = selectedServices.reduce((acc, item) => {
+      const hasCategory = Boolean(item?.category?.name);
+      const hasSubCategory = Boolean(item?.subCategory?.name);
+      const parsedQty = Number(item?.items);
+      const parsedPrice = Number.parseFloat(
+        item?.categoryprice ?? item?.subCategory?.price
+      );
+      const hasQty = Number.isFinite(parsedQty) && parsedQty > 0;
+      const hasPrice = Number.isFinite(parsedPrice);
+      const hasMeaningfulItemData =
+        hasCategory || hasSubCategory || hasQty || hasPrice;
+
+      // Skip service rows that don't contain actual item details.
+      if (!hasMeaningfulItemData) {
+        return acc;
+      }
+
+      const serviceName = item?.service?.name || "Service";
+      if (!acc[serviceName]) {
+        acc[serviceName] = [];
+      }
+      acc[serviceName].push(item);
+      return acc;
+    }, {});
+    const displayedItemsCount = Object.values(groupedSelectedServices).reduce(
+      (sum, serviceItems) => sum + serviceItems.length,
+      0
+    );
 
     return (
       <>
@@ -613,28 +682,125 @@ export default function OrderHistory() {
 
         {/* Order Details Section - Always visible below Manage Order button */}
         <div className="space-y-3 mt-8">
-          <div className="flex justify-between items-center border-b py-2">
-            <div className="font-sf">
+          <button
+            type="button"
+            onClick={() => setIsOrderItemsExpanded((prev) => !prev)}
+            className="w-full flex justify-between items-center border-b py-2"
+          >
+            <div className="font-sf text-left">
               <h6 className="font-semibold text-xl">Order details</h6>
               <p className="text-theme-psGray">
-                {bookingDtails?.data?.totalItems || bookingDtails?.data?.customerSelectedServices?.length || 0} items
+                {displayedItemsCount} items
               </p>
             </div>
-            <MdKeyboardArrowRight size="25" />
+            <MdKeyboardArrowRight
+              size="25"
+              className={`transition-transform duration-200 ${isOrderItemsExpanded ? "rotate-90" : "rotate-0"}`}
+            />
+          </button>
+          <div
+            className={`overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-in-out ${
+              isOrderItemsExpanded
+                ? "max-h-[1200px] opacity-100 mt-2"
+                : "max-h-0 opacity-0 mt-0"
+            }`}
+          >
+            <div className="space-y-2 font-sf border-b pb-3">
+              {Object.keys(groupedSelectedServices).length > 0 ? (
+                Object.entries(groupedSelectedServices).map(
+                  ([serviceName, items], serviceIdx) => (
+                    <div
+                      key={`${serviceName}-${serviceIdx}`}
+                      className="rounded-lg border border-gray-100 bg-[#FBFBFB] px-3 py-2 space-y-2"
+                    >
+                      <p className="font-semibold text-sm">{serviceName}</p>
+
+                      <div className="space-y-2">
+                        {items.map((item, index) => {
+                          const categoryName = item?.category?.name || "";
+                          const subCategoryName = item?.subCategory?.name || "";
+                          const quantity = Number(item?.items);
+                          const unitPrice = Number.parseFloat(
+                            item?.categoryprice ?? item?.subCategory?.price
+                          );
+                          const hasQty = Number.isFinite(quantity) && quantity > 0;
+                          const hasPrice = Number.isFinite(unitPrice);
+                          const lineTotal =
+                            hasQty && hasPrice ? unitPrice * quantity : unitPrice;
+
+                          return (
+                            <div
+                              key={`${item?.serviceId || "service"}-${item?.categoryId || "cat"}-${item?.subCategoryId || "sub"}-${index}`}
+                              className="flex items-start justify-between gap-3 border-t border-gray-200 pt-2 first:border-t-0 first:pt-0"
+                            >
+                              <div className="space-y-0.5">
+                                {categoryName && (
+                                  <p className="text-xs text-theme-psGray">
+                                    Category: {categoryName}
+                                  </p>
+                                )}
+                                {subCategoryName && (
+                                  <p className="text-xs text-theme-psGray">
+                                    Item: {subCategoryName}
+                                  </p>
+                                )}
+                                {item?.date && (
+                                  <p className="text-xs text-theme-psGray">
+                                    Added: {formatDate(item.date)}
+                                    {item?.time
+                                      ? `, ${formatTimeToAmPm(item.time)}`
+                                      : ""}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="text-right shrink-0">
+                                {hasQty && (
+                                  <p className="text-xs text-theme-psGray">
+                                    Qty: {quantity}
+                                  </p>
+                                )}
+                                <p className="text-sm font-semibold">
+                                  {formatItemAmount(lineTotal) ||
+                                    formatItemAmount(unitPrice) ||
+                                    "N/A"}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )
+                )
+              ) : (
+                <p className="text-sm text-theme-psGray">No item details available.</p>
+              )}
+            </div>
           </div>
           <div className="space-y-1 font-sf border-b pb-3">
             <div className="flex justify-between items-center ">
               <h4 className="font-semibold">Subtotal</h4>
               <p className="font-semibold">
-                ${bookingDtails?.data?.subTotal || bookingDtails?.data?.orderAmount || "0.00"}
+                ${displaySubTotal.toFixed(2)}
               </p>
             </div>
-            {bookingDtails?.data?.zone?.serviceCharge && (
-              <div className="flex justify-between items-center">
-                <h4 className="text-sm text-theme-psGray">Service fee</h4>
-                <p className="text-sm text-theme-psGray">${bookingDtails.data.zone.serviceCharge}</p>
-              </div>
-            )}
+            <div className="flex justify-between items-center">
+              <h4 className="text-sm text-theme-psGray">Service fee</h4>
+              <p className="text-sm text-theme-psGray">+${displayServiceFee.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between items-center">
+              <h4 className="text-sm text-theme-psGray">Upfront amount</h4>
+              <p className="text-sm text-theme-psGray">-${displayUpfrontAmount.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between items-center">
+              <h4 className="text-sm text-theme-psGray">Tip</h4>
+              <p className="text-sm text-theme-psGray">+${displayTip.toFixed(2)}</p>
+            </div>
+            <div className="flex justify-between items-center pt-1">
+              <h4 className="font-semibold">Total</h4>
+              <p className="font-semibold">${displayTotal.toFixed(2)}</p>
+            </div>
           </div>
           {(bookingDtails?.data?.paymentMethodId || bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId) && (
             <div className="space-y-1 font-sf border-b pb-3">
@@ -643,7 +809,7 @@ export default function OrderHistory() {
                 <div>
                   <h6>
                     {bookingDtails?.data?.paymentMethodId?.startsWith("pm_")
-                      ? `Card ending in ${bookingDtails.data.paymentMethodId.slice(-4)}`
+                      ? "Card on file"
                       : bookingDtails?.data?.paymentMethodId || "Payment Method"}
                   </h6>
                   {(bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId) && (
@@ -657,7 +823,7 @@ export default function OrderHistory() {
                     </p>
                   )}
                 </div>
-                <p className="font-semibold">${bookingDtails?.data?.orderAmount || "0.00"}</p>
+                <p className="font-semibold">${displayTotal.toFixed(2)}</p>
               </div>
               <div className="py-2">
                 <PurpleButton text="Send receipt to email" />

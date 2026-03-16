@@ -125,6 +125,14 @@ export const api = createApi({
       }),
       invalidatesTags: ['Orders'],
     }),
+    rescheduleBooking: builder.mutation({
+      query: (body) => ({
+        url: "customer/rescheduleBooking",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ['Orders'],
+    }),
     getAllAddress: builder.query({
       query: () => ({
         url: "customer/customerAddresses",
@@ -282,6 +290,7 @@ export const {
   useGetServiceDetailsQuery,
   useGetServiceWithPreferenceDetailsQuery,
   useCreateBookingMutation,
+  useRescheduleBookingMutation,
   useGetAllAddressQuery,
   useGetChargesQuery,
   useGetAllOrdersQuery,

@@ -936,9 +936,33 @@ export default function OrderHistory() {
     }
 
     const booking = bookingDtails.data;
+    const rescheduleServices = Array.isArray(booking?.customerSelectedServices)
+      ? booking.customerSelectedServices
+          .filter((item) => item?.serviceId)
+          .map((item) => {
+            const categoryCharge =
+              Number.parseFloat(item?.categoryprice) ||
+              Number.parseFloat(item?.subCategory?.price) ||
+              0;
+            return {
+              serviceId: Number(item.serviceId),
+              categoryId: item?.categoryId ? Number(item.categoryId) : null,
+              subCategoryId: item?.subCategoryId
+                ? Number(item.subCategoryId)
+                : null,
+              categoryCharge: Number.isFinite(categoryCharge) ? categoryCharge : 0,
+            };
+          })
+      : [];
 
     // Map booking data to order data structure
     const orderData = {
+      rescheduleData: {
+        isReschedule: true,
+        bookingId: Number(booking?.id),
+        reasonText: "My plans changed",
+        services: rescheduleServices,
+      },
       collectionData: {
         collectionDate: booking.collectionDate || "",
         collectionTimeFrom: booking.collectionTimeFrom || "",

@@ -1,5 +1,5 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Header from "../../../../components/Header";
 import CategoryCard from "../../../../components/CategoryCard";
 import { MdKeyboardArrowRight, MdOutlineDryCleaning } from "react-icons/md";
@@ -18,9 +18,10 @@ import {
   useCreateBookingMutation,
   useGetActivePoliciesQuery,
   useGetChargesQuery,
+  useRescheduleBookingMutation,
   useGetServicesQuery,
 } from "@/app/store/services/api";
-import { addToast, useDisclosure } from "@heroui/react";
+import { addToast, Spinner, useDisclosure } from "@heroui/react";
 import ReusableModal from "../../../../components/Modal";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -44,7 +45,10 @@ export default function Payment() {
   const router = useRouter();
   const orderData = useSelector((state) => state.cart.orderData);
   const preferencesData = useSelector((state) => state.cart.preferences);
+  const isRescheduleFlow = Boolean(orderData?.rescheduleData?.isReschedule);
+  const rescheduleTriggeredRef = useRef(false);
   const [createBooking] = useCreateBookingMutation();
+  const [rescheduleBooking] = useRescheduleBookingMutation();
   const customerId =
     typeof window !== "undefined" && localStorage.getItem("stripeCustomerId");
   const { data, isLoading } = useGetServicesQuery();
@@ -199,6 +203,27 @@ export default function Payment() {
 
   const handleCreateBooking = async (payData) => {
     try {
+      const flattenedPreferences =
+        preferencesData
+          ?.filter(
+            (item) => item?.preferencesArray && Array.isArray(item.preferencesArray)
+          )
+          ?.flatMap((item) => item.preferencesArray) || [];
+
+      const fallbackRescheduleServices =
+        preferencesData
+          ?.filter((item) => item?.serviceId)
+          ?.map((item) => ({
+            serviceId: Number(item.serviceId),
+            categoryId: item?.categoryId ? Number(item.categoryId) : null,
+            subCategoryId: item?.subCategoryId ? Number(item.subCategoryId) : null,
+            categoryCharge: Number.parseFloat(item?.categoryprice) || 0,
+          })) || [];
+
+      const rescheduleServices = Array.isArray(orderData?.rescheduleData?.services)
+        ? orderData.rescheduleData.services
+        : fallbackRescheduleServices;
+
       const bookingData = {
         collectionDate: orderData?.collectionData?.collectionDate,
         collectionTimeTo: to24Hour(orderData?.collectionData?.collectionTimeTo),
@@ -253,9 +278,7 @@ export default function Payment() {
         dropOffSamePickUp: true,
         dropOffAddressId: null,
         pickUpAddressId: null,
-        preferencesArray: preferencesData
-          ?.filter((item) => item?.preferencesArray && Array.isArray(item.preferencesArray))
-          ?.flatMap((item) => item.preferencesArray) || [],
+        preferencesArray: flattenedPreferences,
         services: preferencesData
           ?.filter((item) => item?.serviceId)
           ?.map((item) => ({ serviceId: item.serviceId })),
@@ -267,7 +290,27 @@ export default function Payment() {
         stripeCustomerId: localStorage.getItem("stripeCustomerId"),
       };
 
-      const response = await createBooking(bookingData).unwrap();
+      const finalPayload = isRescheduleFlow
+        ? {
+            bookingId: Number(orderData?.rescheduleData?.bookingId),
+            collectionDate: orderData?.collectionData?.collectionDate,
+            collectionTimeFrom: to24Hour(orderData?.collectionData?.collectionTimeFrom),
+            collectionTimeTo: to24Hour(orderData?.collectionData?.collectionTimeTo),
+            deliveryDate: orderData?.deliveryData?.deliveryDate,
+            deliveryTimeFrom: to24Hour(orderData?.deliveryData?.deliveryTimeFrom),
+            deliveryTimeTo: to24Hour(orderData?.deliveryData?.deliveryTimeTo),
+            reasonText:
+              orderData?.rescheduleData?.reasonText?.trim() ||
+              "My plans changed",
+            services: rescheduleServices,
+            preferencesArray: flattenedPreferences,
+          }
+        : bookingData;
+
+      const response = await (isRescheduleFlow
+        ? rescheduleBooking(finalPayload)
+        : createBooking(finalPayload)
+      ).unwrap();
       if (response?.status === "1") {
         // Clear all cart data (address, preferences, etc.)
         dispatch(clearCartData());
@@ -285,7 +328,7 @@ export default function Payment() {
           .join(" • ");
 
         addToast({
-          title: "Create Booking",
+          title: isRescheduleFlow ? "Reschedule Booking" : "Create Booking",
           description,
           color: "success",
         });
@@ -294,7 +337,7 @@ export default function Payment() {
       } else {
         const errorMsg = response?.error ?? response?.message ?? "Booking failed. Please try again.";
         addToast({
-          title: "Create Booking",
+          title: isRescheduleFlow ? "Reschedule Booking" : "Create Booking",
           description: errorMsg,
           color: "danger",
         });
@@ -307,13 +350,19 @@ export default function Payment() {
         err?.message ??
         "Something went wrong. Please try again.";
       addToast({
-        title: "Create Booking",
+        title: isRescheduleFlow ? "Reschedule Booking" : "Create Booking",
         description: errorMsg,
         color: "danger",
       });
       throw err instanceof Error ? err : new Error(errorMsg);
     }
   };
+
+  useEffect(() => {
+    if (!isRescheduleFlow || rescheduleTriggeredRef.current) return;
+    rescheduleTriggeredRef.current = true;
+    handleCreateBooking({});
+  }, [isRescheduleFlow]);
 
   return (
     <>
@@ -330,7 +379,19 @@ export default function Payment() {
 
             <div className="flex flex-col lg:flex-row gap-10 2xl:gap-20 pt-10">
               {/* PAYMENT - Stripe sheet only */}
-              {modal?.page === "stripe" ? (
+              {isRescheduleFlow ? (
+                <div className="w-full rounded-2xl border border-theme-gray overflow-hidden bg-white shadow-theme-shadow-light p-6 space-y-4">
+                  <h4 className="font-sf font-bold text-base sm:text-lg text-black">
+                    Rescheduling your booking
+                  </h4>
+                  <div className="flex items-center gap-3 text-theme-psGray">
+                    <Spinner size="sm" />
+                    <p className="font-sf text-sm sm:text-base">
+                      Please wait while we submit your reschedule request...
+                    </p>
+                  </div>
+                </div>
+              ) : modal?.page === "stripe" ? (
                 <div className="w-full space-y-6">
                   <StripeCheckout
                     paymentMethod={modal?.paymentMethod}

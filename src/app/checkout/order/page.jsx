@@ -8,11 +8,16 @@ import { AiOutlinePercentage } from "react-icons/ai";
 import { ButtonYouth70018, PurpleButton } from "../../../../components/Buttons";
 import { IoBagCheck, IoLocation, IoShirt, IoCalendarOutline, IoTimeOutline, IoInformationCircleOutline, IoLocationOutline, IoBagOutline, IoCheckmarkSharp, IoFlask } from "react-icons/io5";
 import { MdThermostat } from "react-icons/md";
-import { useGetServicesQuery, useGetServiceWithPreferenceDetailsQuery } from "@/app/store/services/api";
-import { useDisclosure } from "@heroui/react";
+import {
+  useRescheduleBookingMutation,
+  useGetServicesQuery,
+  useGetServiceWithPreferenceDetailsQuery,
+} from "@/app/store/services/api";
+import { addToast, useDisclosure } from "@heroui/react";
 import ReusableModal from "../../../../components/Modal";
 import { useDispatch, useSelector } from "react-redux";
 import {
+  clearCartData,
   setDriverInstruction,
   setDriverTip,
   setPage,
@@ -32,7 +37,9 @@ export default function Order() {
   const dispatch = useDispatch();
   const orderData = useSelector((state) => state.cart.orderData);
   const preferencesData = useSelector((state) => state.cart.preferences) || [];
+  const isRescheduleFlow = Boolean(orderData?.rescheduleData?.isReschedule);
   const router = useRouter();
+  const [rescheduleBooking, { isLoading: isRescheduling }] = useRescheduleBookingMutation();
   const { data, isLoading } = useGetServicesQuery();
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const [modalScroll, setModalScroll] = useState(false);
@@ -86,6 +93,81 @@ export default function Order() {
       return prev;
     });
   }
+
+  const handleRescheduleSubmit = async () => {
+    const flattenedPreferences =
+      preferencesData
+        ?.filter(
+          (item) => item?.preferencesArray && Array.isArray(item.preferencesArray)
+        )
+        ?.flatMap((item) => item.preferencesArray) || [];
+
+    const fallbackServices =
+      preferencesData
+        ?.filter((item) => item?.serviceId)
+        ?.map((item) => ({
+          serviceId: Number(item.serviceId),
+          categoryId: item?.categoryId ? Number(item.categoryId) : null,
+          subCategoryId: item?.subCategoryId ? Number(item.subCategoryId) : null,
+          categoryCharge: Number.parseFloat(item?.categoryprice) || 0,
+        })) || [];
+
+    const services = Array.isArray(orderData?.rescheduleData?.services)
+      ? orderData.rescheduleData.services
+      : fallbackServices;
+
+    const payload = {
+      bookingId: Number(orderData?.rescheduleData?.bookingId),
+      collectionDate: orderData?.collectionData?.collectionDate,
+      collectionTimeFrom: to24Hour(orderData?.collectionData?.collectionTimeFrom),
+      collectionTimeTo: to24Hour(orderData?.collectionData?.collectionTimeTo),
+      deliveryDate: orderData?.deliveryData?.deliveryDate,
+      deliveryTimeFrom: to24Hour(orderData?.deliveryData?.deliveryTimeFrom),
+      deliveryTimeTo: to24Hour(orderData?.deliveryData?.deliveryTimeTo),
+      reasonText: orderData?.rescheduleData?.reasonText?.trim() || "My plans changed",
+      services,
+      preferencesArray: flattenedPreferences,
+    };
+
+    try {
+      const response = await rescheduleBooking(payload).unwrap();
+      if (response?.status === "1") {
+        dispatch(clearCartData());
+        addToast({
+          title: "Reschedule Booking",
+          description: response?.message || "Booking rescheduled successfully.",
+          color: "success",
+        });
+        router.replace("/");
+      } else {
+        addToast({
+          title: "Reschedule Booking",
+          description:
+            response?.error || response?.message || "Failed to reschedule booking.",
+          color: "danger",
+        });
+      }
+    } catch (error) {
+      addToast({
+        title: "Reschedule Booking",
+        description:
+          error?.data?.error ||
+          error?.data?.message ||
+          error?.message ||
+          "Failed to reschedule booking.",
+        color: "danger",
+      });
+    }
+  };
+
+  const handleContinue = async () => {
+    if (isRescheduleFlow) {
+      await handleRescheduleSubmit();
+      return;
+    }
+    dispatch(setPage(true));
+    router.push("/checkout/payment");
+  };
 
   function closePreferenceModal() {
     if (currentServiceId) {
@@ -215,8 +297,10 @@ export default function Order() {
                     <div className="lg:hidden sticky bottom-4 left-0 right-0 z-50 mt-6 pb-4">
                       <ButtonYouth70018
                         isDisabled={
+                          isRescheduling ||
                           !preferencesData?.length ||
-                          !orderData?.collectionData?.streetAddress
+                          (!isRescheduleFlow &&
+                            !orderData?.collectionData?.streetAddress)
                         }
                         text="Continue"
                         onClick={() => {
@@ -372,14 +456,13 @@ export default function Order() {
                   <div className="lg:hidden sticky bottom-4 left-0 right-0 z-50 mt-6 pb-4">
                     <ButtonYouth70018
                       isDisabled={
+                        isRescheduling ||
                         !preferencesData?.length ||
-                        !orderData?.collectionData?.streetAddress
+                        (!isRescheduleFlow &&
+                          !orderData?.collectionData?.streetAddress)
                       }
                       text="Continue"
-                      onClick={() => {
-                        dispatch(setPage(true));
-                        router.push("/checkout/payment");
-                      }}
+                      onClick={handleContinue}
                       className="w-full"
                     />
                   </div>
@@ -444,14 +527,13 @@ export default function Order() {
                     <div className="hidden lg:block py-3">
                       <ButtonYouth70018
                         isDisabled={
+                          isRescheduling ||
                           !preferencesData?.length ||
-                          !orderData?.collectionData?.streetAddress
+                          (!isRescheduleFlow &&
+                            !orderData?.collectionData?.streetAddress)
                         }
                         text="Continue"
-                        onClick={() => {
-                          dispatch(setPage(true));
-                          router.push("/checkout/payment");
-                        }}
+                        onClick={handleContinue}
                         className="w-full"
                       />
                     </div>

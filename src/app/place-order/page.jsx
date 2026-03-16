@@ -37,6 +37,7 @@ const delivery = [
 export default function orderRegistration() {
   const router = useRouter();
   const orderData = useSelector((state) => state.cart.orderData);
+  const isRescheduleFlow = Boolean(orderData?.rescheduleData?.isReschedule);
   const state = history.state?.customData?.step || null;
   const dispatch = useDispatch();
   const { data } = useGetAllAddressQuery();
@@ -805,74 +806,96 @@ export default function orderRegistration() {
                     <h4 className="font-youth font-bold text-[32px] text-center max-md:hidden">
                       Let's get Started
                     </h4>
-                    <div className="relative z-50" ref={postcodeInputRef}>
-                      <div className="flex gap-2 items-end">
-                        <div className="flex-1">
-                          <div className="relative">
-                            <InputHeroUi
-                              type="text"
-                              label="Post Code"
-                              value={collectionData?.postalCode || ""}
-                              onChange={(e) =>
-                                setCollectionData({
-                                  ...collectionData,
-                                  postalCode: e.target.value,
-                                })
-                              }
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  handlePostcodeSubmit(collectionData?.postalCode);
+                    {!isRescheduleFlow && (
+                      <div className="relative z-50" ref={postcodeInputRef}>
+                        <div className="flex gap-2 items-end">
+                          <div className="flex-1">
+                            <div className="relative">
+                              <InputHeroUi
+                                type="text"
+                                label="Post Code"
+                                value={collectionData?.postalCode || ""}
+                                onChange={(e) =>
+                                  setCollectionData({
+                                    ...collectionData,
+                                    postalCode: e.target.value,
+                                  })
                                 }
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handlePostcodeSubmit(collectionData?.postalCode)}
-                          className="h-[60px] w-[60px] bg-theme-blue rounded-[8px] flex items-center justify-center hover:bg-theme-darkBlue disabled:bg-blue-200 disabled:cursor-not-allowed transition-colors shrink-0"
-                          disabled={isLoadingAddresses || !collectionData?.postalCode?.trim()}
-                        >
-                          {isLoadingAddresses ? (
-                            <Spinner size="sm" className="text-white" />
-                          ) : (
-                            <IoSearchOutline className="text-xl text-white" />
-                          )}
-                        </button>
-                      </div>
-                      {/* Address Dropdown */}
-                      {showAddressDropdown && postcodeAddresses?.data?.addresses && Array.isArray(postcodeAddresses.data.addresses) && postcodeAddresses.data.addresses.length > 0 && (
-                        <div
-                          ref={addressDropdownRef}
-                          className="absolute z-[10000] w-full mt-2 bg-white rounded-lg shadow-xl max-h-[250px] overflow-y-auto border border-gray-200"
-                          style={{ backgroundColor: '#ffffff', position: 'absolute', top: '100%' }}
-                        >
-                          {postcodeAddresses.data.addresses.map((address, index) => (
-                            <div
-                              key={address.id || index}
-                              onClick={() => handleAddressSelect(address)}
-                              className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0 transition-colors"
-                            >
-                              <p className="font-sf font-semibold text-base text-gray-900">
-                                {address.line1}
-                              </p>
-                              {address.line2 && (
-                                <p className="font-sf text-sm text-gray-600 mt-1">
-                                  {address.line2}
-                                </p>
-                              )}
-                              <p className="font-sf text-sm text-gray-500 mt-1">
-                                {address.fullAddress || `${address.town || ''}, ${address.county || ''}`.trim()}
-                              </p>
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handlePostcodeSubmit(collectionData?.postalCode);
+                                  }
+                                }}
+                              />
                             </div>
-                          ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handlePostcodeSubmit(collectionData?.postalCode)
+                            }
+                            className="h-[60px] w-[60px] bg-theme-blue rounded-[8px] flex items-center justify-center hover:bg-theme-darkBlue disabled:bg-blue-200 disabled:cursor-not-allowed transition-colors shrink-0"
+                            disabled={
+                              isLoadingAddresses ||
+                              !collectionData?.postalCode?.trim()
+                            }
+                          >
+                            {isLoadingAddresses ? (
+                              <Spinner size="sm" className="text-white" />
+                            ) : (
+                              <IoSearchOutline className="text-xl text-white" />
+                            )}
+                          </button>
                         </div>
-                      )}
-                    </div>
+                        {/* Address Dropdown */}
+                        {showAddressDropdown &&
+                          postcodeAddresses?.data?.addresses &&
+                          Array.isArray(postcodeAddresses.data.addresses) &&
+                          postcodeAddresses.data.addresses.length > 0 && (
+                            <div
+                              ref={addressDropdownRef}
+                              className="absolute z-[10000] w-full mt-2 bg-white rounded-lg shadow-xl max-h-[250px] overflow-y-auto border border-gray-200"
+                              style={{
+                                backgroundColor: "#ffffff",
+                                position: "absolute",
+                                top: "100%",
+                              }}
+                            >
+                              {postcodeAddresses.data.addresses.map(
+                                (address, index) => (
+                                  <div
+                                    key={address.id || index}
+                                    onClick={() => handleAddressSelect(address)}
+                                    className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0 transition-colors"
+                                  >
+                                    <p className="font-sf font-semibold text-base text-gray-900">
+                                      {address.line1}
+                                    </p>
+                                    {address.line2 && (
+                                      <p className="font-sf text-sm text-gray-600 mt-1">
+                                        {address.line2}
+                                      </p>
+                                    )}
+                                    <p className="font-sf text-sm text-gray-500 mt-1">
+                                      {address.fullAddress ||
+                                        `${address.town || ""}, ${
+                                          address.county || ""
+                                        }`.trim()}
+                                    </p>
+                                  </div>
+                                )
+                              )}
+                            </div>
+                          )}
+                      </div>
+                    )}
                     <div
-                      className="relative z-0"
+                      className={`relative z-0 ${
+                        isRescheduleFlow ? "pointer-events-none opacity-80" : ""
+                      }`}
                       onClick={() => {
+                        if (isRescheduleFlow) return;
                         setModal({ ...modal, modType: "address" });
                         onOpen();
                       }}
@@ -881,6 +904,7 @@ export default function orderRegistration() {
                         type="text"
                         label="Address"
                         value={collectionData?.streetAddress}
+                        isDisabled={isRescheduleFlow}
                       />
                     </div>
 
@@ -992,7 +1016,7 @@ export default function orderRegistration() {
                           !collectionData?.collectionTimeTo ||
                           !deliveryData?.deliveryDate ||
                           !deliveryData?.deliveryTimeTo ||
-                          !collectionData?.streetAddress ||
+                          (!isRescheduleFlow && !collectionData?.streetAddress) ||
                           !collectionData?.driverInstructionOptions ||
                           !deliveryData?.driverInstructionOptions1
                         }

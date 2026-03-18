@@ -11,7 +11,7 @@ import {
   useGetAllReasonsQuery,
   useCancelBookingMutation,
 } from "@/app/store/services/api";
-import { formatDate, formatTimeToAmPm } from "../../utilities/ConversionFunction";
+import { formatDate } from "../../utilities/ConversionFunction";
 import ReusableModal from "../Modal";
 import { useDisclosure, Spinner, addToast } from "@heroui/react";
 import SelectHero from "../SelectHero";
@@ -241,11 +241,20 @@ export default function OrderHistory() {
       return;
     }
 
+    const clientTimeZone =
+      Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
+    const serviceTimeZone =
+      bookingDtails?.data?.zone?.timeZone ||
+      bookingDtails?.data?.zone?.timezone ||
+      bookingDtails?.data?.zone?.tz ||
+      null;
+
     try {
       const result = await cancelBooking({
         bookingId: manageOrder.orderId,
         reasonId: selectedReason.id,
         reasonText: selectedReason.text,
+        timeZone: serviceTimeZone || clientTimeZone,
       }).unwrap();
 
       if (result?.status === "1" || result?.success) {
@@ -339,10 +348,18 @@ export default function OrderHistory() {
     return "N/A";
   };
 
-  const formatItemAmount = (value) => {
+  const formatTo24Hour = (timeStr) => {
+    if (!timeStr || typeof timeStr !== "string") return "";
+    const match = timeStr.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (!match) return timeStr;
+    const [, h, m] = match;
+    return `${String(Number(h)).padStart(2, "0")}:${m}`;
+  };
+
+  const formatItemAmount = (value, currencySymbol = "$") => {
     const numericValue = Number.parseFloat(value);
     if (!Number.isFinite(numericValue)) return null;
-    return `$${numericValue.toFixed(2)}`;
+    return `${currencySymbol}${numericValue.toFixed(2)}`;
   };
 
   // Memoize active bookings - always compute, regardless of loading state
@@ -422,6 +439,8 @@ export default function OrderHistory() {
     )
       ? bookingDtails.data.customerSelectedServices
       : [];
+    const bookingCurrencySymbol =
+      bookingDtails?.data?.zone?.currencyUnitZ?.symbol || "$";
     const subTotalValue = Number.parseFloat(bookingDtails?.data?.subTotal);
     const serviceFeeValue = Number.parseFloat(
       bookingDtails?.data?.billingDetail?.serviceCharge ??
@@ -513,7 +532,7 @@ export default function OrderHistory() {
                 <IoTimeOutline size="16" />
               </div>
               <p className="text-sm font-medium">
-                {formatTimeToAmPm(bookingDtails?.data?.collectionTimeFrom)} - {formatTimeToAmPm(bookingDtails?.data?.collectionTimeTo)}
+                {formatTo24Hour(bookingDtails?.data?.collectionTimeFrom)} - {formatTo24Hour(bookingDtails?.data?.collectionTimeTo)}
               </p>
             </div>
             <div className="flex gap-2 items-center">
@@ -540,7 +559,7 @@ export default function OrderHistory() {
                 <IoTimeOutline size="16" />
               </div>
               <p className="text-sm font-medium">
-                {formatTimeToAmPm(bookingDtails?.data?.deliveryTimeFrom)} - {formatTimeToAmPm(bookingDtails?.data?.deliveryTimeTo)}
+                {formatTo24Hour(bookingDtails?.data?.deliveryTimeFrom)} - {formatTo24Hour(bookingDtails?.data?.deliveryTimeTo)}
               </p>
             </div>
             <div className="flex gap-2 items-center">
@@ -748,7 +767,7 @@ export default function OrderHistory() {
                                   <p className="text-xs text-theme-psGray">
                                     Added: {formatDate(item.date)}
                                     {item?.time
-                                      ? `, ${formatTimeToAmPm(item.time)}`
+                                      ? `, ${formatTo24Hour(item.time)}`
                                       : ""}
                                   </p>
                                 )}
@@ -761,8 +780,8 @@ export default function OrderHistory() {
                                   </p>
                                 )}
                                 <p className="text-sm font-semibold">
-                                  {formatItemAmount(lineTotal) ||
-                                    formatItemAmount(unitPrice) ||
+                                  {formatItemAmount(lineTotal, bookingCurrencySymbol) ||
+                                    formatItemAmount(unitPrice, bookingCurrencySymbol) ||
                                     "N/A"}
                                 </p>
                               </div>
@@ -782,24 +801,37 @@ export default function OrderHistory() {
             <div className="flex justify-between items-center ">
               <h4 className="font-semibold">Subtotal</h4>
               <p className="font-semibold">
-                ${displaySubTotal.toFixed(2)}
+                {bookingCurrencySymbol}
+                {displaySubTotal.toFixed(2)}
               </p>
             </div>
             <div className="flex justify-between items-center">
               <h4 className="text-sm text-theme-psGray">Service fee</h4>
-              <p className="text-sm text-theme-psGray">+${displayServiceFee.toFixed(2)}</p>
+              <p className="text-sm text-theme-psGray">
+                +{bookingCurrencySymbol}
+                {displayServiceFee.toFixed(2)}
+              </p>
             </div>
             <div className="flex justify-between items-center">
               <h4 className="text-sm text-theme-psGray">Upfront amount</h4>
-              <p className="text-sm text-theme-psGray">-${displayUpfrontAmount.toFixed(2)}</p>
+              <p className="text-sm text-theme-psGray">
+                -{bookingCurrencySymbol}
+                {displayUpfrontAmount.toFixed(2)}
+              </p>
             </div>
             <div className="flex justify-between items-center">
               <h4 className="text-sm text-theme-psGray">Tip</h4>
-              <p className="text-sm text-theme-psGray">+${displayTip.toFixed(2)}</p>
+              <p className="text-sm text-theme-psGray">
+                +{bookingCurrencySymbol}
+                {displayTip.toFixed(2)}
+              </p>
             </div>
             <div className="flex justify-between items-center pt-1">
               <h4 className="font-semibold">Total</h4>
-              <p className="font-semibold">${displayTotal.toFixed(2)}</p>
+              <p className="font-semibold">
+                {bookingCurrencySymbol}
+                {displayTotal.toFixed(2)}
+              </p>
             </div>
           </div>
           {(bookingDtails?.data?.paymentMethodId || bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId) && (
@@ -823,7 +855,10 @@ export default function OrderHistory() {
                     </p>
                   )}
                 </div>
-                <p className="font-semibold">${displayTotal.toFixed(2)}</p>
+                <p className="font-semibold">
+                  {bookingCurrencySymbol}
+                  {displayTotal.toFixed(2)}
+                </p>
               </div>
               <div className="py-2">
                 <PurpleButton text="Send receipt to email" />
@@ -936,6 +971,20 @@ export default function OrderHistory() {
     }
 
     const booking = bookingDtails.data;
+    const clientTimeZone =
+      Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
+    const serviceTimeZone =
+      booking?.zone?.timeZone ||
+      booking?.zone?.timezone ||
+      booking?.zone?.tz ||
+      null;
+    const normalizeDate = (value) => {
+      if (!value) return "";
+      if (typeof value === "string") {
+        return value.includes("T") ? value.split("T")[0] : value;
+      }
+      return "";
+    };
     const rescheduleServices = Array.isArray(booking?.customerSelectedServices)
       ? booking.customerSelectedServices
           .filter((item) => item?.serviceId)
@@ -962,9 +1011,11 @@ export default function OrderHistory() {
         bookingId: Number(booking?.id),
         reasonText: "My plans changed",
         services: rescheduleServices,
+        timeZone: serviceTimeZone || clientTimeZone,
+        clientTimeZone,
       },
       collectionData: {
-        collectionDate: booking.collectionDate || "",
+        collectionDate: normalizeDate(booking.collectionDate),
         collectionTimeFrom: booking.collectionTimeFrom || "",
         collectionTimeTo: booking.collectionTimeTo || "",
         driverInstructionOptions: booking.driverInstructionOptions || "",
@@ -982,9 +1033,11 @@ export default function OrderHistory() {
         floor: booking.pickUpAddress?.floor || null,
         addressType: "pickUp",
         save: false,
+        timeZone: serviceTimeZone || clientTimeZone,
+        clientTimeZone,
       },
       deliveryData: {
-        deliveryDate: booking.deliveryDate || "",
+        deliveryDate: normalizeDate(booking.deliveryDate),
         deliveryTimeFrom: booking.deliveryTimeFrom || "",
         deliveryTimeTo: booking.deliveryTimeTo || "",
         driverInstructionOptions1: booking.driverInstructionOptions1 || "",
@@ -1004,6 +1057,8 @@ export default function OrderHistory() {
       },
       driverInstruction: booking.driverInstruction || "",
       frequency: booking.frequency || "Just once",
+      timeZone: serviceTimeZone || clientTimeZone,
+      clientTimeZone,
     };
 
     // Dispatch order data to Redux
@@ -1127,7 +1182,7 @@ export default function OrderHistory() {
 
                           <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
                             <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {formatTimeToAmPm(order?.collectionTimeFrom)} - {formatTimeToAmPm(order?.collectionTimeTo)}
+                            {formatTo24Hour(order?.collectionTimeFrom)} - {formatTo24Hour(order?.collectionTimeTo)}
                           </p>
                         </div>
 
@@ -1146,7 +1201,7 @@ export default function OrderHistory() {
 
                           <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
                             <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {formatTimeToAmPm(order?.deliveryTimeFrom)} - {formatTimeToAmPm(order?.deliveryTimeTo)}
+                            {formatTo24Hour(order?.deliveryTimeFrom)} - {formatTo24Hour(order?.deliveryTimeTo)}
                           </p>
                         </div>
 
@@ -1201,7 +1256,7 @@ export default function OrderHistory() {
 
                           <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
                             <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {formatTimeToAmPm(order?.collectionTimeFrom)} - {formatTimeToAmPm(order?.collectionTimeTo)}
+                            {formatTo24Hour(order?.collectionTimeFrom)} - {formatTo24Hour(order?.collectionTimeTo)}
                           </p>
                         </div>
 
@@ -1220,7 +1275,7 @@ export default function OrderHistory() {
 
                           <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
                             <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {formatTimeToAmPm(order?.deliveryTimeFrom)} - {formatTimeToAmPm(order?.deliveryTimeTo)}
+                            {formatTo24Hour(order?.deliveryTimeFrom)} - {formatTo24Hour(order?.deliveryTimeTo)}
                           </p>
                         </div>
 

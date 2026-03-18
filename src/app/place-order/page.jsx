@@ -52,6 +52,9 @@ export default function orderRegistration() {
   });
   const [modalScroll, setModalScroll] = useState(false);
   const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  const isPostcodeDisabled = true;
+  const clientTimeZone =
+    Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
 
   const slots = generateCollectionSlots({
     daysCount: 4,
@@ -155,6 +158,28 @@ export default function orderRegistration() {
     const h = parseInt(parts[0], 10) || 0;
     const m = parseInt(parts[1], 10) || 0;
     return h * 60 + m;
+  };
+
+  // Display helper: convert "4:00 PM" -> "16:00", keep "08:00:00" -> "08:00"
+  const formatTo24HourDisplay = (timeStr) => {
+    if (!timeStr || typeof timeStr !== "string") return "";
+    const s = timeStr.trim();
+    const hasAmPm = /AM|PM/i.test(s);
+    if (hasAmPm) {
+      const match = s.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+      if (!match) return s;
+      let [, h, m, ap] = match;
+      let hour = parseInt(h, 10);
+      const minute = parseInt(m, 10) || 0;
+      if (ap.toUpperCase() === "PM" && hour !== 12) hour += 12;
+      if (ap.toUpperCase() === "AM" && hour === 12) hour = 0;
+      return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    }
+    const parts = s.split(":");
+    const hour = parseInt(parts[0], 10);
+    const minute = parseInt(parts[1], 10);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute)) return s;
+    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
   };
 
   // Delivery date must be strictly after collection date
@@ -815,6 +840,7 @@ export default function orderRegistration() {
                                 type="text"
                                 label="Post Code"
                                 value={collectionData?.postalCode || ""}
+                                isDisabled={isPostcodeDisabled}
                                 onChange={(e) =>
                                   setCollectionData({
                                     ...collectionData,
@@ -837,6 +863,7 @@ export default function orderRegistration() {
                             }
                             className="h-[60px] w-[60px] bg-theme-blue rounded-[8px] flex items-center justify-center hover:bg-theme-darkBlue disabled:bg-blue-200 disabled:cursor-not-allowed transition-colors shrink-0"
                             disabled={
+                              isPostcodeDisabled ||
                               isLoadingAddresses ||
                               !collectionData?.postalCode?.trim()
                             }
@@ -921,13 +948,11 @@ export default function orderRegistration() {
                         endContent={
                           <span className="whitespace-nowrap">
                             {collectionData?.collectionTimeFrom
-                              ? `${collectionData?.collectionTimeFrom?.split(
-                                " "
-                              )[0]
-                              } - ${collectionData?.collectionTimeTo?.split(
-                                " "
-                              )[0]
-                              }`
+                              ? `${formatTo24HourDisplay(
+                                  collectionData?.collectionTimeFrom
+                                )} - ${formatTo24HourDisplay(
+                                  collectionData?.collectionTimeTo
+                                )}`
                               : ""}
                           </span>
                         }
@@ -958,9 +983,11 @@ export default function orderRegistration() {
                         endContent={
                           <span className="whitespace-nowrap">
                             {deliveryData?.deliveryTimeFrom
-                              ? `${deliveryData?.deliveryTimeFrom?.split(" ")[0]
-                              } - ${deliveryData?.deliveryTimeTo?.split(" ")[0]
-                              }`
+                              ? `${formatTo24HourDisplay(
+                                  deliveryData?.deliveryTimeFrom
+                                )} - ${formatTo24HourDisplay(
+                                  deliveryData?.deliveryTimeTo
+                                )}`
                               : ""}
                           </span>
                         }
@@ -1021,13 +1048,29 @@ export default function orderRegistration() {
                           !deliveryData?.driverInstructionOptions1
                         }
                         onClick={() => {
-                          const orderData = {
-                            collectionData,
-                            deliveryData,
+                          const selectedTimeZone =
+                            collectionData?.timeZone ||
+                            orderData?.timeZone ||
+                            orderData?.rescheduleData?.timeZone ||
+                            clientTimeZone ||
+                            "Europe/London";
+                          const nextOrderData = {
+                            collectionData: {
+                              ...collectionData,
+                              timeZone: selectedTimeZone,
+                              clientTimeZone,
+                            },
+                            deliveryData: {
+                              ...deliveryData,
+                              timeZone: selectedTimeZone,
+                              clientTimeZone,
+                            },
                             driverInstruction: driverInstruction,
+                            timeZone: selectedTimeZone,
+                            clientTimeZone,
                           };
 
-                          dispatch(setOrderData(orderData));
+                          dispatch(setOrderData(nextOrderData));
 
                           setStep("");
                           onClose();
@@ -1265,16 +1308,10 @@ export default function orderRegistration() {
                           }`}
                       >
                         <div className="flex items-center">
-                          {item?.start?.split(" ")[0]}{" "}
-                          <span className="text-xs">
-                            {item?.start?.split(" ")[1]}
-                          </span>
+                          {formatTo24HourDisplay(item?.start)}
                         </div>
                         <div className="flex items-center">
-                          {item?.end?.split(" ")[0]}{" "}
-                          <span className="text-xs">
-                            {item?.end?.split(" ")[1]}
-                          </span>
+                          {formatTo24HourDisplay(item?.end)}
                         </div>
                       </div>
                     );
@@ -1441,16 +1478,10 @@ export default function orderRegistration() {
                           }`}
                       >
                         <div className="flex items-center">
-                          {item?.start?.split(" ")[0]}{" "}
-                          <span className="text-xs">
-                            {item?.start?.split(" ")[1]}
-                          </span>
+                          {formatTo24HourDisplay(item?.start)}
                         </div>
                         <div className="flex items-center">
-                          {item?.end?.split(" ")[0]}{" "}
-                          <span className="text-xs">
-                            {item?.end?.split(" ")[1]}
-                          </span>
+                          {formatTo24HourDisplay(item?.end)}
                         </div>
                       </div>
                     ));

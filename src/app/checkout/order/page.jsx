@@ -38,6 +38,13 @@ export default function Order() {
   const orderData = useSelector((state) => state.cart.orderData);
   const preferencesData = useSelector((state) => state.cart.preferences) || [];
   const isRescheduleFlow = Boolean(orderData?.rescheduleData?.isReschedule);
+  const clientTimeZone =
+    Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
+  const resolvedTimeZone =
+    orderData?.rescheduleData?.timeZone ||
+    orderData?.collectionData?.timeZone ||
+    orderData?.timeZone ||
+    clientTimeZone;
   const router = useRouter();
   const [rescheduleBooking, { isLoading: isRescheduling }] = useRescheduleBookingMutation();
   const { data, isLoading } = useGetServicesQuery();
@@ -124,6 +131,8 @@ export default function Order() {
       deliveryDate: orderData?.deliveryData?.deliveryDate,
       deliveryTimeFrom: to24Hour(orderData?.deliveryData?.deliveryTimeFrom),
       deliveryTimeTo: to24Hour(orderData?.deliveryData?.deliveryTimeTo),
+      timeZone: resolvedTimeZone,
+      clientTimeZone,
       reasonText: orderData?.rescheduleData?.reasonText?.trim() || "My plans changed",
       services,
       preferencesArray: flattenedPreferences,

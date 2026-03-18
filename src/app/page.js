@@ -205,7 +205,10 @@ export default function Home() {
                     const key = getServiceKey(item.service?.name);
                     if (activeTab !== key) return null;
 
-                    const description = item.categories?.[0]?.category?.description || `Our ${item.service?.name || "service"} provides professional care for your garments.`;
+                    const description =
+                      item.service?.description ||
+                      item.categories?.[0]?.category?.description ||
+                      `Our ${item.service?.name || "service"} provides professional care for your garments.`;
                     const categories = item.categories || [];
 
                     return (
@@ -214,9 +217,10 @@ export default function Home() {
                           <h4 className="font-youth font-black text-2xl sm:text-4xl tracking-tighter uppercase">
                             {item.service?.name || "Service"}
                           </h4>
-                          <p className="text-sm sm:text-xl text-theme-gray-2 mt-4 md:leading-8 whitespace-pre-wrap">
-                            {description}
-                          </p>
+                          <div
+                            className="text-sm sm:text-xl text-theme-gray-2 mt-4 md:leading-8 whitespace-pre-wrap"
+                            dangerouslySetInnerHTML={{ __html: description }}
+                          />
 
                           <div className="rounded-xl overflow-hidden md:h-[469px] flex-1 mt-5 sm:mt-10 xl:hidden">
                             <img

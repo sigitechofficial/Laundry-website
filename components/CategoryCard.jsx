@@ -22,19 +22,18 @@ export default function CategoryCard({
     <>
       <div
         onClick={onClick}
-        className={`rounded-xl w-full h-[160px] sm:h-[264px] flex relative overflow-hidden cursor-pointer ${
-          bg === "1"
-            ? "bg-bgAvailable"
-            : bg === "2"
+        className={`rounded-xl w-full h-[160px] sm:h-[264px] flex relative overflow-hidden cursor-pointer ${bg === "1"
+          ? "bg-bgAvailable"
+          : bg === "2"
             ? "bg-card-dark-orange"
             : bg === "3"
-            ? "bg-card-green"
-            : bg === "4"
-            ? "bg-card-pink"
-            : bg === "5"
-            ? "bg-card-light-orange"
-            : bg
-        }`}
+              ? "bg-card-green"
+              : bg === "4"
+                ? "bg-card-pink"
+                : bg === "5"
+                  ? "bg-card-light-orange"
+                  : bg
+          }`}
       >
         <div className="pl-3 sm:pl-5 pr-28 sm:pr-40 py-4 h-full">
           <div className="flex items-center gap-x-3">
@@ -80,15 +79,13 @@ export default function CategoryCard({
               className="relative flex justify-center items-center"
             >
               <IoClose
-                className={`absolute transition-all duration-500 ${
-                  hovered ? "opacity-100 scale-100" : "opacity-0 scale-90"
-                }`}
+                className={`absolute transition-all duration-500 ${hovered ? "opacity-100 scale-100" : "opacity-0 scale-90"
+                  }`}
                 size={40}
               />
               <FaCheck
-                className={`absolute transition-all duration-500 ${
-                  hovered ? "opacity-0 scale-90" : "opacity-100 scale-100"
-                }`}
+                className={`absolute transition-all duration-500 ${hovered ? "opacity-0 scale-90" : "opacity-100 scale-100"
+                  }`}
                 size={35}
               />
             </div>

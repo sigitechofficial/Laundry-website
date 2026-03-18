@@ -47,6 +47,8 @@ export default function Payment() {
   const preferencesData = useSelector((state) => state.cart.preferences);
   const isRescheduleFlow = Boolean(orderData?.rescheduleData?.isReschedule);
   const rescheduleTriggeredRef = useRef(false);
+  const clientTimeZone =
+    Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
   const [createBooking] = useCreateBookingMutation();
   const [rescheduleBooking] = useRescheduleBookingMutation();
   const customerId =
@@ -62,6 +64,13 @@ export default function Payment() {
     }
   );
   const { data: activePoliciesData } = useGetActivePoliciesQuery();
+  const serviceTimeZone =
+    addressData?.data?.zone?.timeZone ||
+    addressData?.data?.zoneTimeZone ||
+    orderData?.rescheduleData?.timeZone ||
+    orderData?.collectionData?.timeZone ||
+    orderData?.timeZone ||
+    clientTimeZone;
 
   const currencySymbol = addressData?.data?.currency?.symbol ?? "$";
 
@@ -284,6 +293,8 @@ export default function Payment() {
           ?.map((item) => ({ serviceId: item.serviceId })),
         totalItems: 5,
         tipAmount: Number.isFinite(driverTip) ? driverTip : 0,
+        timeZone: serviceTimeZone,
+        clientTimeZone,
         paymentIntentId: payData?.paymentIntentId ?? null,
         setupIntentId: payData?.setupIntentId ?? null,
         paymentMethodId: payData?.paymentMethodId,
@@ -299,6 +310,8 @@ export default function Payment() {
             deliveryDate: orderData?.deliveryData?.deliveryDate,
             deliveryTimeFrom: to24Hour(orderData?.deliveryData?.deliveryTimeFrom),
             deliveryTimeTo: to24Hour(orderData?.deliveryData?.deliveryTimeTo),
+            timeZone: serviceTimeZone,
+            clientTimeZone,
             reasonText:
               orderData?.rescheduleData?.reasonText?.trim() ||
               "My plans changed",

@@ -7,7 +7,8 @@ import { TbIroning, TbWash, TbIroningSteam } from "react-icons/tb";
 import { AiOutlinePercentage } from "react-icons/ai";
 import { ButtonYouth70018, PurpleButton } from "../../../../components/Buttons";
 import { IoBagCheck, IoLocation, IoShirt, IoCalendarOutline, IoTimeOutline, IoInformationCircleOutline, IoLocationOutline, IoBagOutline, IoCheckmarkSharp, IoFlask } from "react-icons/io5";
-import { MdThermostat } from "react-icons/md";
+import { MdThermostat, MdOutlineWaterDrop, MdOutlineLocalLaundryService } from "react-icons/md";
+import { GiWashingMachine } from "react-icons/gi";
 import {
   useRescheduleBookingMutation,
   useGetServicesQuery,
@@ -628,26 +629,37 @@ export default function Order() {
                     const prefKey = prefName || `pref_${pref.preferenceTypeId}`;
                     const currentPref = preferences[prefKey];
                     const values = pref.preferenceType?.preferenceValues || [];
-                    const getGridClass = (count) => {
-                      if (count <= 2) return "grid-cols-2";
-                      if (count <= 4) return "grid-cols-4";
-                      return "grid-cols-2";
+                    const getGridClass = () => "grid-cols-2 sm:grid-cols-5";
+
+                    // Resolve icon per preference category
+                    const isTempPref = prefName?.includes("temp");
+                    const isDetergentPref = prefName?.includes("detergent") || prefName?.includes("soap");
+                    const isWashTypePref = prefName?.includes("wash") || prefName?.includes("type");
+
+                    // Per-value icon resolver
+                    const getValueIcon = (valueLabel = "") => {
+                      const v = valueLabel.toLowerCase();
+                      if (isTempPref || /°c|cold|warm|hot|\d+\s*°/.test(v)) return MdThermostat;
+                      if (isDetergentPref || v.includes("soap") || v.includes("bio") || v.includes("detergent")) return IoFlask;
+                      if (v.includes("dark") || v.includes("delicate") || v.includes("light") || v.includes("white") || v.includes("color") || v.includes("separate")) return MdOutlineLocalLaundryService;
+                      if (isWashTypePref || v.includes("wash") || v.includes("mixed")) return GiWashingMachine;
+                      return IoShirt;
                     };
-                    const PreferenceIcon = prefName?.includes("wash") || prefName?.includes("type")
-                      ? IoShirt
-                      : prefName?.includes("temp")
-                        ? MdThermostat
-                        : prefName?.includes("detergent")
-                          ? IoFlask
-                          : IoShirt;
 
                     return (
                       <div key={pref.id} className="space-y-3">
                         <p className="font-sf font-semibold text-base sm:text-lg text-theme-gray-3">
-                          Please select your preference for {pref.preferenceType?.name || "Preference"}
+                          {pref.preferenceType?.name || "Preference"}
                         </p>
-                        <div className={`grid ${getGridClass(values.length)} gap-2 sm:gap-3`}>
+                        {isWashTypePref && !isTempPref && (
+                          <p className="font-sf text-sm text-theme-psGray">
+                            The user is responsible if the clothes color bleeds due to the
+                            selected wash settings and temperature.
+                          </p>
+                        )}
+                        <div className={`grid ${getGridClass()} gap-2 sm:gap-3`}>
                           {values.map((value) => {
+
                             const isSelected = currentPref?.preferenceValueId === value.id;
                             return (
                               <button
@@ -677,7 +689,7 @@ export default function Order() {
                                   </span>
                                 )}
                                 <span className="flex items-center justify-center size-8 sm:size-9 rounded-full bg-theme-skyBlue text-theme-blue mb-1 sm:mb-1.5">
-                                  <PreferenceIcon className="size-4 sm:size-5" />
+                                  {React.createElement(getValueIcon(value.value), { className: "size-4 sm:size-5" })}
                                 </span>
                                 <span className="font-sf font-medium text-[11px] sm:text-xs text-theme-gray-3 text-center leading-tight">
                                   {value.value}
@@ -723,10 +735,6 @@ export default function Order() {
                     }
                   />
 
-                  <p className="font-sf pb-5 text-sm text-theme-psGray">
-                    The user is responsible if the clothes color bleeds due to the
-                    selected wash settings and temperature.
-                  </p>
                 </div>
               </div>
             ) : (

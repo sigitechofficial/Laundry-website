@@ -261,7 +261,7 @@ export default function page() {
           }
 
           setStep("new-order");
-          router.replace("/");
+          router.replace("/place-order");
 
           addToast({
             title: "User Login",
@@ -526,7 +526,7 @@ export default function page() {
         color: "success",
       });
       dispatch(setPage(true));
-      router.push("/");
+      router.push("/place-order");
       setStep("sign-in");
     } else {
       addToast({
@@ -584,7 +584,7 @@ export default function page() {
             color: "success",
           });
           dispatch(setPage(true));
-          router.replace("/");
+          router.replace("/place-order");
         } else {
           addToast({
             title: "Change password",
@@ -700,7 +700,7 @@ export default function page() {
           });
 
           dispatch(setPage(true));
-          router.replace("/");
+          router.replace("/place-order");
         } else if (loginRes?.statusCode === 400 && loginRes?.data?.missingFields) {
           // Missing required fields - show error with missing fields
           const missingFieldsList = loginRes?.data?.missingFields?.join(", ") || "required information";
@@ -984,7 +984,7 @@ export default function page() {
         setShowMergeModal(false);
         setMergeOtp("");
         dispatch(setPage(true));
-        router.replace("/");
+        router.replace("/place-order");
       } else {
         addToast({
           title: "OTP Verification Failed",
@@ -1185,7 +1185,7 @@ export default function page() {
           });
 
           dispatch(setPage(true));
-          router.replace("/");
+          router.replace("/place-order");
           setGoogleAuthLoader(false);
           return;
         } else {
@@ -1304,7 +1304,7 @@ export default function page() {
         });
 
         dispatch(setPage(true));
-        router.replace("/");
+        router.replace("/place-order");
       } else if (loginData?.statusCode === 400 && loginData?.data?.missingFields) {
         // Missing required fields - show signup form with pre-filled Google data
         console.log("⚠️ Missing required fields:", loginData?.data?.missingFields);
@@ -1520,7 +1520,7 @@ export default function page() {
           });
 
           dispatch(setPage(true));
-          router.replace("/");
+          router.replace("/place-order");
           setFacebookAuthLoader(false);
           return;
         } else {
@@ -1619,7 +1619,7 @@ export default function page() {
         });
 
         dispatch(setPage(true));
-        router.replace("/");
+        router.replace("/place-order");
       } else if (loginData?.statusCode === 400 && loginData?.data?.missingFields) {
         // Missing required fields - show signup form with pre-filled Facebook data
         console.log("⚠️ Missing required fields:", loginData?.data?.missingFields);
@@ -1831,7 +1831,7 @@ export default function page() {
           });
 
           dispatch(setPage(true));
-          router.replace("/");
+          router.replace("/place-order");
           setAppleAuthLoader(false);
           return;
         } else {
@@ -1935,7 +1935,7 @@ export default function page() {
         });
 
         dispatch(setPage(true));
-        router.replace("/");
+        router.replace("/place-order");
       } else if (loginData?.statusCode === 400 && loginData?.data?.missingFields) {
         // Missing required fields - show signup form with pre-filled Apple data
         console.log("⚠️ Missing required fields:", loginData?.data?.missingFields);
@@ -2620,3 +2620,4 @@ export default function page() {
     </>
   );
 }
+

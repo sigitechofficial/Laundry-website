@@ -25,8 +25,22 @@ export default function Footer() {
         <div className="space-y-3 sm:space-y-5">
           <h4 className="font-semibold text-lg sm:text-2xl">Explore</h4>
           <ul className="text-base sm:text-lg space-y-1.5 sm:space-y-3 text-black/70">
-            <li>How it works</li>
-            <li>Prices & Services</li>
+            <li>
+              <Link
+                href="/how-it-works"
+                className="hover:text-theme-blue transition-colors"
+              >
+                How it works
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/pricing"
+                className="hover:text-theme-blue transition-colors"
+              >
+                Prices & Services
+              </Link>
+            </li>
             <li>
               <Link href="/help-center" className="hover:text-theme-blue transition-colors">
                 Help centre
@@ -46,8 +60,16 @@ export default function Footer() {
           <h4 className="font-semibold text-lg sm:text-2xl">Our Company</h4>
           <ul className="text-base sm:text-lg space-y-1.5 sm:space-y-3 text-black/70">
             <li>Locations</li>
-            <li>Blog</li>
-            <li>Customer reviews</li>
+            <li>
+              <Link href="/blog" className="hover:text-theme-blue transition-colors">
+                Blog
+              </Link>
+            </li>
+            <li>
+              <Link href="/reviews" className="hover:text-theme-blue transition-colors">
+                Customer reviews
+              </Link>
+            </li>
           </ul>
         </div>
         <div className="space-y-2 sm:space-y-5">
@@ -118,7 +140,7 @@ export default function Footer() {
         <div className="border-[1px] border-black rounded-full items-center flex gap-2 h-[52px] px-2 cursor-pointer max-sm:hidden">
           <MdLocationPin size={20} />
           <p className="text-base text-black/70 whitespace-nowrap">
-            United States
+            London
           </p>
           <IoIosArrowDown />
         </div>

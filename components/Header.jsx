@@ -67,6 +67,9 @@ const Header = ({ type }) => {
     "service",
   ].includes(type);
 
+  // On the home page the header starts transparent over the hero and turns white on scroll
+  const isHero = type === "home";
+
   const handleNavigate = (val) => {
     if (!pathname?.includes(val) || (pathname !== "/" && val === "/")) {
       dispatch(setPage(true));
@@ -194,8 +197,15 @@ const Header = ({ type }) => {
           } left-0 bg-white`}
       ></div>
       <div
-        className={`w-full h-[70px] 2xl:h-[80px] flex justify-center items-center px-5 md:px-[45px] relative ${showShadow ? "xl:shadow-md" : ""
-          }`}
+        className={`w-full h-[70px] 2xl:h-[80px] flex justify-center items-center px-5 md:px-[45px] relative transition-all duration-300 ${
+          isHero
+            ? state.isScrolled
+              ? "xl:bg-white xl:shadow-md"
+              : "xl:bg-transparent"
+            : showShadow
+            ? "xl:shadow-md"
+            : ""
+        }`}
       >
         <div className={`w-full max-w-[1290px] flex ${!state.headerData?.token ? "justify-between" : "justify-center"} xl:justify-between items-center`}>
           <div className={`flex items-center ${!state.headerData?.token ? "justify-start" : "justify-center"} gap-14`}>
@@ -214,13 +224,13 @@ const Header = ({ type }) => {
                 />
               </div>
 
-              <h4 className={`font-youth font-bold text-base text-theme-blue`}>
+              <h4 className={`font-youth font-bold text-base transition-colors duration-300 ${isHero && !state.isScrolled ? "text-white" : "text-theme-blue"}`}>
                 Just dry cleaners
               </h4>
             </Link>
 
             <div className="max-xl:hidden">
-              <ul className="flex items-center gap-10 font-sf text-xl">
+              <ul className={`flex items-center gap-10 font-sf text-xl transition-colors duration-300 ${isHero && !state.isScrolled ? "text-white/90 [&_a:hover]:text-yellow-400" : "text-black [&_a:hover]:text-theme-blue"}`}>
                 <li>
                   <Link
                     onClick={() => {
@@ -346,7 +356,11 @@ const Header = ({ type }) => {
                   handleNavigate("/sign-in");
                 }}
                 href="/sign-in"
-                className="w-48 2xl:w-52 h-[50px] 2xl:h-[60px] rounded-full font-youth font-bold text-xl flex justify-center items-center border-black border-[2px] bg-white"
+                className={`w-48 2xl:w-52 h-[50px] 2xl:h-[60px] rounded-full font-youth font-bold text-xl flex justify-center items-center border-[2px] transition-all duration-300 ${
+                  isHero && !state.isScrolled
+                    ? "bg-white text-theme-blue border-white hover:bg-white/90"
+                    : "bg-white text-theme-blue border-black"
+                }`}
               >
                 Join Us
               </Link>

@@ -40,57 +40,65 @@ export default function Home() {
   return (
     <HomeClientWrapper>
       <div className="w-full relative">
-        <div className="max-xl:fixed max-xl:z-50 w-full">
-          <Header />
+        {/* Header — always fixed so it overlays the hero */}
+        <div className="fixed z-50 w-full">
+          <Header type="home" />
         </div>
 
-        <div className="w-full h-[600px] sm:h-[750px]  2xl:h-[900px] flex items-center relative px-5 sm:px-[45px]">
-          <div className="w-full max-w-[1290px] mx-auto pt-10 md:pt-14 lg:pt-16 xl:pt-0">
-            <h4 className="uppercase font-youth font-black text-6xl md:text-7xl lg:text-[100px] xl:text-[120px] xl:leading-[120px] text-white">
-              <span className="text-white">Do</span> your <br /> laundry <br />
-              <span className="text-theme-darkBlue">smartly</span>
-            </h4>
+        {/* ── HERO ── */}
+        <div className="w-full min-h-screen bg-theme-blue flex items-center relative px-5 sm:px-[45px] overflow-hidden">
+          {/* Decorative blobs (from index.html) */}
+          <div className="absolute -top-32 -right-32 size-[600px] rounded-full bg-white/5 pointer-events-none" />
+          <div className="absolute -bottom-20 left-[30%] size-[400px] rounded-full bg-white/[0.04] pointer-events-none" />
 
-            <p className="w-full text-md sm:text-xl mt-6 mb-10 text-white max-w-[440px]">
-              Welcome to Bubbles Laundry Services, where we transform your
-              laundry day into a breeze!
-            </p>
+          <div className="w-full max-w-[1290px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-16 pt-24 pb-14 xl:py-0 min-h-screen">
 
-            <div className="w-max sm:w-[340px] flex items-center gap-3 font-sf bg-white rounded-2xl px-3 py-3 2xl:py-4">
-              <div className="border-r-1 border-gray-400 sm:pl-2 pr-2">
-                <h6 className="text-md sm:text-[22px] font-semibold">Pickup</h6>
-                <p className="text-sm sm:text-lg text-black/60">Today</p>
+            {/* ── Left content ── */}
+            <div className="flex-1 max-w-[560px] z-10">
+              <h4 className="uppercase font-youth font-black text-white tracking-tight mb-4">
+                <span className="block whitespace-nowrap text-4xl sm:text-5xl md:text-6xl lg:text-[68px] xl:text-[76px]">Do your laundry</span>
+                <span className="block text-yellow-400 text-5xl sm:text-6xl md:text-7xl lg:text-[80px] xl:text-[90px]">smartly</span>
+              </h4>
+
+              <p className="text-base sm:text-lg text-white/80 mb-7 font-sf max-w-[440px] leading-relaxed">
+                Welcome to Bubbles Laundry Services, where we transform your
+                laundry day into a breeze!
+              </p>
+
+              {/* Booking widget */}
+              <div className="w-max sm:w-[340px] flex items-center gap-3 font-sf bg-white rounded-2xl px-3 py-3 2xl:py-4 shadow-[0_8px_32px_rgba(0,0,0,0.22)]">
+                <div className="border-r-1 border-gray-400 sm:pl-2 pr-2">
+                  <h6 className="text-md sm:text-[22px] font-semibold">Pickup</h6>
+                  <p className="text-sm sm:text-lg text-black/60">Today</p>
+                </div>
+                <div className="pr-3">
+                  <h6 className="text-md sm:text-[22px] font-semibold">Where</h6>
+                  <p className="text-sm sm:text-lg text-black/60">Add zip code</p>
+                </div>
+                <ClientBtn>
+                  <p className="size-10 sm:size-14 rounded-lg bg-theme-darkBlue flex justify-center items-center cursor-pointer ml-auto">
+                    <PiArrowRight className="text-2xl sm:text-[40px]" color="white" />
+                  </p>
+                </ClientBtn>
               </div>
-              <div className=" pr-3">
-                <h6 className="text-md sm:text-[22px] font-semibold">Where</h6>
-                <p className="text-sm sm:text-lg text-black/60">Add zip code</p>
-              </div>
-              <ClientBtn>
-                <p
-                  //  href="/place-order"
-                  className="size-10 sm:size-14 rounded-lg bg-theme-darkBlue flex justify-center items-center cursor-pointer ml-auto"
-                >
-                  <PiArrowRight
-                    className="text-2xl sm:text-[40px]"
-                    color="white"
-                  />
-                </p>
-              </ClientBtn>
             </div>
-          </div>
 
-          <video
-            autoPlay
-            muted
-            loop
-            className="w-full h-full object-cover absolute top-0 left-0 z-[-2]"
-            src="/images/landingPage/heroSectionVideo.mp4"
-            playsInline
-            controls={false}
-            disablePictureInPicture
-            controlsList="nodownload nofullscreen noremoteplayback"
-          ></video>
-          <div className="absolute top-0 left-0 w-full h-full bg-black/15 z-[-1]"></div>
+            {/* ── Right visual ── */}
+            <div className="flex-1 justify-center items-center hidden xl:flex z-10 relative">
+              <img
+                src="/images/mem.png"
+                alt="Laundry service"
+                className="w-[540px] 2xl:w-[640px] h-auto object-contain select-none"
+                draggable={false}
+              />
+              {/* Floating badge */}
+              <div className="absolute top-10 -right-2 bg-white rounded-xl px-4 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.18)] flex items-center gap-2 font-sf text-sm font-semibold text-black">
+                <div className="size-2.5 rounded-full bg-green-500 shrink-0" />
+                Available today in your area
+              </div>
+            </div>
+
+          </div>
         </div>
 
         <div className="w-full py-8 sm:py-14 bg-[#DDEEFC] px-5 md:px-[45px]">

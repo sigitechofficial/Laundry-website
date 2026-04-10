@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MovieStream</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --primary: #000099;
+      --accent: #f5a623;
+      --white: #ffffff;
+      --text-dark: #111111;
+      --text-muted: #555555;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      color: var(--text-dark);
+      overflow-x: hidden;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      padding: 0 48px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: transparent;
+      transition: background 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    header.scrolled {
+      background: var(--white);
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.10);
+    }
+
+    /* Logo */
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--accent);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--white);
+      transition: color 0.35s ease;
+      letter-spacing: -0.3px;
+    }
+
+    header.scrolled .logo-text {
+      color: var(--primary);
+    }
+
+    /* Nav links */
+    nav {
+      display: flex;
+      align-items: center;
+      gap: 36px;
+    }
+
+    nav a {
+      text-decoration: none;
+      font-size: 15px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.92);
+      transition: color 0.35s ease;
+    }
+
+    header.scrolled nav a {
+      color: var(--text-dark);
+    }
+
+    nav a:hover {
+      color: var(--accent);
+    }
+
+    /* Header CTA buttons */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: none;
+      font-size: 15px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.92);
+      cursor: pointer;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: color 0.35s ease, background 0.2s ease;
+    }
+
+    header.scrolled .btn-ghost {
+      color: var(--text-dark);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    header.scrolled .btn-ghost:hover {
+      background: rgba(0, 0, 153, 0.07);
+    }
+
+    .btn-primary {
+      background: var(--white);
+      color: var(--primary);
+      border: none;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 10px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.35s ease, color 0.35s ease, transform 0.15s ease, box-shadow 0.2s ease;
+    }
+
+    header.scrolled .btn-primary {
+      background: var(--primary);
+      color: var(--white);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 14px rgba(0, 0, 153, 0.35);
+    }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      padding: 100px 48px 64px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Decorative blobs */
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -120px;
+      right: -120px;
+      width: 600px;
+      height: 600px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      bottom: -80px;
+      left: 30%;
+      width: 400px;
+      height: 400px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    .hero-inner {
+      max-width: 1280px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 48px;
+    }
+
+    /* Left content */
+    .hero-content {
+      flex: 1;
+      max-width: 560px;
+      z-index: 1;
+    }
+
+    .hero-content h1 {
+      font-size: clamp(36px, 4.5vw, 58px);
+      font-weight: 800;
+      line-height: 1.12;
+      color: var(--white);
+      margin-bottom: 16px;
+      letter-spacing: -1px;
+    }
+
+    .hero-content h1 .highlight {
+      color: var(--accent);
+    }
+
+    .hero-subtitle {
+      font-size: 17px;
+      color: rgba(255, 255, 255, 0.78);
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+
+    /* Star rating row */
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 36px;
+    }
+
+    .rating-badges {
+      display: flex;
+      gap: 6px;
+    }
+
+    .badge {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .badge-store { background: #111; }
+    .badge-play  { background: #111; }
+    .badge-tv    { background: #111; }
+
+    .stars {
+      display: flex;
+      gap: 3px;
+    }
+
+    .star {
+      color: var(--accent);
+      font-size: 16px;
+    }
+
+    .star.half {
+      opacity: 0.5;
+    }
+
+    .rating-text {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Schedule card */
+    .schedule-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      display: inline-flex;
+      flex-direction: column;
+      gap: 14px;
+      min-width: 340px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.22);
+    }
+
+    .schedule-label {
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .schedule-label strong {
+      color: var(--text-dark);
+    }
+
+    .schedule-label a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .schedule-slots {
+      display: flex;
+      gap: 12px;
+    }
+
+    .slot {
+      flex: 1;
+      border: 1.5px solid #e5e5e5;
+      border-radius: 10px;
+      padding: 12px 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: border-color 0.2s ease;
+    }
+
+    .slot:hover {
+      border-color: var(--primary);
+    }
+
+    .slot-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .slot-tag {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .slot-time {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+
+    .slot-icon {
+      font-size: 18px;
+    }
+
+    .slot-arrow {
+      font-size: 16px;
+      color: #aaa;
+    }
+
+    .see-all {
+      font-size: 13px;
+      color: var(--primary);
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-block;
+      margin-top: -4px;
+    }
+
+    /* Right image */
+    .hero-visual {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      position: relative;
+      z-index: 1;
+    }
+
+    .hero-circle {
+      width: 440px;
+      height: 440px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 50%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero-image-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    .hero-image-placeholder .person-icon {
+      font-size: 120px;
+      line-height: 1;
+      filter: drop-shadow(0 4px 16px rgba(0,0,0,0.3));
+    }
+
+    .hero-image-placeholder .items-icon {
+      font-size: 60px;
+    }
+
+    /* Floating badge */
+    .float-badge {
+      position: absolute;
+      top: 40px;
+      right: -10px;
+      background: var(--white);
+      border-radius: 12px;
+      padding: 12px 18px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .float-badge .dot {
+      width: 10px;
+      height: 10px;
+      background: #22c55e;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── SPACER (so page is scrollable) ── */
+    .spacer {
+      height: 120vh;
+      background: #f7f8fc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: #aaa;
+      font-weight: 500;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      header {
+        padding: 0 24px;
+      }
+
+      nav {
+        display: none;
+      }
+
+      .hero {
+        padding: 100px 24px 64px;
+        flex-direction: column;
+      }
+
+      .hero-inner {
+        flex-direction: column;
+        text-align: center;
+      }
+
+      .hero-content {
+        max-width: 100%;
+      }
+
+      .rating-row {
+        justify-content: center;
+      }
+
+      .schedule-card {
+        min-width: unset;
+        width: 100%;
+      }
+
+      .hero-visual {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── HEADER ── -->
+  <header id="site-header">
+    <a href="#" class="logo">
+      <div class="logo-icon">🎬</div>
+      <span class="logo-text">MovieStream</span>
+    </a>
+
+    <nav>
+      <a href="#">How it works</a>
+      <a href="#">Prices &amp; Services</a>
+      <a href="#">About us</a>
+      <a href="#">For business</a>
+    </nav>
+
+    <div class="header-actions">
+      <button class="btn-ghost">Log in</button>
+      <button class="btn-primary">Book now</button>
+    </div>
+  </header>
+
+  <!-- ── HERO ── -->
+  <section class="hero">
+    <div class="hero-inner">
+
+      <!-- Left -->
+      <div class="hero-content">
+        <h1>
+          Laundry &amp; dry<br />
+          cleaning with 24h<br />
+          delivery<br />
+          <span class="highlight">Manchester</span>
+        </h1>
+
+        <p class="hero-subtitle">
+          Fast, reliable, and affordable — trusted by over 200,000 customers across 14 countries.
+        </p>
+
+        <div class="rating-row">
+          <div class="rating-badges">
+            <div class="badge badge-store">🍎</div>
+            <div class="badge badge-play">▶</div>
+            <div class="badge badge-tv">📺</div>
+          </div>
+          <div class="stars">
+            <span class="star">★</span>
+            <span class="star">★</span>
+            <span class="star">★</span>
+            <span class="star">★</span>
+            <span class="star half">★</span>
+          </div>
+          <span class="rating-text">based on 200,000+ reviews in 14 countries</span>
+        </div>
+
+        <div class="schedule-card">
+          <div class="schedule-label">
+            Schedule your collection in <strong>London</strong>
+            &nbsp;<a href="#">Change</a>
+          </div>
+
+          <div class="schedule-slots">
+            <div class="slot">
+              <div class="slot-info">
+                <span class="slot-tag">⬆ Earliest</span>
+                <span class="slot-time">12:00 – 15:00</span>
+              </div>
+              <span class="slot-arrow">›</span>
+            </div>
+            <div class="slot">
+              <div class="slot-info">
+                <span class="slot-tag">⬇ Last</span>
+                <span class="slot-time">20:00 – 23:00</span>
+              </div>
+              <span class="slot-arrow">›</span>
+            </div>
+          </div>
+
+          <a href="#" class="see-all">See all slots</a>
+        </div>
+      </div>
+
+      <!-- Right -->
+      <div class="hero-visual">
+        <div class="hero-circle">
+          <div class="hero-image-placeholder">
+            <div class="person-icon">🧍‍♀️</div>
+            <div class="items-icon">👕👗👖</div>
+          </div>
+        </div>
+
+        <div class="float-badge">
+          <div class="dot"></div>
+          Available today in your area
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Scrollable content below hero -->
+  <div class="spacer">More content goes here…</div>
+
+  <script>
+    const header = document.getElementById('site-header');
+
+    function onScroll() {
+      if (window.scrollY > 20) {
+        header.classList.add('scrolled');
+      } else {
+        header.classList.remove('scrolled');
+      }
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+  </script>
+
+</body>
+</html>

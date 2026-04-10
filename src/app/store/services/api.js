@@ -195,8 +195,8 @@ export const api = createApi({
       }),
     }),
     getActivePolicies: builder.query({
-      query: () => ({
-        url: "admin/getActivePolicies",
+      query: (zoneId) => ({
+        url: `admin/getActivePolicies?zoneId=${zoneId}`,
         method: "GET",
       }),
     }),

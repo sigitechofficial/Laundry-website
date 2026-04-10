@@ -63,7 +63,10 @@ export default function Payment() {
       skip: !orderData?.collectionData?.lat || !orderData?.collectionData?.lng,
     }
   );
-  const { data: activePoliciesData } = useGetActivePoliciesQuery();
+  const zoneId = addressData?.data?.zoneId;
+  const { data: activePoliciesData } = useGetActivePoliciesQuery(zoneId, {
+    skip: zoneId == null,
+  });
   const serviceTimeZone =
     addressData?.data?.zone?.timeZone ||
     addressData?.data?.zoneTimeZone ||

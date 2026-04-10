@@ -89,7 +89,7 @@ export default function ContactUs() {
               />
             </div>
             <div className="">
-              <ButtonYouth70018 text="login" />
+              <ButtonYouth70018 text="submit" />
             </div>
           </div>
         </div>

@@ -3,6 +3,8 @@ export function generateCollectionSlots({
   slotDurationInHours = 1,
   lastHour = 19, // 7 PM
   startAfterHours = 1, // default: 1 hour ahead
+  /** When true, Saturday/Sunday get the same slot window as weekdays */
+  includeWeekends = false,
 } = {}) {
   const result = [];
   const now = new Date();
@@ -26,8 +28,9 @@ export function generateCollectionSlots({
   while (result.length < daysCount) {
     const workingDate = new Date(loopDate);
     const day = workingDate.getDay(); // 0 = Sun, 6 = Sat
+    const isWeekend = day === 0 || day === 6;
 
-    if (day !== 0 && day !== 6) {
+    if (includeWeekends || !isWeekend) {
       const slots = [];
       let slotStart;
 
@@ -67,7 +70,6 @@ export function generateCollectionSlots({
       });
     }
 
-    // 🚨 Always increment the loop date, even if it's a weekend
     loopDate.setDate(loopDate.getDate() + 1);
   }
 

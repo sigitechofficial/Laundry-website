@@ -57,17 +57,20 @@ export default function orderRegistration() {
     Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
 
   const slots = generateCollectionSlots({
-    daysCount: 4,
+    daysCount: 7, // next 7 calendar days (includes Sat/Sun)
     slotDurationInHours: 1,
     lastHour: 19, // 7 PM
     startAfterHours: 2, // show slots starting 2 hours ahead
+    includeWeekends: true,
   });
 
+  /* Longer horizon than collection (7d) so last pickup day still has later delivery days */
   const slotsDelivery = generateCollectionSlots({
-    daysCount: 4,
+    daysCount: 21,
     slotDurationInHours: 1,
     lastHour: 19, // 7 PM
-    startAfterHours: 24, // default: 1 hour ahead (for collection)
+    startAfterHours: 24,
+    includeWeekends: true,
   });
 
   const getLocalDateString = () => {
@@ -78,6 +81,20 @@ export default function orderRegistration() {
     return `${year}-${month}-${day}`;
   };
 
+  /** ISO yyyy-mm-dd → "April 2026" (avoids hardcoded month/year in modals) */
+  const formatSlotMonthYear = (isoDate) => {
+    if (!isoDate || typeof isoDate !== "string") return "";
+    const parts = isoDate.split("-");
+    if (parts.length < 2) return "";
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (!Number.isFinite(y) || !Number.isFinite(m)) return "";
+    return new Date(y, m - 1, 15).toLocaleDateString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+  };
+
   const initialCollectionSlot = React.useMemo(() => {
     const today = getLocalDateString();
     return slots?.find((slot) => slot.date === today) || slots?.[0] || null;
@@ -86,7 +103,7 @@ export default function orderRegistration() {
   const initialDeliverySlot = React.useMemo(() => {
     const baseDate = initialCollectionSlot?.date || getLocalDateString();
     return (
-      slotsDelivery?.find((slot) => new Date(slot.date) > new Date(baseDate)) ||
+      slotsDelivery?.find((slot) => slot.date > baseDate) ||
       slotsDelivery?.[0] ||
       null
     );
@@ -568,26 +585,22 @@ export default function orderRegistration() {
     }
   }, [modal?.modType, deliveryData?.deliveryDate]);
 
-  // Delivery must always be the next available date after collection date.
+  // If delivery date is missing or before collection, snap to first delivery day after pickup (ISO string compare).
   useEffect(() => {
     if (!collectionData?.collectionDate || !slotsDelivery?.length) return;
-    const collection = new Date(collectionData.collectionDate);
-    const delivery = deliveryData?.deliveryDate
-      ? new Date(deliveryData.deliveryDate)
-      : null;
-    const firstValid = slotsDelivery.find((slot) => new Date(slot.date) > collection);
-    if (firstValid) {
-      const shouldUpdate =
-        !delivery || delivery <= collection || deliveryData.deliveryDate !== firstValid.date;
-      if (!shouldUpdate) return;
-      setDeliveryData((prev) => ({
-        ...prev,
-        deliveryDate: firstValid.date,
-        deliveryTimeFrom: firstValid.timeSlots?.[0]?.start || prev.deliveryTimeFrom,
-        deliveryTimeTo: firstValid.timeSlots?.[0]?.end || prev.deliveryTimeTo,
-        availableTimeSlots: firstValid.timeSlots || [],
-      }));
-    }
+    const collectionStr = collectionData.collectionDate;
+    const firstValid = slotsDelivery.find((slot) => slot.date > collectionStr);
+    if (!firstValid) return;
+    const deliveryStr = deliveryData?.deliveryDate || "";
+    const invalid = !deliveryStr || deliveryStr < collectionStr;
+    if (!invalid) return;
+    setDeliveryData((prev) => ({
+      ...prev,
+      deliveryDate: firstValid.date,
+      deliveryTimeFrom: firstValid.timeSlots?.[0]?.start || prev.deliveryTimeFrom,
+      deliveryTimeTo: firstValid.timeSlots?.[0]?.end || prev.deliveryTimeTo,
+      availableTimeSlots: firstValid.timeSlots || [],
+    }));
   }, [collectionData?.collectionDate, slotsDelivery]);
 
   // Same day: if delivery time is before collection end, reset to first valid delivery slot
@@ -1247,14 +1260,18 @@ export default function orderRegistration() {
 
               <div className="w-full px-6 py-6">
                 <div className="space-y-5">
-                  <h6 className="font-sf text-xl font-medium">April 2025</h6>
+                  <h6 className="font-sf text-xl font-medium">
+                    {formatSlotMonthYear(
+                      collectionData?.collectionDate || slots?.[0]?.date
+                    )}
+                  </h6>
 
-                  <div className="flex gap-5 items-center font-sf">
+                  <div className="flex gap-5 items-center font-sf overflow-x-auto pb-2 -mx-1 px-1 flex-nowrap [scrollbar-width:thin]">
                     {slots?.map((item, idx) => {
                       return (
                         <div
-                          key={idx}
-                          className="flex flex-col items-center justify-center"
+                          key={item?.date ?? idx}
+                          className="flex flex-col items-center justify-center shrink-0"
                         >
                           <div
                             onClick={() => {
@@ -1396,22 +1413,28 @@ export default function orderRegistration() {
 
               <div className="w-full px-6 py-6">
                 <div className="space-y-5">
-                  <h6 className="font-sf text-xl font-medium">April 2025</h6>
+                  <h6 className="font-sf text-xl font-medium">
+                    {formatSlotMonthYear(
+                      deliveryData?.deliveryDate ||
+                        slotsDelivery?.find(
+                          (s) => s.date > collectionData.collectionDate
+                        )?.date ||
+                        slotsDelivery?.[0]?.date
+                    )}
+                  </h6>
 
-                  <div className="flex gap-5 items-center font-sf">
-                    <div className="flex gap-5 items-center font-sf">
+                  <div className="flex gap-5 items-center font-sf overflow-x-auto pb-2 -mx-1 px-1 flex-nowrap [scrollbar-width:thin]">
+                    <div className="flex gap-5 items-center font-sf flex-nowrap">
                       {(collectionData?.collectionDate
                         ? slotsDelivery?.filter(
-                            (item) =>
-                              new Date(item?.date) >
-                              new Date(collectionData.collectionDate)
+                            (item) => item.date > collectionData.collectionDate
                           )
                         : slotsDelivery
                       )?.map((item, idx) => {
                         return (
                           <div
-                            key={idx}
-                            className="flex flex-col items-center justify-center"
+                            key={item?.date ?? idx}
+                            className="flex flex-col items-center justify-center shrink-0"
                           >
                             <div
                               onClick={() => {

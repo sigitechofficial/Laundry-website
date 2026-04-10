@@ -69,6 +69,7 @@ const Header = ({ type }) => {
 
   // On the home page the header starts transparent over the hero and turns white on scroll
   const isHero = type === "home";
+  const navOnBlueHero = isHero && !state.isScrolled;
 
   const handleNavigate = (val) => {
     if (!pathname?.includes(val) || (pathname !== "/" && val === "/")) {
@@ -191,7 +192,7 @@ const Header = ({ type }) => {
   return (
     <>
       <div
-        className={`xl:hidden fixed w-full h-[70px] 2xl:h-[80px] shadow-md duration-500  ${!["sign-in"].includes(type) && state.isScrolled
+        className={`tablet:hidden fixed w-full h-[70px] 2xl:h-[80px] shadow-md duration-500  ${!["sign-in"].includes(type) && state.isScrolled
           ? "top-0 "
           : "top-[-100px] "
           } left-0 bg-white`}
@@ -200,14 +201,14 @@ const Header = ({ type }) => {
         className={`w-full h-[70px] 2xl:h-[80px] flex justify-center items-center px-5 md:px-[45px] relative transition-all duration-300 ${
           isHero
             ? state.isScrolled
-              ? "xl:bg-white xl:shadow-md"
-              : "xl:bg-transparent"
+              ? "tablet:bg-white tablet:shadow-md"
+              : "tablet:bg-transparent"
             : showShadow
-            ? "xl:shadow-md"
+            ? "tablet:shadow-md"
             : ""
         }`}
       >
-        <div className={`w-full max-w-[1290px] flex ${!state.headerData?.token ? "justify-between" : "justify-center"} xl:justify-between items-center`}>
+        <div className={`w-full max-w-[1290px] flex ${!state.headerData?.token ? "justify-between" : "justify-center"} tablet:justify-between items-center`}>
           <div className={`flex items-center ${!state.headerData?.token ? "justify-start" : "justify-center"} gap-14`}>
             <Link
               onClick={() => {
@@ -224,13 +225,13 @@ const Header = ({ type }) => {
                 />
               </div>
 
-              <h4 className={`font-youth font-bold text-base transition-colors duration-300 ${isHero && !state.isScrolled ? "text-white" : "text-theme-blue"}`}>
+              <h4 className={`font-youth font-bold text-base transition-colors duration-300 ${navOnBlueHero ? "text-white" : "text-theme-blue"}`}>
                 Just dry cleaners
               </h4>
             </Link>
 
-            <div className="max-xl:hidden">
-              <ul className={`flex items-center gap-10 font-sf text-xl transition-colors duration-300 ${isHero && !state.isScrolled ? "text-white/90 [&_a:hover]:text-yellow-400" : "text-black [&_a:hover]:text-theme-blue"}`}>
+            <div className="hidden tablet:block">
+              <ul className={`flex items-center gap-10 font-sf text-xl transition-colors duration-300 ${navOnBlueHero ? "text-white/90 [&_a:hover]:text-yellow-400" : "text-black [&_a:hover]:text-theme-blue"}`}>
                 <li>
                   <Link
                     onClick={() => {
@@ -277,7 +278,7 @@ const Header = ({ type }) => {
 
           {/* Join Us button for guest users on small/medium screens - part of flex layout */}
           {!state.headerData?.token && (
-            <div className="xl:hidden">
+            <div className="tablet:hidden">
               <Link
                 onClick={() => {
                   handleNavigate("/sign-in");
@@ -290,7 +291,7 @@ const Header = ({ type }) => {
             </div>
           )}
 
-          <div className="max-xl:hidden">
+          <div className="hidden tablet:block">
             {state.headerData?.token ? (
               <div
                 onClick={() =>
@@ -299,7 +300,7 @@ const Header = ({ type }) => {
                     payload: true,
                   })
                 }
-                className="flex flex-col items-center cursor-pointer"
+                className={`flex flex-col items-center cursor-pointer transition-colors duration-300 ${navOnBlueHero ? "text-white" : "text-black"}`}
               >
                 {(() => {
                   // Check for profile image from localStorage (Google/Facebook) first
@@ -314,9 +315,13 @@ const Header = ({ type }) => {
                   const lastName = data?.data?.lastName || userName?.split(" ")[1] || "";
                   const initials = (firstName?.[0] || "") + (lastName?.[0] || "");
 
+                  const avatarRing = navOnBlueHero
+                    ? "border-white/55"
+                    : "border-gray-500";
+
                   if (profileImage) {
                     return (
-                      <div className="size-[35px] rounded-full border border-gray-500 shrink-0 flex justify-center items-center overflow-hidden">
+                      <div className={`size-[35px] rounded-full border shrink-0 flex justify-center items-center overflow-hidden ${avatarRing}`}>
                         <img
                           className="w-full h-full object-cover"
                           src={profileImage}
@@ -326,19 +331,21 @@ const Header = ({ type }) => {
                     );
                   } else if (initials) {
                     return (
-                      <div className="size-[35px] rounded-full border border-gray-500 shrink-0 flex justify-center items-center bg-theme-blue text-white font-semibold text-sm">
+                      <div
+                        className={`size-[35px] rounded-full border shrink-0 flex justify-center items-center font-semibold text-sm ${navOnBlueHero ? "border-white/55 bg-white/20 text-white" : "border-gray-500 bg-theme-blue text-white"}`}
+                      >
                         {initials.toUpperCase()}
                       </div>
                     );
                   } else {
                     return (
-                      <div className="size-[35px] rounded-full border border-gray-500 shrink-0 flex justify-center items-center">
-                        <FaUser size="20" color="lightGray" />
+                      <div className={`size-[35px] rounded-full border shrink-0 flex justify-center items-center ${avatarRing}`}>
+                        <FaUser size="20" color={navOnBlueHero ? "#ffffff" : "lightGray"} />
                       </div>
                     );
                   }
                 })()}
-                <p className="text-center font-sf text-base">
+                <p className={`text-center font-sf text-base ${navOnBlueHero ? "text-white" : ""}`}>
                   Hi,{" "}
                   {(() => {
                     // Prioritize API data, then localStorage
@@ -357,7 +364,7 @@ const Header = ({ type }) => {
                 }}
                 href="/sign-in"
                 className={`w-48 2xl:w-52 h-[50px] 2xl:h-[60px] rounded-full font-youth font-bold text-xl flex justify-center items-center border-[2px] transition-all duration-300 ${
-                  isHero && !state.isScrolled
+                  navOnBlueHero
                     ? "bg-white text-theme-blue border-white hover:bg-white/90"
                     : "bg-white text-theme-blue border-black"
                 }`}
@@ -371,7 +378,7 @@ const Header = ({ type }) => {
         {/* Menu icon - only show for logged-in users on small/medium screens */}
         {state.headerData?.token && (
           <div
-            className={`absolute top-5 left-4 text-theme-blue sm:left-12 xl:hidden ${["sign-in"].includes(type) ? "hidden" : ""
+            className={`absolute top-5 left-4 text-theme-blue sm:left-12 tablet:hidden ${["sign-in"].includes(type) ? "hidden" : ""
               }`}
           >
             <HiOutlineMenuAlt2

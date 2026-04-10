@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
-
 html {
   -webkit-text-size-adjust: 100%;
 }
@@ -24,7 +22,6 @@ textarea {
   0% {
     opacity: 0;
     transform: translateY(-100%);
-
   }
 
   100% {
@@ -55,12 +52,106 @@ textarea {
   animation: fadeIn 0.4s ease-in-out forwards;
 }
 
+/* Hero — glass service card over person image (landscape, frosted) */
+.hero-service-glass {
+  width: min(288px, calc(100% - 0.75rem));
+  padding: 1.15rem 1.25rem 1.25rem;
+  background: rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
 
-@media screen and (min-width:1024px) {
+@keyframes hero-service-glass-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(10px);
+  }
+}
+
+.animate-hero-service-glass {
+  animation: hero-service-glass-float 4s ease-in-out infinite;
+}
+
+.animate-hero-service-glass-delayed {
+  animation: hero-service-glass-float 4s ease-in-out infinite;
+  animation-delay: 0.75s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-hero-service-glass,
+  .animate-hero-service-glass-delayed {
+    animation: none;
+  }
+}
+
+.hero-service-glass::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.85),
+    transparent
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-service-glass::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.85),
+    transparent,
+    rgba(255, 255, 255, 0.28)
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-service-glass__inner {
+  position: relative;
+  z-index: 1;
+}
+
+/* Bottom hero card: narrower + stronger frosted blur */
+.hero-service-glass--bottom {
+  width: min(220px, calc(100% - 0.75rem));
+  padding: 0.9rem 1rem 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(56px) saturate(1.25);
+  -webkit-backdrop-filter: blur(56px) saturate(1.25);
+}
+
+@media screen and (min-width: 640px) {
+  .hero-service-glass--bottom {
+    width: min(236px, calc(100% - 0.75rem));
+  }
+}
+
+@media screen and (min-width: 1024px) {
   .clip-diagonal {
     clip-path: polygon(130px 0%, 100% 0%, 100% 100%, 0% 100%);
   }
-
 }
 
 @media screen and (max-width: 840px) {
@@ -75,8 +166,6 @@ textarea {
     max-height: 300px;
     transition: 0.3s ease-in-out;
   }
-
-
 }
 
 @media screen and (max-height: 800px) {
@@ -85,7 +174,6 @@ textarea {
     padding-bottom: 5rem;
   }
 }
-
 
 /* ===========Css for scrollbar======= */
 body::-webkit-scrollbar {
@@ -101,7 +189,6 @@ body::-webkit-scrollbar-thumb {
   background: gray;
   border-radius: 10px;
 }
-
 
 .modal-scroll::-webkit-scrollbar {
   width: 2px;
@@ -148,7 +235,7 @@ body::-webkit-scrollbar-thumb {
   border-radius: 0.5rem;
   border: 1px solid #ccc;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-  font-family: 'Inter', sans-serif;
+  font-family: "Inter", sans-serif;
 }
 
 .pac-item {
@@ -164,7 +251,6 @@ body::-webkit-scrollbar-thumb {
   gap: 0.5rem;
 }
 
-
 /* Hide Google's default icon */
 .pac-icon {
   display: none !important;
@@ -172,7 +258,7 @@ body::-webkit-scrollbar-thumb {
 
 /* Custom icon that looks like your styled circle with icon */
 .pac-item::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 10px;
   top: 50%;
@@ -183,7 +269,7 @@ body::-webkit-scrollbar-thumb {
   background-color: #f1f1f1;
   /* same as bg-theme-gray */
   border-radius: 50%;
-  background-image: url('/images/registration/locationMarker.png');
+  background-image: url("/images/registration/locationMarker.png");
   background-size: 20px 20px;
   /* icon size */
   background-repeat: no-repeat;

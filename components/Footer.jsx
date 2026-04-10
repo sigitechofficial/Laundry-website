@@ -52,8 +52,19 @@ export default function Footer() {
         <div className="space-y-2 sm:space-y-5">
           <h4 className="font-semibold text-lg sm:text-2xl">Our Solution</h4>
           <ul className="text-base sm:text-lg space-y-1.5 sm:space-y-3 text-black/70">
-            <li>Laundry</li>
-            <li>Dry Cleaning</li>
+            <li>
+              <Link href="/pricing" className="hover:text-theme-blue transition-colors">
+                Laundry
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/pricing/service-detail?id=2"
+                className="hover:text-theme-blue transition-colors"
+              >
+                Dry Cleaning
+              </Link>
+            </li>
           </ul>
         </div>
         <div className="space-y-2 sm:space-y-5">

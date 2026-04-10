@@ -24,6 +24,196 @@ const getServiceKey = (name) => {
   return String(name).toLowerCase().replace(/\s*&\s*/g, "-").replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 };
 
+function IconWasherLine({ className = "size-10 shrink-0 text-white" }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <rect
+        x="6.5"
+        y="9"
+        width="27"
+        height="24"
+        rx="3"
+        stroke="currentColor"
+        strokeWidth="1.35"
+      />
+      <path
+        d="M10 9V7.5A1.5 1.5 0 0 1 11.5 6h17A1.5 1.5 0 0 1 30 7.5V9"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+      <circle cx="20" cy="22" r="8" stroke="currentColor" strokeWidth="1.35" />
+      <circle cx="20" cy="22" r="3.25" stroke="currentColor" strokeWidth="1.1" />
+    </svg>
+  );
+}
+
+function IconHangerLine({ className = "size-10 shrink-0 text-white" }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M20 7v4.5"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+      <path
+        d="M14.5 18.5c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5l7.5 8.5a1 1 0 0 1-.75 1.65H7.75a1 1 0 0 1-.75-1.65l7.5-8.5Z"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M11 30.5h18"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function IconTruckLine({ className = "size-10 shrink-0 text-white" }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <path
+        d="M6 14h16v9H6z"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M22 17h5.2l4.8 4.8V23H22"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M6 23v3.5a2 2 0 0 0 2 2h1.2"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+      <path
+        d="M32 23v2.5a2 2 0 0 1-2 2h-1"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+      />
+      <circle cx="12.5" cy="28.5" r="2.75" stroke="currentColor" strokeWidth="1.35" />
+      <circle cx="27.5" cy="28.5" r="2.75" stroke="currentColor" strokeWidth="1.35" />
+    </svg>
+  );
+}
+
+function IconClockLine({ className = "size-10 shrink-0 text-white" }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <circle cx="20" cy="20" r="11" stroke="currentColor" strokeWidth="1.35" />
+      <path
+        d="M20 12.5V20l5.5 3.2"
+        stroke="currentColor"
+        strokeWidth="1.35"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function HeroServiceGlassCard() {
+  return (
+    <aside
+      className="hero-service-glass animate-hero-service-glass absolute left-2 top-[28%] z-20 sm:left-0 sm:top-[20%] md:top-[12%] xl:top-[10%]"
+      aria-label="Featured laundry services"
+    >
+      <div className="hero-service-glass__inner flex flex-col gap-4 sm:gap-5">
+        <div className="flex items-center gap-3 sm:gap-3.5">
+          <IconWasherLine />
+          <div className="min-w-0 text-left">
+            <p className="font-sf text-[10px] font-bold uppercase leading-tight tracking-wide text-white sm:text-[11px]">
+              Clean Clear and
+            </p>
+            <p className="font-sf text-[10px] font-bold uppercase leading-tight tracking-wide text-white sm:text-[11px]">
+              Deliver
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 sm:gap-3.5">
+          <IconHangerLine />
+          <div className="min-w-0 text-left">
+            <p className="font-sf text-[10px] font-bold uppercase leading-tight tracking-wide text-white sm:text-[11px]">
+              we do laundry
+            </p>
+            <p className="font-sf text-[10px] font-bold uppercase leading-tight tracking-wide text-white sm:text-[11px]">
+              you do life
+            </p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function HeroServiceGlassCardBottom() {
+  return (
+    <aside
+      className="hero-service-glass hero-service-glass--bottom animate-hero-service-glass-delayed absolute right-2 bottom-[8%] z-20 sm:right-0 sm:bottom-[10%] md:bottom-[8%]"
+      aria-label="Pickup and scheduling"
+    >
+      <div className="hero-service-glass__inner flex flex-col gap-4 sm:gap-5">
+        <div className="flex items-center gap-3 sm:gap-3.5">
+          <IconTruckLine />
+          <div className="min-w-0 text-left">
+            <p className="font-sf text-[10px] font-bold uppercase leading-tight tracking-wide text-white sm:text-[11px]">
+              Doorstep
+            </p>
+            <p className="font-sf text-[10px] font-bold uppercase leading-tight tracking-wide text-white sm:text-[11px]">
+              pickup &amp; drop
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 sm:gap-3.5">
+          <IconClockLine />
+          <div className="min-w-0 text-left">
+            <p className="font-sf text-[10px] font-bold uppercase leading-tight tracking-wide text-white sm:text-[11px]">
+              Your schedule
+            </p>
+            <p className="font-sf text-[10px] font-bold uppercase leading-tight tracking-wide text-white sm:text-[11px]">
+              your way
+            </p>
+          </div>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 export default function Home() {
   const { data, isLoading, isError } = useGetServiceDetailsQuery();
   const serviceData = data?.data?.serviceData ?? data?.serviceData ?? [];
@@ -46,18 +236,25 @@ export default function Home() {
         </div>
 
         {/* ── HERO ── */}
-        <div className="w-full min-h-screen bg-theme-blue flex items-center relative px-5 sm:px-[45px] overflow-hidden">
+        <div className="w-full min-h-screen bg-theme-blue flex flex-col relative px-5 sm:px-[45px] overflow-hidden">
           {/* Decorative blobs (from index.html) */}
           <div className="absolute -top-32 -right-32 size-[600px] rounded-full bg-white/5 pointer-events-none" />
           <div className="absolute -bottom-20 left-[30%] size-[400px] rounded-full bg-white/[0.04] pointer-events-none" />
 
-          <div className="w-full max-w-[1290px] mx-auto flex flex-col xl:flex-row items-center justify-between gap-10 xl:gap-16 pt-24 pb-14 xl:py-0 min-h-screen">
+          <div className="w-full max-w-[1290px] mx-auto flex flex-col tablet:flex-row flex-1 min-h-0 gap-10 tablet:gap-12 xl:gap-16 pt-24 pb-0 sm:pb-6 tablet:pb-0">
 
             {/* ── Left content ── */}
-            <div className="flex-1 max-w-[560px] z-10">
+            <div className="flex-1 flex flex-col justify-center max-w-[560px] z-10 w-full mx-auto tablet:mx-0 tablet:py-8">
               <h4 className="uppercase font-youth font-black text-white tracking-tight mb-4">
-                <span className="block whitespace-nowrap text-4xl sm:text-5xl md:text-6xl lg:text-[68px] xl:text-[76px]">Do your laundry</span>
-                <span className="block text-yellow-400 text-5xl sm:text-6xl md:text-7xl lg:text-[80px] xl:text-[90px]">smartly</span>
+                <span className="block text-4xl sm:text-5xl md:text-6xl lg:text-[68px] xl:text-[76px] leading-[1.05]">
+                  Do your
+                </span>
+                <span className="block text-4xl sm:text-5xl md:text-6xl lg:text-[68px] xl:text-[76px] leading-[1.05]">
+                  laundry
+                </span>
+                <span className="block text-yellow-400 text-5xl sm:text-6xl md:text-7xl lg:text-[80px] xl:text-[90px] leading-[1.05] mt-1">
+                  smartly
+                </span>
               </h4>
 
               <p className="text-base sm:text-lg text-white/80 mb-7 font-sf max-w-[440px] leading-relaxed">
@@ -83,18 +280,19 @@ export default function Home() {
               </div>
             </div>
 
-            {/* ── Right visual ── */}
-            <div className="flex-1 justify-center items-center hidden xl:flex z-10 relative">
-              <img
-                src="/images/mem.png"
-                alt="Laundry service"
-                className="w-[540px] 2xl:w-[640px] h-auto object-contain select-none"
-                draggable={false}
-              />
-              {/* Floating badge */}
-              <div className="absolute top-10 -right-2 bg-white rounded-xl px-4 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.18)] flex items-center gap-2 font-sf text-sm font-semibold text-black">
-                <div className="size-2.5 rounded-full bg-green-500 shrink-0" />
-                Available today in your area
+            {/* ── Person visual (bottom-aligned, large, scales with screen) ── */}
+            <div className="flex-1 flex flex-col justify-end items-center z-10 relative w-full mt-auto tablet:mt-0 min-h-[220px] sm:min-h-[260px] tablet:min-h-0">
+              <div className="w-full flex justify-center items-end min-h-[180px] sm:min-h-[220px] tablet:min-h-0">
+                <div className="relative mx-auto w-full max-w-[min(100%,380px)] sm:max-w-[min(100%,460px)] md:max-w-[min(100%,520px)] lg:max-w-[min(100%,580px)] xl:max-w-[min(100%,680px)] 2xl:max-w-[min(100%,760px)]">
+                  <HeroServiceGlassCard />
+                  <HeroServiceGlassCardBottom />
+                  <img
+                    src="/images/person.png"
+                    alt="Laundry service"
+                    className="w-full h-auto max-h-[48vh] sm:max-h-[52vh] md:max-h-[56vh] tablet:max-h-[min(85vh,880px)] object-contain object-bottom select-none pointer-events-none"
+                    draggable={false}
+                  />
+                </div>
               </div>
             </div>
 

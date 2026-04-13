@@ -720,11 +720,12 @@ export default function OrderHistory() {
           <div
             className={`overflow-hidden transition-[max-height,opacity,margin] duration-300 ease-in-out ${
               isOrderItemsExpanded
-                ? "max-h-[1200px] opacity-100 mt-2"
+                ? "max-h-[min(75vh,680px)] opacity-100 mt-2"
                 : "max-h-0 opacity-0 mt-0"
             }`}
           >
-            <div className="space-y-2 font-sf border-b pb-3">
+            <div className="max-h-[min(75vh,680px)] overflow-y-auto overscroll-y-contain">
+              <div className="space-y-2 font-sf border-b pb-3">
               {Object.keys(groupedSelectedServices).length > 0 ? (
                 Object.entries(groupedSelectedServices).map(
                   ([serviceName, items], serviceIdx) => (
@@ -795,6 +796,7 @@ export default function OrderHistory() {
               ) : (
                 <p className="text-sm text-theme-psGray">No item details available.</p>
               )}
+              </div>
             </div>
           </div>
           <div className="space-y-1 font-sf border-b pb-3">

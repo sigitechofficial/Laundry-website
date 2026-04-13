@@ -201,11 +201,11 @@ const Header = ({ type }) => {
         className={`w-full h-[70px] 2xl:h-[80px] flex justify-center items-center px-5 md:px-[45px] relative transition-all duration-300 ${
           isHero
             ? state.isScrolled
-              ? "tablet:bg-white tablet:shadow-md"
+              ? "bg-white tablet:shadow-md"
               : "tablet:bg-transparent"
-            : showShadow
-            ? "tablet:shadow-md"
-            : ""
+            : type === "sign-in"
+              ? ""
+              : `bg-white${showShadow ? " tablet:shadow-md" : ""}`
         }`}
       >
         <div className={`w-full max-w-[1290px] flex ${!state.headerData?.token ? "justify-between" : "justify-center"} tablet:justify-between items-center`}>

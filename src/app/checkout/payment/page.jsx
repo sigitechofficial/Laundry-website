@@ -987,10 +987,22 @@ export default function Payment() {
               type="number"
               label="Enter tip amount"
               className="w-full border border-theme-gray rounded px-4 py-2 text-center mb-4"
-              value={orderData?.driverTip || ""}
+              value={orderData?.driverTip === 0 || orderData?.driverTip ? String(orderData.driverTip) : ""}
+              min={0}
+              onKeyDown={(e) => {
+                if (["-", "+", "e", "E"].includes(e.key)) {
+                  e.preventDefault();
+                }
+              }}
               onChange={(e) => {
-                const value = Number(e.target.value);
-                dispatch(setDriverTip(isNaN(value) ? 0 : value));
+                const raw = e.target.value;
+                if (raw === "") {
+                  dispatch(setDriverTip(0));
+                  return;
+                }
+                const value = Number(raw);
+                if (!Number.isFinite(value)) return;
+                dispatch(setDriverTip(Math.max(0, value)));
               }}
             />
           </div>

@@ -21,6 +21,9 @@ export default function InputField({
   isRequired,
   endContent,
   classNames: customClassNames,
+  min,
+  max,
+  step,
 }) {
   const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
   const isPasswordField = type === "password";
@@ -74,6 +77,9 @@ export default function InputField({
       onKeyDown={onKeyDown}
       placeholder={placeholder}
       name={name}
+      min={min}
+      max={max}
+      step={step}
       disabled={disabled}
       validate={validate}
       errorMessage={errorMessage}

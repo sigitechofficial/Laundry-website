@@ -139,13 +139,13 @@ export default function Footer() {
         <p className="text-xs sm:text-sm md:text-base text-black/70">
           All rights reserved. © Just Dry Cleaners 2025. By visiting this page
           you agree to our{" "}
-          <a className="underline" href="#">
+          <Link className="underline hover:text-theme-blue transition-colors" href="/privacy-policy">
             Privacy policy
-          </a>{" "}
-          and
-          <a className="underline" href="#">
+          </Link>{" "}
+          and{" "}
+          <Link className="underline hover:text-theme-blue transition-colors" href="/terms">
             terms and conditions.
-          </a>
+          </Link>
         </p>
 
         <div className="border-[1px] border-black rounded-full items-center flex gap-2 h-[52px] px-2 cursor-pointer max-sm:hidden">

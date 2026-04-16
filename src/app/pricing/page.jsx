@@ -12,6 +12,7 @@ import HomeClientWrapper from "../../../utilities/Test";
 import { useDispatch } from "react-redux";
 import { setPage } from "../store/slices/cartItemSlice";
 import { MiniLoader } from "../../../components/Loader";
+import { BASE_URL } from "../../../utilities/URL";
 
 export default function Pricing() {
   const { data, isLoading } = useGetServicesQuery();
@@ -96,6 +97,14 @@ export default function Pricing() {
 
               {!isLoading ? (
                 data?.data?.serviceData?.map((item) => {
+                  const raw = item?.image;
+                  const imageUrl =
+                    typeof raw === "string" && raw.length > 0
+                      ? raw.startsWith("http")
+                        ? raw
+                        : `${BASE_URL.replace(/\/$/, "")}/${raw.replace(/^\//, "")}`
+                      : "/images/pricing/clothes.png";
+
                   return item?.id === 1 ? (
                     <CategoryCard
                       key={item?.id}
@@ -103,7 +112,7 @@ export default function Pricing() {
                       bg="2"
                       h={item?.name}
                       Icon={TbIroning}
-                      src="/images/pricing/c2.png"
+                      src={imageUrl}
                       right="right-0"
                     />
                   ) : item?.id === 2 ? (
@@ -113,7 +122,7 @@ export default function Pricing() {
                       bg="1"
                       h={item?.name}
                       Icon={MdOutlineDryCleaning}
-                      src="/images/pricing/c1.png"
+                      src={imageUrl}
                       right="-right-16"
                     />
                   ) : item?.id === 3 ? (
@@ -123,7 +132,7 @@ export default function Pricing() {
                       bg="4"
                       h={item?.name}
                       Icon={TbWash}
-                      src="/images/pricing/c4.png"
+                      src={imageUrl}
                       right="-right-10"
                     />
                   ) : item?.id === 4 ? (
@@ -133,7 +142,7 @@ export default function Pricing() {
                       bg="4"
                       h={item?.name}
                       Icon={TbWash}
-                      src="/images/pricing/c4.png"
+                      src={imageUrl}
                       right="-right-10"
                     />
                   ) : item?.id === 5 ? (
@@ -143,7 +152,7 @@ export default function Pricing() {
                       bg="5"
                       h={item?.name}
                       Icon={TbIroningSteam}
-                      src="/images/pricing/c5.png"
+                      src={imageUrl}
                       right="-right-6"
                     />
                   ) : (
@@ -153,7 +162,7 @@ export default function Pricing() {
                       bg="1"
                       h={item?.name}
                       Icon={MdOutlineDryCleaning}
-                      src="/images/pricing/c1.png"
+                      src={imageUrl}
                       right="-right-16"
                     />
                   );

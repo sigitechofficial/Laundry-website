@@ -35,7 +35,8 @@ export default function CategoryCard({
                   : bg
           }`}
       >
-        <div className="pl-3 sm:pl-5 pr-28 sm:pr-40 py-4 h-full">
+        {/* Text — left column */}
+        <div className="flex-1 min-w-0 pl-3 sm:pl-5 pr-3 py-4 h-full">
           <div className="flex items-center gap-x-3">
             <div className="bg-white rounded-full shrink-0 size-8 sm:size-10 flex justify-center items-center">
               <Icon className="text-xl sm:text-2xl" />
@@ -44,21 +45,19 @@ export default function CategoryCard({
             <p className="font-youth font-bold sm:text-2xl whitespace-nowrap">{h}</p>
           </div>
 
-          <p className="font-sf text-sm sm:text-base pt-2 sm:pt-[22px] max-w-[342px] line-clamp-4 sm:line-clamp-5">
+          <p className="font-sf text-sm sm:text-base pt-2 sm:pt-[22px] line-clamp-4 sm:line-clamp-5">
             From delicate fabrics to everyday wear, our washing service ensures
             your clothes stay fresh and vibrant
           </p>
-
-          {/* <div className="font-sf absolute bottom-4 left-5">
-            <p className=" sm:text-xl text-black/60">Pricing per weight</p>
-            <p className="font-medium">
-              $17.880 <span className="text-black/60">/6kg</span>
-            </p>
-          </div> */}
         </div>
 
-        <div className={`absolute top-0 ${right} h-full`}>
-          <img className="h-full object-contain" src={src} alt="" />
+        {/* Image — right column, fixed width */}
+        <div className="w-[50%] flex-shrink-0 h-full flex items-end justify-end">
+          <img
+            className="max-h-full max-w-full object-contain object-right-bottom"
+            src={src}
+            alt={h ? String(h) : ""}
+          />
         </div>
 
         <div

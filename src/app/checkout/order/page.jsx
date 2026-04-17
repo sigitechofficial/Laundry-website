@@ -6,9 +6,7 @@ import { MdKeyboardArrowRight, MdOutlineDryCleaning } from "react-icons/md";
 import { TbIroning, TbWash, TbIroningSteam } from "react-icons/tb";
 import { AiOutlinePercentage } from "react-icons/ai";
 import { ButtonYouth70018, PurpleButton } from "../../../../components/Buttons";
-import { IoBagCheck, IoLocation, IoShirt, IoCalendarOutline, IoTimeOutline, IoInformationCircleOutline, IoLocationOutline, IoBagOutline, IoCheckmarkSharp, IoFlask } from "react-icons/io5";
-import { MdThermostat, MdOutlineWaterDrop, MdOutlineLocalLaundryService } from "react-icons/md";
-import { GiWashingMachine } from "react-icons/gi";
+import { IoBagCheck, IoLocation, IoShirt, IoCalendarOutline, IoTimeOutline, IoInformationCircleOutline, IoLocationOutline, IoBagOutline } from "react-icons/io5";
 import {
   useRescheduleBookingMutation,
   useGetServicesQuery,
@@ -629,22 +627,8 @@ export default function Order() {
                     const prefKey = prefName || `pref_${pref.preferenceTypeId}`;
                     const currentPref = preferences[prefKey];
                     const values = pref.preferenceType?.preferenceValues || [];
-                    const getGridClass = () => "grid-cols-2 sm:grid-cols-5";
-
-                    // Resolve icon per preference category
                     const isTempPref = prefName?.includes("temp");
-                    const isDetergentPref = prefName?.includes("detergent") || prefName?.includes("soap");
                     const isWashTypePref = prefName?.includes("wash") || prefName?.includes("type");
-
-                    // Per-value icon resolver
-                    const getValueIcon = (valueLabel = "") => {
-                      const v = valueLabel.toLowerCase();
-                      if (isTempPref || /°c|cold|warm|hot|\d+\s*°/.test(v)) return MdThermostat;
-                      if (isDetergentPref || v.includes("soap") || v.includes("bio") || v.includes("detergent")) return IoFlask;
-                      if (v.includes("dark") || v.includes("delicate") || v.includes("light") || v.includes("white") || v.includes("color") || v.includes("separate")) return MdOutlineLocalLaundryService;
-                      if (isWashTypePref || v.includes("wash") || v.includes("mixed")) return GiWashingMachine;
-                      return IoShirt;
-                    };
 
                     return (
                       <div key={pref.id} className="space-y-3">
@@ -657,10 +641,10 @@ export default function Order() {
                             selected wash settings and temperature.
                           </p>
                         )}
-                        <div className={`grid ${getGridClass()} gap-2 sm:gap-3`}>
+                        <div className="flex flex-wrap gap-2">
                           {values.map((value) => {
-
-                            const isSelected = currentPref?.preferenceValueId === value.id;
+                            const isSelected =
+                              currentPref?.preferenceValueId === value.id;
                             return (
                               <button
                                 type="button"
@@ -677,32 +661,24 @@ export default function Order() {
                                     },
                                   }))
                                 }
-                                className={`relative flex flex-col items-center justify-center p-2.5 sm:p-3 rounded-xl border-2 cursor-pointer text-left transition-all min-h-[80px] sm:min-h-[88px] ${
+                                className={`inline-flex max-w-full flex-col items-stretch rounded-2xl border-2 px-3.5 py-2 text-left font-sf text-xs font-medium leading-snug transition-all sm:text-sm ${
                                   isSelected
-                                    ? "border-theme-blue bg-theme-skyBlue/30"
-                                    : "border-theme-gray bg-white hover:border-theme-gray-2"
+                                    ? "border-gray-800 bg-gray-100 text-gray-900 shadow-sm"
+                                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
                                 }`}
                               >
-                                {isSelected && (
-                                  <span className="absolute top-1.5 right-1.5 flex items-center justify-center size-5 rounded-full bg-theme-blue text-white">
-                                    <IoCheckmarkSharp className="size-3" />
-                                  </span>
-                                )}
-                                <span className="flex items-center justify-center size-8 sm:size-9 rounded-full bg-theme-skyBlue text-theme-blue mb-1 sm:mb-1.5">
-                                  {React.createElement(getValueIcon(value.value), { className: "size-4 sm:size-5" })}
-                                </span>
-                                <span className="font-sf font-medium text-[11px] sm:text-xs text-theme-gray-3 text-center leading-tight">
+                                <span className="whitespace-normal">
                                   {value.value}
                                 </span>
                                 {(value.temperature || value.meta) && (
-                                  <span className="mt-1 inline-flex items-center rounded-full bg-theme-skyBlue px-2 py-0.5 font-sf text-[10px] sm:text-xs text-theme-blue">
+                                  <span className="mt-0.5 font-sf text-[10px] font-normal text-gray-500">
                                     {value.temperature || value.meta}
                                   </span>
                                 )}
                                 {(value.price != null || value.weight != null) && (
-                                  <span className="mt-0.5 font-sf text-[10px] text-theme-gray-2">
+                                  <span className="mt-0.5 font-sf text-[10px] font-normal text-gray-500">
                                     {value.price != null && `£${value.price}`}
-                                    {value.price != null && value.weight != null && " / "}
+                                    {value.price != null && value.weight != null && " · "}
                                     {value.weight != null && `${value.weight}kg`}
                                   </span>
                                 )}

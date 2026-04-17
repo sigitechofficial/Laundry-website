@@ -7,7 +7,7 @@ import SelectHero from "../../../components/SelectHero";
 import { FaPlus } from "react-icons/fa6";
 import { FaChevronLeft } from "react-icons/fa";
 import ReusableModal from "../../../components/Modal";
-import { Spinner, useDisclosure } from "@heroui/react";
+import { Spinner, addToast, useDisclosure } from "@heroui/react";
 import { IoSearchOutline } from "react-icons/io5";
 import { TbLocation } from "react-icons/tb";
 import { Autocomplete } from "@react-google-maps/api";
@@ -21,6 +21,7 @@ import Header from "../../../components/Header";
 import HomeClientWrapper from "../../../utilities/Test";
 import GoogleMapsProvider from "../../../utilities/GoogleMapsProvider";
 import { MiniLoader } from "../../../components/Loader";
+import { BASE_URL } from "../../../utilities/URL";
 
 const collection = [
   { key: "Collect from me in person", label: "Collect from me in person" },
@@ -47,6 +48,7 @@ export default function orderRegistration() {
   const postcodeInputRef = useRef(null);
   const addressDropdownRef = useRef(null);
   const [step, setStep] = useState(state ?? "get-started");
+  const [isCheckingZone, setIsCheckingZone] = useState(false);
   const [modal, setModal] = useState({
     modType: "",
   });
@@ -670,6 +672,84 @@ export default function orderRegistration() {
     setShowAddressDropdown(false);
   };
 
+  const handleProceedToCheckout = async () => {
+    const lat = collectionData?.lat;
+    const lng = collectionData?.lng;
+
+    if (!lat || !lng) {
+      addToast({
+        title: "Please choose a full address first.",
+        color: "danger",
+      });
+      return;
+    }
+
+    const selectedTimeZone =
+      collectionData?.timeZone ||
+      orderData?.timeZone ||
+      orderData?.rescheduleData?.timeZone ||
+      clientTimeZone ||
+      "Europe/London";
+
+    setIsCheckingZone(true);
+    try {
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("accessToken")
+          : null;
+
+      const response = await fetch(
+        `${BASE_URL}customer/fetchZoneAndCharges?lat=${lat}&lng=${lng}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        }
+      );
+
+      const json = await response.json();
+
+      if (!response.ok || json?.status === "0") {
+        addToast({
+          title: "We don't deliver to this address yet.",
+          color: "danger",
+        });
+        return;
+      }
+    } catch {
+      addToast({
+        title: "Couldn't check your area. Please try again.",
+        color: "danger",
+      });
+      return;
+    } finally {
+      setIsCheckingZone(false);
+    }
+
+    const nextOrderData = {
+      collectionData: {
+        ...collectionData,
+        timeZone: selectedTimeZone,
+        clientTimeZone,
+      },
+      deliveryData: {
+        ...deliveryData,
+        timeZone: selectedTimeZone,
+        clientTimeZone,
+      },
+      driverInstruction: driverInstruction,
+      timeZone: selectedTimeZone,
+      clientTimeZone,
+    };
+
+    dispatch(setOrderData(nextOrderData));
+    setStep("");
+    onClose();
+    router.push("/checkout/order");
+  };
+
   // Show dropdown when addresses are loaded
   useEffect(() => {
     console.log("Postcode addresses effect:", postcodeAddresses);
@@ -1048,8 +1128,9 @@ export default function orderRegistration() {
                     </div>
                     <div className="pt-6 pb-10">
                       <ButtonYouth70018
-                        text="Continue"
+                        text={isCheckingZone ? "Checking..." : "Continue"}
                         isDisabled={
+                          isCheckingZone ||
                           isDeliverySameOrBeforeCollection ||
                           isSameDayDeliveryBeforeCollection ||
                           !collectionData?.collectionDate ||
@@ -1060,35 +1141,7 @@ export default function orderRegistration() {
                           !collectionData?.driverInstructionOptions ||
                           !deliveryData?.driverInstructionOptions1
                         }
-                        onClick={() => {
-                          const selectedTimeZone =
-                            collectionData?.timeZone ||
-                            orderData?.timeZone ||
-                            orderData?.rescheduleData?.timeZone ||
-                            clientTimeZone ||
-                            "Europe/London";
-                          const nextOrderData = {
-                            collectionData: {
-                              ...collectionData,
-                              timeZone: selectedTimeZone,
-                              clientTimeZone,
-                            },
-                            deliveryData: {
-                              ...deliveryData,
-                              timeZone: selectedTimeZone,
-                              clientTimeZone,
-                            },
-                            driverInstruction: driverInstruction,
-                            timeZone: selectedTimeZone,
-                            clientTimeZone,
-                          };
-
-                          dispatch(setOrderData(nextOrderData));
-
-                          setStep("");
-                          onClose();
-                          router.push("/checkout/order");
-                        }}
+                        onClick={handleProceedToCheckout}
                       />
                     </div>
                   </div>

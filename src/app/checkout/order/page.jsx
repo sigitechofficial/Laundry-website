@@ -57,31 +57,94 @@ export default function Order() {
   const [showMobileSummary, setShowMobileSummary] = useState(false);
 
   // Fetch preferences when serviceId is set
-  const { data: preferencesResponse, isLoading: isLoadingPreferences } =
-    useGetServiceWithPreferenceDetailsQuery(currentServiceId, {
-      skip: !currentServiceId,
-    });
+  const {
+    data: preferencesResponse,
+    isLoading: isLoadingPreferences,
+    isFetching: isFetchingPreferences,
+    isError: isPreferencesQueryError,
+  } = useGetServiceWithPreferenceDetailsQuery(currentServiceId, {
+    skip: !currentServiceId,
+  });
 
   const servicePreferencesData = preferencesResponse?.data?.preferencesData;
 
   // Initialize preferences state based on fetched data
   const [preferences, setPreferences] = useState({});
 
+  const getPreferenceKey = (pref) =>
+    pref?.preferenceType?.name?.toLowerCase() || `pref_${pref.preferenceTypeId}`;
+
+  const isTemperaturePreference = (name = "") => name.includes("temp");
+  const isDetergentPreference = (name = "") => name.includes("detergent");
+  const isWashTypePreference = (name = "") =>
+    (name.includes("wash") || name.includes("type")) &&
+    !isTemperaturePreference(name) &&
+    !isDetergentPreference(name);
+
+  const getDefaultSettingsForWashType = (prefsData = []) => {
+    const temperaturePref = prefsData.find((pref) =>
+      isTemperaturePreference(getPreferenceKey(pref))
+    );
+    const detergentPref = prefsData.find((pref) =>
+      isDetergentPreference(getPreferenceKey(pref))
+    );
+
+    const temperatureValue = temperaturePref?.preferenceType?.preferenceValues?.[0];
+    const detergentValue = detergentPref?.preferenceType?.preferenceValues?.[0];
+
+    return {
+      temperature:
+        temperaturePref && temperatureValue
+          ? {
+              preferenceTypeId: temperaturePref.preferenceTypeId,
+              preferenceTypeName: temperaturePref.preferenceType?.name || "Temperature",
+              preferenceValueId: temperatureValue.id,
+              value: temperatureValue.value,
+            }
+          : null,
+      detergent:
+        detergentPref && detergentValue
+          ? {
+              preferenceTypeId: detergentPref.preferenceTypeId,
+              preferenceTypeName: detergentPref.preferenceType?.name || "Detergent",
+              preferenceValueId: detergentValue.id,
+              value: detergentValue.value,
+            }
+          : null,
+    };
+  };
+
   // Initialize preferences when service preferences data is loaded
   useEffect(() => {
     if (Array.isArray(servicePreferencesData) && servicePreferencesData.length > 0) {
       const initialPrefs = {};
+      const defaultWashSettings = getDefaultSettingsForWashType(servicePreferencesData);
       servicePreferencesData.forEach((pref) => {
-        const prefName = pref.preferenceType?.name?.toLowerCase();
+        const prefName = getPreferenceKey(pref);
         const prefValues = pref.preferenceType?.preferenceValues || [];
         if (prefName && prefValues.length > 0) {
-          // Set first value as default
-          initialPrefs[prefName] = {
-            preferenceTypeId: pref.preferenceTypeId,
-            preferenceTypeName: pref.preferenceType?.name || prefName,
-            preferenceValueId: prefValues[0].id,
-            value: prefValues[0].value,
-          };
+          if (isWashTypePreference(prefName)) {
+            const firstWashType = prefValues[0];
+            initialPrefs[prefName] = [
+              {
+                preferenceTypeId: pref.preferenceTypeId,
+                preferenceTypeName: pref.preferenceType?.name || prefName,
+                preferenceValueId: firstWashType.id,
+                value: firstWashType.value,
+              },
+            ];
+            initialPrefs.washTypeSettings = {
+              [firstWashType.id]: defaultWashSettings,
+            };
+          } else {
+            // Set first value as default
+            initialPrefs[prefName] = {
+              preferenceTypeId: pref.preferenceTypeId,
+              preferenceTypeName: pref.preferenceType?.name || prefName,
+              preferenceValueId: prefValues[0].id,
+              value: prefValues[0].value,
+            };
+          }
         }
       });
       // Add additional instructions field
@@ -91,6 +154,70 @@ export default function Order() {
       setPreferences({});
     }
   }, [servicePreferencesData, currentServiceId]);
+
+  // After preferences load: empty list → add service without modal; otherwise open modal
+  useEffect(() => {
+    if (!currentServiceId) return;
+    if (isFetchingPreferences) return;
+
+    if (isPreferencesQueryError) {
+      addToast({
+        title: "Could not load preferences. Please try again.",
+        color: "danger",
+      });
+      setCurrentServiceId(null);
+      return;
+    }
+
+    const res = preferencesResponse;
+    if (res == null) return;
+
+    if (String(res.status) !== "1") {
+      addToast({
+        title: res?.message || "Something went wrong.",
+        color: "danger",
+      });
+      setCurrentServiceId(null);
+      return;
+    }
+
+    const prefs = res?.data?.preferencesData;
+    if (!Array.isArray(prefs)) return;
+
+    if (prefs.length === 0) {
+      const serviceName =
+        data?.data?.serviceData?.find((s) => s.id === currentServiceId)?.name ||
+        "";
+      dispatch(
+        updatePreference({
+          serviceId: currentServiceId,
+          data: {
+            serviceName,
+            preferencesArray: [],
+            preferencesDisplay: [],
+            additionalInstructions: "",
+          },
+        })
+      );
+      setCurrentServiceId(null);
+      setPreferences({});
+      return;
+    }
+
+    setModal((m) => ({ ...m, modType: "servicePreferences" }));
+    if (!isOpen) {
+      onOpen();
+    }
+  }, [
+    currentServiceId,
+    isFetchingPreferences,
+    isPreferencesQueryError,
+    preferencesResponse,
+    data,
+    dispatch,
+    isOpen,
+    onOpen,
+  ]);
 
   function handleModalScroll(e) {
     const isScrolled = e.target.scrollTop > 50;
@@ -183,16 +310,52 @@ export default function Order() {
       const preferencesArray = [];
       const preferencesDisplay = [];
       Object.keys(preferences).forEach((key) => {
-        if (key !== "additionalInstructions" && preferences[key]?.preferenceTypeId) {
+        if (key === "additionalInstructions" || key === "washTypeSettings") {
+          return;
+        }
+
+        const prefValue = preferences[key];
+        if (Array.isArray(prefValue)) {
+          prefValue.forEach((selectedItem) => {
+            if (!selectedItem?.preferenceTypeId) return;
+            preferencesArray.push({
+              preferenceTypeId: selectedItem.preferenceTypeId,
+              preferenceValueId: selectedItem.preferenceValueId,
+              serviceId: currentServiceId,
+            });
+            preferencesDisplay.push({
+              preferenceTypeName:
+                selectedItem.preferenceTypeName || key,
+              value: selectedItem.value || "",
+            });
+
+            const washTypeSetting =
+              preferences?.washTypeSettings?.[selectedItem.preferenceValueId];
+
+            ["temperature", "detergent"].forEach((settingKey) => {
+              const settingValue = washTypeSetting?.[settingKey];
+              if (!settingValue?.preferenceTypeId) return;
+              preferencesArray.push({
+                preferenceTypeId: settingValue.preferenceTypeId,
+                preferenceValueId: settingValue.preferenceValueId,
+                serviceId: currentServiceId,
+              });
+              preferencesDisplay.push({
+                preferenceTypeName: `${selectedItem.value} ${settingValue.preferenceTypeName}`,
+                value: settingValue.value || "",
+              });
+            });
+          });
+        } else if (prefValue?.preferenceTypeId) {
           preferencesArray.push({
-            preferenceTypeId: preferences[key].preferenceTypeId,
-            preferenceValueId: preferences[key].preferenceValueId,
+            preferenceTypeId: prefValue.preferenceTypeId,
+            preferenceValueId: prefValue.preferenceValueId,
             serviceId: currentServiceId,
           });
           preferencesDisplay.push({
             preferenceTypeName:
-              preferences[key].preferenceTypeName || key,
-            value: preferences[key].value || "",
+              prefValue.preferenceTypeName || key,
+            value: prefValue.value || "",
           });
         }
       });
@@ -281,8 +444,6 @@ export default function Order() {
                           key={item?.id}
                           onClick={() => {
                             setCurrentServiceId(item?.id);
-                            setModal({ ...modal, modType: "servicePreferences" });
-                            onOpen();
                           }}
                           bg={getBg(item?.id)}
                           h={item?.name}
@@ -623,12 +784,17 @@ export default function Order() {
               <div className="w-full px-6 py-6 font-sf">
                 <div className="space-y-6">
                   {servicePreferencesData.map((pref) => {
-                    const prefName = pref.preferenceType?.name?.toLowerCase();
-                    const prefKey = prefName || `pref_${pref.preferenceTypeId}`;
+                    const prefName = getPreferenceKey(pref);
+                    const prefKey = prefName;
                     const currentPref = preferences[prefKey];
                     const values = pref.preferenceType?.preferenceValues || [];
-                    const isTempPref = prefName?.includes("temp");
-                    const isWashTypePref = prefName?.includes("wash") || prefName?.includes("type");
+                    const isTempPref = isTemperaturePreference(prefName);
+                    const isDetergentPref = isDetergentPreference(prefName);
+                    const isWashTypePref = isWashTypePreference(prefName);
+
+                    if (isTempPref || isDetergentPref) {
+                      return null;
+                    }
 
                     return (
                       <div key={pref.id} className="space-y-3">
@@ -643,13 +809,67 @@ export default function Order() {
                         )}
                         <div className="flex flex-wrap gap-2">
                           {values.map((value) => {
-                            const isSelected =
-                              currentPref?.preferenceValueId === value.id;
+                            const isSelected = isWashTypePref
+                              ? Array.isArray(currentPref) &&
+                                currentPref.some(
+                                  (selectedValue) =>
+                                    selectedValue.preferenceValueId === value.id
+                                )
+                              : currentPref?.preferenceValueId === value.id;
                             return (
                               <button
                                 type="button"
                                 key={value.id}
-                                onClick={() =>
+                                onClick={() => {
+                                  if (isWashTypePref) {
+                                    setPreferences((prev) => {
+                                      const selectedWashTypes = Array.isArray(prev[prefKey])
+                                        ? prev[prefKey]
+                                        : [];
+                                      const alreadySelected = selectedWashTypes.some(
+                                        (selectedItem) =>
+                                          selectedItem.preferenceValueId === value.id
+                                      );
+
+                                      const nextSelectedWashTypes = alreadySelected
+                                        ? selectedWashTypes.filter(
+                                            (selectedItem) =>
+                                              selectedItem.preferenceValueId !== value.id
+                                          )
+                                        : [
+                                            ...selectedWashTypes,
+                                            {
+                                              preferenceTypeId: pref.preferenceTypeId,
+                                              preferenceTypeName:
+                                                pref.preferenceType?.name || prefKey,
+                                              preferenceValueId: value.id,
+                                              value: value.value,
+                                            },
+                                          ];
+
+                                      const defaultSettings =
+                                        getDefaultSettingsForWashType(
+                                          servicePreferencesData
+                                        );
+                                      const existingSettings = prev.washTypeSettings || {};
+                                      const nextSettings = { ...existingSettings };
+
+                                      if (!alreadySelected && !nextSettings[value.id]) {
+                                        nextSettings[value.id] = defaultSettings;
+                                      }
+                                      if (alreadySelected) {
+                                        delete nextSettings[value.id];
+                                      }
+
+                                      return {
+                                        ...prev,
+                                        [prefKey]: nextSelectedWashTypes,
+                                        washTypeSettings: nextSettings,
+                                      };
+                                    });
+                                    return;
+                                  }
+
                                   setPreferences((prev) => ({
                                     ...prev,
                                     [prefKey]: {
@@ -659,8 +879,8 @@ export default function Order() {
                                       preferenceValueId: value.id,
                                       value: value.value,
                                     },
-                                  }))
-                                }
+                                  }));
+                                }}
                                 className={`inline-flex max-w-full flex-col items-stretch rounded-2xl border-2 px-3.5 py-2 text-left font-sf text-xs font-medium leading-snug transition-all sm:text-sm ${
                                   isSelected
                                     ? "border-gray-800 bg-gray-100 text-gray-900 shadow-sm"
@@ -686,6 +906,158 @@ export default function Order() {
                             );
                           })}
                         </div>
+                        {isWashTypePref &&
+                          Array.isArray(currentPref) &&
+                          currentPref.length > 0 && (
+                            <div className="space-y-4 pt-2">
+                              <p className="font-sf text-base uppercase tracking-wide text-theme-psGray">
+                                Settings per wash type
+                              </p>
+                              {currentPref.map((selectedWashType) => {
+                                const temperaturePref = servicePreferencesData.find((item) =>
+                                  isTemperaturePreference(getPreferenceKey(item))
+                                );
+                                const detergentPref = servicePreferencesData.find((item) =>
+                                  isDetergentPreference(getPreferenceKey(item))
+                                );
+                                const selectedSettings =
+                                  preferences?.washTypeSettings?.[
+                                    selectedWashType.preferenceValueId
+                                  ] || {};
+
+                                return (
+                                  <div
+                                    key={selectedWashType.preferenceValueId}
+                                    className="rounded-2xl border border-theme-gray-2 p-4"
+                                  >
+                                    <p className="font-sf font-semibold text-xl pb-3">
+                                      {selectedWashType.value}
+                                    </p>
+
+                                    {temperaturePref && (
+                                      <div className="pb-3">
+                                        <p className="font-sf text-theme-psGray pb-2">
+                                          Temperature
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {(temperaturePref.preferenceType?.preferenceValues || []).map(
+                                            (tempValue) => {
+                                              const isTempSelected =
+                                                selectedSettings?.temperature
+                                                  ?.preferenceValueId === tempValue.id;
+                                              return (
+                                                <button
+                                                  key={tempValue.id}
+                                                  type="button"
+                                                  className={`rounded-xl border px-4 py-2 font-sf text-base ${
+                                                    isTempSelected
+                                                      ? "border-theme-blue bg-theme-blue text-white"
+                                                      : "border-theme-gray-2 bg-white text-theme-gray-3"
+                                                  }`}
+                                                  onClick={() =>
+                                                    setPreferences((prev) => {
+                                                      const existing =
+                                                        prev.washTypeSettings || {};
+                                                      const selectedWashSettings =
+                                                        existing[
+                                                          selectedWashType.preferenceValueId
+                                                        ] || {};
+                                                      return {
+                                                        ...prev,
+                                                        washTypeSettings: {
+                                                          ...existing,
+                                                          [selectedWashType.preferenceValueId]:
+                                                            {
+                                                              ...selectedWashSettings,
+                                                              temperature: {
+                                                                preferenceTypeId:
+                                                                  temperaturePref.preferenceTypeId,
+                                                                preferenceTypeName:
+                                                                  temperaturePref.preferenceType
+                                                                    ?.name || "Temperature",
+                                                                preferenceValueId: tempValue.id,
+                                                                value: tempValue.value,
+                                                              },
+                                                            },
+                                                        },
+                                                      };
+                                                    })
+                                                  }
+                                                >
+                                                  {tempValue.value}
+                                                </button>
+                                              );
+                                            }
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {detergentPref && (
+                                      <div>
+                                        <p className="font-sf text-theme-psGray pb-2">
+                                          Detergent
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {(detergentPref.preferenceType?.preferenceValues || []).map(
+                                            (detergentValue) => {
+                                              const isDetergentSelected =
+                                                selectedSettings?.detergent
+                                                  ?.preferenceValueId ===
+                                                detergentValue.id;
+                                              return (
+                                                <button
+                                                  key={detergentValue.id}
+                                                  type="button"
+                                                  className={`rounded-full border px-6 py-2 font-sf text-base ${
+                                                    isDetergentSelected
+                                                      ? "border-theme-blue bg-theme-blue text-white"
+                                                      : "border-theme-gray-2 bg-white text-theme-gray-3"
+                                                  }`}
+                                                  onClick={() =>
+                                                    setPreferences((prev) => {
+                                                      const existing =
+                                                        prev.washTypeSettings || {};
+                                                      const selectedWashSettings =
+                                                        existing[
+                                                          selectedWashType.preferenceValueId
+                                                        ] || {};
+                                                      return {
+                                                        ...prev,
+                                                        washTypeSettings: {
+                                                          ...existing,
+                                                          [selectedWashType.preferenceValueId]:
+                                                            {
+                                                              ...selectedWashSettings,
+                                                              detergent: {
+                                                                preferenceTypeId:
+                                                                  detergentPref.preferenceTypeId,
+                                                                preferenceTypeName:
+                                                                  detergentPref.preferenceType
+                                                                    ?.name || "Detergent",
+                                                                preferenceValueId:
+                                                                  detergentValue.id,
+                                                                value: detergentValue.value,
+                                                              },
+                                                            },
+                                                        },
+                                                      };
+                                                    })
+                                                  }
+                                                >
+                                                  {detergentValue.value}
+                                                </button>
+                                              );
+                                            }
+                                          )}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                       </div>
                     );
                   })}

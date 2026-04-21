@@ -1,8 +1,8 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Header from "../../../../components/Header";
 import CategoryCard from "../../../../components/CategoryCard";
-import { MdKeyboardArrowRight, MdOutlineDryCleaning } from "react-icons/md";
+import { MdKeyboardArrowRight, MdKeyboardArrowDown, MdKeyboardArrowUp, MdOutlineDryCleaning } from "react-icons/md";
 import { TbIroning, TbWash, TbIroningSteam } from "react-icons/tb";
 import { AiOutlinePercentage } from "react-icons/ai";
 import { ButtonYouth70018, PurpleButton } from "../../../../components/Buttons";
@@ -55,6 +55,24 @@ export default function Order() {
     step: "",
   });
   const [showMobileSummary, setShowMobileSummary] = useState(false);
+  const modalScrollRef = useRef(null);
+  const openModalTimeoutRef = useRef(null);
+  const [isModalAtBottom, setIsModalAtBottom] = useState(false);
+  const [hasModalOverflow, setHasModalOverflow] = useState(false);
+
+  // Initialize preferences state based on fetched data
+  const [preferences, setPreferences] = useState({});
+
+  const handleCancelModal = useCallback(() => {
+    if (openModalTimeoutRef.current) {
+      clearTimeout(openModalTimeoutRef.current);
+      openModalTimeoutRef.current = null;
+    }
+    setCurrentServiceId(null);
+    setPreferences({});
+    setModal((prev) => ({ ...prev, modType: "" }));
+    onClose();
+  }, [onClose]);
 
   // Fetch preferences when serviceId is set
   const {
@@ -68,11 +86,15 @@ export default function Order() {
 
   const servicePreferencesData = preferencesResponse?.data?.preferencesData;
 
-  // Initialize preferences state based on fetched data
-  const [preferences, setPreferences] = useState({});
-
+  const getPreferenceId = (pref) => pref?.preferenceTypeId ?? pref?.id;
+  const getPreferenceLabel = (pref) =>
+    pref?.preferenceType?.name || pref?.name || "Preference";
+  const getPreferenceValues = (pref) =>
+    pref?.preferenceType?.preferenceValues || pref?.preferenceValues || [];
+  const getPreferenceChildren = (pref) =>
+    Array.isArray(pref?.childTypes) ? pref.childTypes : [];
   const getPreferenceKey = (pref) =>
-    pref?.preferenceType?.name?.toLowerCase() || `pref_${pref.preferenceTypeId}`;
+    getPreferenceLabel(pref).toLowerCase() || `pref_${getPreferenceId(pref)}`;
 
   const isTemperaturePreference = (name = "") => name.includes("temp");
   const isDetergentPreference = (name = "") => name.includes("detergent");
@@ -81,70 +103,36 @@ export default function Order() {
     !isTemperaturePreference(name) &&
     !isDetergentPreference(name);
 
-  const getDefaultSettingsForWashType = (prefsData = []) => {
-    const temperaturePref = prefsData.find((pref) =>
-      isTemperaturePreference(getPreferenceKey(pref))
+  const getSettingPreference = (prefsData = [], matcher) => {
+    const topLevelMatch = prefsData.find((pref) =>
+      matcher(getPreferenceKey(pref))
     );
-    const detergentPref = prefsData.find((pref) =>
-      isDetergentPreference(getPreferenceKey(pref))
+    if (topLevelMatch) return topLevelMatch;
+
+    const washTypePref = prefsData.find((pref) =>
+      isWashTypePreference(getPreferenceKey(pref))
     );
+    if (!washTypePref) return null;
 
-    const temperatureValue = temperaturePref?.preferenceType?.preferenceValues?.[0];
-    const detergentValue = detergentPref?.preferenceType?.preferenceValues?.[0];
-
-    return {
-      temperature:
-        temperaturePref && temperatureValue
-          ? {
-              preferenceTypeId: temperaturePref.preferenceTypeId,
-              preferenceTypeName: temperaturePref.preferenceType?.name || "Temperature",
-              preferenceValueId: temperatureValue.id,
-              value: temperatureValue.value,
-            }
-          : null,
-      detergent:
-        detergentPref && detergentValue
-          ? {
-              preferenceTypeId: detergentPref.preferenceTypeId,
-              preferenceTypeName: detergentPref.preferenceType?.name || "Detergent",
-              preferenceValueId: detergentValue.id,
-              value: detergentValue.value,
-            }
-          : null,
-    };
+    const childMatch = getPreferenceChildren(washTypePref).find((childPref) =>
+      matcher(getPreferenceKey(childPref))
+    );
+    return childMatch || null;
   };
 
   // Initialize preferences when service preferences data is loaded
   useEffect(() => {
     if (Array.isArray(servicePreferencesData) && servicePreferencesData.length > 0) {
       const initialPrefs = {};
-      const defaultWashSettings = getDefaultSettingsForWashType(servicePreferencesData);
       servicePreferencesData.forEach((pref) => {
         const prefName = getPreferenceKey(pref);
-        const prefValues = pref.preferenceType?.preferenceValues || [];
+        const prefValues = getPreferenceValues(pref);
         if (prefName && prefValues.length > 0) {
           if (isWashTypePreference(prefName)) {
-            const firstWashType = prefValues[0];
-            initialPrefs[prefName] = [
-              {
-                preferenceTypeId: pref.preferenceTypeId,
-                preferenceTypeName: pref.preferenceType?.name || prefName,
-                preferenceValueId: firstWashType.id,
-                value: firstWashType.value,
-              },
-            ];
-            initialPrefs.washTypeSettings = {
-              [firstWashType.id]: defaultWashSettings,
-            };
-          } else {
-            // Set first value as default
-            initialPrefs[prefName] = {
-              preferenceTypeId: pref.preferenceTypeId,
-              preferenceTypeName: pref.preferenceType?.name || prefName,
-              preferenceValueId: prefValues[0].id,
-              value: prefValues[0].value,
-            };
+            initialPrefs[prefName] = [];
+            initialPrefs.washTypeSettings = {};
           }
+          // Non–wash-type preferences: no default selection (user must choose)
         }
       });
       // Add additional instructions field
@@ -165,7 +153,7 @@ export default function Order() {
         title: "Could not load preferences. Please try again.",
         color: "danger",
       });
-      setCurrentServiceId(null);
+      handleCancelModal();
       return;
     }
 
@@ -177,7 +165,7 @@ export default function Order() {
         title: res?.message || "Something went wrong.",
         color: "danger",
       });
-      setCurrentServiceId(null);
+      handleCancelModal();
       return;
     }
 
@@ -199,14 +187,8 @@ export default function Order() {
           },
         })
       );
-      setCurrentServiceId(null);
-      setPreferences({});
+      handleCancelModal();
       return;
-    }
-
-    setModal((m) => ({ ...m, modType: "servicePreferences" }));
-    if (!isOpen) {
-      onOpen();
     }
   }, [
     currentServiceId,
@@ -215,17 +197,46 @@ export default function Order() {
     preferencesResponse,
     data,
     dispatch,
-    isOpen,
-    onOpen,
+    handleCancelModal,
   ]);
 
+  useEffect(() => {
+    return () => {
+      if (openModalTimeoutRef.current) {
+        clearTimeout(openModalTimeoutRef.current);
+        openModalTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   function handleModalScroll(e) {
-    const isScrolled = e.target.scrollTop > 50;
+    const { scrollTop, clientHeight, scrollHeight } = e.target;
+    const isScrolled = scrollTop > 50;
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 8;
+    const hasOverflow = scrollHeight > clientHeight + 8;
     setModalScroll((prev) => {
       if (prev !== isScrolled) return isScrolled;
       return prev;
     });
+    setIsModalAtBottom((prev) => {
+      if (prev !== isAtBottom) return isAtBottom;
+      return prev;
+    });
+    setHasModalOverflow((prev) => {
+      if (prev !== hasOverflow) return hasOverflow;
+      return prev;
+    });
   }
+
+  useEffect(() => {
+    if (!isOpen || modal?.modType !== "servicePreferences") return;
+    const modalEl = modalScrollRef.current;
+    if (!modalEl) return;
+
+    const { scrollTop, clientHeight, scrollHeight } = modalEl;
+    setIsModalAtBottom(scrollTop + clientHeight >= scrollHeight - 8);
+    setHasModalOverflow(scrollHeight > clientHeight + 8);
+  }, [isOpen, modal?.modType, isLoadingPreferences, preferences]);
 
   const handleRescheduleSubmit = async () => {
     const flattenedPreferences =
@@ -305,11 +316,65 @@ export default function Order() {
   };
 
   function closePreferenceModal() {
-    if (currentServiceId) {
-      // Build preferences array with preferenceTypeId and preferenceValueId
-      const preferencesArray = [];
-      const preferencesDisplay = [];
-      Object.keys(preferences).forEach((key) => {
+    if (!currentServiceId) {
+      setModal({ ...modal, modType: "" });
+      onClose();
+      return;
+    }
+
+    const tempPref = getSettingPreference(
+      servicePreferencesData || [],
+      isTemperaturePreference
+    );
+    const detPref = getSettingPreference(
+      servicePreferencesData || [],
+      isDetergentPreference
+    );
+    const requiresTemp = getPreferenceValues(tempPref).length > 0;
+    const requiresDet = getPreferenceValues(detPref).length > 0;
+
+    const washTypeParent = (servicePreferencesData || []).find((p) =>
+      isWashTypePreference(getPreferenceKey(p))
+    );
+    const washPrefKey = washTypeParent ? getPreferenceKey(washTypeParent) : null;
+    const washOptionsCount = washTypeParent
+      ? getPreferenceValues(washTypeParent).length
+      : 0;
+    const selectedWashTypes = washPrefKey
+      ? Array.isArray(preferences[washPrefKey])
+        ? preferences[washPrefKey]
+        : []
+      : [];
+
+    if (washPrefKey && washOptionsCount > 0 && selectedWashTypes.length === 0) {
+      addToast({
+        title: "Wash type required",
+        description: "Please select at least one wash type.",
+        color: "warning",
+      });
+      return;
+    }
+
+    for (const item of selectedWashTypes) {
+      const settings =
+        preferences?.washTypeSettings?.[item.preferenceValueId] || {};
+      const missingTemp = requiresTemp && !settings.temperature?.preferenceValueId;
+      const missingDet = requiresDet && !settings.detergent?.preferenceValueId;
+      if (missingTemp || missingDet) {
+        addToast({
+          title: "Incomplete wash preferences",
+          description:
+            "For each selected wash type, please choose a temperature and a detergent.",
+          color: "warning",
+        });
+        return;
+      }
+    }
+
+    // Build preferences array with preferenceTypeId and preferenceValueId
+    const preferencesArray = [];
+    const preferencesDisplay = [];
+    Object.keys(preferences).forEach((key) => {
         if (key === "additionalInstructions" || key === "washTypeSettings") {
           return;
         }
@@ -360,25 +425,24 @@ export default function Order() {
         }
       });
 
-      // Get service name from services data
-      const serviceName = data?.data?.serviceData?.find(
-        (s) => s.id === currentServiceId
-      )?.name || "";
+    // Get service name from services data
+    const serviceName = data?.data?.serviceData?.find(
+      (s) => s.id === currentServiceId
+    )?.name || "";
 
-      const prefsData = {
-        serviceName,
-        preferencesArray,
-        preferencesDisplay,
-        additionalInstructions: preferences.additionalInstructions || "",
-      };
+    const prefsData = {
+      serviceName,
+      preferencesArray,
+      preferencesDisplay,
+      additionalInstructions: preferences.additionalInstructions || "",
+    };
 
-      // Dispatch to redux
-      dispatch(updatePreference({ serviceId: currentServiceId, data: prefsData }));
+    // Dispatch to redux
+    dispatch(updatePreference({ serviceId: currentServiceId, data: prefsData }));
 
-      // Reset state
-      setPreferences({});
-      setCurrentServiceId(null);
-    }
+    // Reset state
+    setPreferences({});
+    setCurrentServiceId(null);
     setModal({ ...modal, modType: "" });
     onClose();
   }
@@ -443,7 +507,16 @@ export default function Order() {
                         <CategoryCard
                           key={item?.id}
                           onClick={() => {
+                            setPreferences({});
                             setCurrentServiceId(item?.id);
+                            setModal((m) => ({ ...m, modType: "servicePreferences" }));
+                            if (openModalTimeoutRef.current) {
+                              clearTimeout(openModalTimeoutRef.current);
+                            }
+                            openModalTimeoutRef.current = setTimeout(() => {
+                              onOpen();
+                              openModalTimeoutRef.current = null;
+                            }, 250);
                           }}
                           bg={getBg(item?.id)}
                           h={item?.name}
@@ -756,38 +829,41 @@ export default function Order() {
         onFooterAction={() => false}
         size="xl"
         backdrop="blur"
-        className="custom-modal-class max-h-[90vh] overflow-auto"
+        className="custom-modal-class max-h-[90vh] overflow-hidden"
       >
         {modal?.modType === "servicePreferences" && currentServiceId ? (
-          <div
-            onScroll={handleModalScroll}
-            className="modal-scroll overflow-auto"
-          >
-            <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+          <div className="modal-scroll relative flex min-h-0 max-h-[calc(90vh-6.5rem)] flex-col overflow-hidden">
+            <div className="h-[58px] shrink-0 flex items-center justify-center relative border-b border-theme-gray-2">
               <h4 className="font-youth font-bold sm:text-[22px] text-center">
                 Service Preferences
               </h4>
 
               <p
-                onClick={() => onClose()}
+                onClick={handleCancelModal}
                 className="font-sf text-base absolute top-4 right-4 cursor-pointer"
               >
                 Cancel
               </p>
             </div>
 
-            {isLoadingPreferences ? (
+            {isLoadingPreferences || isFetchingPreferences ? (
               <div className="w-full px-6 py-6 font-sf flex justify-center items-center min-h-[200px]">
                 <MiniLoader />
               </div>
             ) : servicePreferencesData && servicePreferencesData.length > 0 ? (
-              <div className="w-full px-6 py-6 font-sf">
+              <>
+                <div
+                  ref={modalScrollRef}
+                  onScroll={handleModalScroll}
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+                >
+                  <div className="w-full px-6 py-6 font-sf">
                 <div className="space-y-6">
                   {servicePreferencesData.map((pref) => {
                     const prefName = getPreferenceKey(pref);
                     const prefKey = prefName;
                     const currentPref = preferences[prefKey];
-                    const values = pref.preferenceType?.preferenceValues || [];
+                    const values = getPreferenceValues(pref);
                     const isTempPref = isTemperaturePreference(prefName);
                     const isDetergentPref = isDetergentPreference(prefName);
                     const isWashTypePref = isWashTypePreference(prefName);
@@ -799,7 +875,7 @@ export default function Order() {
                     return (
                       <div key={pref.id} className="space-y-3">
                         <p className="font-sf font-semibold text-base sm:text-lg text-theme-gray-3">
-                          {pref.preferenceType?.name || "Preference"}
+                          {getPreferenceLabel(pref)}
                         </p>
                         {isWashTypePref && !isTempPref && (
                           <p className="font-sf text-sm text-theme-psGray">
@@ -839,23 +915,19 @@ export default function Order() {
                                         : [
                                             ...selectedWashTypes,
                                             {
-                                              preferenceTypeId: pref.preferenceTypeId,
+                                              preferenceTypeId: getPreferenceId(pref),
                                               preferenceTypeName:
-                                                pref.preferenceType?.name || prefKey,
+                                                getPreferenceLabel(pref) || prefKey,
                                               preferenceValueId: value.id,
                                               value: value.value,
                                             },
                                           ];
 
-                                      const defaultSettings =
-                                        getDefaultSettingsForWashType(
-                                          servicePreferencesData
-                                        );
                                       const existingSettings = prev.washTypeSettings || {};
                                       const nextSettings = { ...existingSettings };
 
                                       if (!alreadySelected && !nextSettings[value.id]) {
-                                        nextSettings[value.id] = defaultSettings;
+                                        nextSettings[value.id] = {};
                                       }
                                       if (alreadySelected) {
                                         delete nextSettings[value.id];
@@ -873,9 +945,9 @@ export default function Order() {
                                   setPreferences((prev) => ({
                                     ...prev,
                                     [prefKey]: {
-                                      preferenceTypeId: pref.preferenceTypeId,
+                                      preferenceTypeId: getPreferenceId(pref),
                                       preferenceTypeName:
-                                        pref.preferenceType?.name || prefKey,
+                                        getPreferenceLabel(pref) || prefKey,
                                       preferenceValueId: value.id,
                                       value: value.value,
                                     },
@@ -914,11 +986,13 @@ export default function Order() {
                                 Settings per wash type
                               </p>
                               {currentPref.map((selectedWashType) => {
-                                const temperaturePref = servicePreferencesData.find((item) =>
-                                  isTemperaturePreference(getPreferenceKey(item))
+                                const temperaturePref = getSettingPreference(
+                                  servicePreferencesData,
+                                  isTemperaturePreference
                                 );
-                                const detergentPref = servicePreferencesData.find((item) =>
-                                  isDetergentPreference(getPreferenceKey(item))
+                                const detergentPref = getSettingPreference(
+                                  servicePreferencesData,
+                                  isDetergentPreference
                                 );
                                 const selectedSettings =
                                   preferences?.washTypeSettings?.[
@@ -928,19 +1002,19 @@ export default function Order() {
                                 return (
                                   <div
                                     key={selectedWashType.preferenceValueId}
-                                    className="rounded-2xl border border-theme-gray-2 p-4"
+                                    className="rounded-2xl border border-theme-gray-2 p-3"
                                   >
-                                    <p className="font-sf font-semibold text-xl pb-3">
+                                    <p className="font-sf font-semibold text-lg pb-2">
                                       {selectedWashType.value}
                                     </p>
 
                                     {temperaturePref && (
-                                      <div className="pb-3">
-                                        <p className="font-sf text-theme-psGray pb-2">
+                                      <div className="pb-2">
+                                        <p className="font-sf text-sm text-theme-psGray pb-1.5">
                                           Temperature
                                         </p>
                                         <div className="flex flex-wrap gap-2">
-                                          {(temperaturePref.preferenceType?.preferenceValues || []).map(
+                                          {getPreferenceValues(temperaturePref).map(
                                             (tempValue) => {
                                               const isTempSelected =
                                                 selectedSettings?.temperature
@@ -949,7 +1023,7 @@ export default function Order() {
                                                 <button
                                                   key={tempValue.id}
                                                   type="button"
-                                                  className={`rounded-xl border px-4 py-2 font-sf text-base ${
+                                                  className={`rounded-full border px-2.5 py-1 font-sf text-xs ${
                                                     isTempSelected
                                                       ? "border-theme-blue bg-theme-blue text-white"
                                                       : "border-theme-gray-2 bg-white text-theme-gray-3"
@@ -971,10 +1045,13 @@ export default function Order() {
                                                               ...selectedWashSettings,
                                                               temperature: {
                                                                 preferenceTypeId:
-                                                                  temperaturePref.preferenceTypeId,
+                                                                  getPreferenceId(
+                                                                    temperaturePref
+                                                                  ),
                                                                 preferenceTypeName:
-                                                                  temperaturePref.preferenceType
-                                                                    ?.name || "Temperature",
+                                                                  getPreferenceLabel(
+                                                                    temperaturePref
+                                                                  ) || "Temperature",
                                                                 preferenceValueId: tempValue.id,
                                                                 value: tempValue.value,
                                                               },
@@ -995,11 +1072,11 @@ export default function Order() {
 
                                     {detergentPref && (
                                       <div>
-                                        <p className="font-sf text-theme-psGray pb-2">
+                                        <p className="font-sf text-sm text-theme-psGray pb-1.5">
                                           Detergent
                                         </p>
                                         <div className="flex flex-wrap gap-2">
-                                          {(detergentPref.preferenceType?.preferenceValues || []).map(
+                                          {getPreferenceValues(detergentPref).map(
                                             (detergentValue) => {
                                               const isDetergentSelected =
                                                 selectedSettings?.detergent
@@ -1009,7 +1086,7 @@ export default function Order() {
                                                 <button
                                                   key={detergentValue.id}
                                                   type="button"
-                                                  className={`rounded-full border px-6 py-2 font-sf text-base ${
+                                                  className={`rounded-full border px-4 py-1.5 font-sf text-sm ${
                                                     isDetergentSelected
                                                       ? "border-theme-blue bg-theme-blue text-white"
                                                       : "border-theme-gray-2 bg-white text-theme-gray-3"
@@ -1031,10 +1108,13 @@ export default function Order() {
                                                               ...selectedWashSettings,
                                                               detergent: {
                                                                 preferenceTypeId:
-                                                                  detergentPref.preferenceTypeId,
+                                                                  getPreferenceId(
+                                                                    detergentPref
+                                                                  ),
                                                                 preferenceTypeName:
-                                                                  detergentPref.preferenceType
-                                                                    ?.name || "Detergent",
+                                                                  getPreferenceLabel(
+                                                                    detergentPref
+                                                                  ) || "Detergent",
                                                                 preferenceValueId:
                                                                   detergentValue.id,
                                                                 value: detergentValue.value,
@@ -1084,7 +1164,48 @@ export default function Order() {
                   />
 
                 </div>
-              </div>
+                  </div>
+                </div>
+                {(() => {
+                  const washParent = servicePreferencesData.find((p) =>
+                    isWashTypePreference(getPreferenceKey(p))
+                  );
+                  const washKey = washParent ? getPreferenceKey(washParent) : null;
+                  const washSelected = washKey
+                    ? Array.isArray(preferences[washKey])
+                      ? preferences[washKey]
+                      : []
+                    : [];
+                  if (washSelected.length < 2 || !hasModalOverflow) return null;
+                  return (
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[58px] z-20">
+                      <div className="pointer-events-auto absolute bottom-4 right-4 sm:bottom-5 sm:right-5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            modalScrollRef.current?.scrollTo({
+                              top: isModalAtBottom
+                                ? 0
+                                : modalScrollRef.current.scrollHeight,
+                              behavior: "smooth",
+                            })
+                          }
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-theme-blue text-white shadow-md transition hover:opacity-90"
+                          aria-label={
+                            isModalAtBottom ? "Scroll to top" : "Scroll to bottom"
+                          }
+                        >
+                          {isModalAtBottom ? (
+                            <MdKeyboardArrowUp size={20} />
+                          ) : (
+                            <MdKeyboardArrowDown size={20} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
             ) : (
               <div className="w-full px-6 py-6 font-sf">
                 <p className="text-center text-theme-psGray">
@@ -1103,7 +1224,7 @@ export default function Order() {
               </h4>
 
               <p
-                onClick={() => onClose()}
+                onClick={handleCancelModal}
                 className="font-sf text-base absolute top-4 right-4 cursor-pointer"
               >
                 Cancel

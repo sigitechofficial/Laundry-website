@@ -401,19 +401,21 @@ export default function Order() {
         if (Array.isArray(prefValue)) {
           prefValue.forEach((selectedItem) => {
             if (!selectedItem?.preferenceTypeId) return;
+            const washTypeSetting =
+              preferences?.washTypeSettings?.[selectedItem.preferenceValueId];
+            const washPrefInstruction =
+              washTypeSetting?.preferenceInstruction?.trim() || "";
             preferencesArray.push({
               preferenceTypeId: selectedItem.preferenceTypeId,
               preferenceValueId: selectedItem.preferenceValueId,
               serviceId: currentServiceId,
+              preferenceInstruction: washPrefInstruction,
             });
             preferencesDisplay.push({
               preferenceTypeName:
                 selectedItem.preferenceTypeName || key,
               value: selectedItem.value || "",
             });
-
-            const washTypeSetting =
-              preferences?.washTypeSettings?.[selectedItem.preferenceValueId];
 
             ["temperature", "detergent"].forEach((settingKey) => {
               const settingValue = washTypeSetting?.[settingKey];
@@ -422,6 +424,7 @@ export default function Order() {
                 preferenceTypeId: settingValue.preferenceTypeId,
                 preferenceValueId: settingValue.preferenceValueId,
                 serviceId: currentServiceId,
+                preferenceInstruction: washPrefInstruction,
               });
               preferencesDisplay.push({
                 preferenceTypeName: `${selectedItem.value} - ${settingValue.preferenceTypeName}`,
@@ -442,6 +445,7 @@ export default function Order() {
             preferenceTypeId: prefValue.preferenceTypeId,
             preferenceValueId: prefValue.preferenceValueId,
             serviceId: currentServiceId,
+            preferenceInstruction: "",
           });
           preferencesDisplay.push({
             preferenceTypeName:

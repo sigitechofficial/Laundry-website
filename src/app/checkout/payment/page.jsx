@@ -306,6 +306,16 @@ export default function Payment() {
         ? orderData.rescheduleData.services
         : fallbackRescheduleServices;
 
+      const rescheduleServicesWithInstructions = rescheduleServices.map((svc) => {
+        const prefRow = preferencesData?.find(
+          (p) => Number(p.serviceId) === Number(svc.serviceId)
+        );
+        return {
+          ...svc,
+          serviceInstruction: (prefRow?.additionalInstructions || "").trim(),
+        };
+      });
+
       const bookingData = {
         collectionDate: orderData?.collectionData?.collectionDate,
         collectionTimeTo: to24Hour(orderData?.collectionData?.collectionTimeTo),
@@ -363,7 +373,10 @@ export default function Payment() {
         preferencesArray: flattenedPreferences,
         services: preferencesData
           ?.filter((item) => item?.serviceId)
-          ?.map((item) => ({ serviceId: item.serviceId })),
+          ?.map((item) => ({
+            serviceId: item.serviceId,
+            serviceInstruction: (item.additionalInstructions || "").trim(),
+          })),
         totalItems: 5,
         tipAmount: Number.isFinite(driverTip) ? driverTip : 0,
         timeZone: serviceTimeZone,
@@ -389,7 +402,7 @@ export default function Payment() {
             reasonText:
               orderData?.rescheduleData?.reasonText?.trim() ||
               "My plans changed",
-            services: rescheduleServices,
+            services: rescheduleServicesWithInstructions,
             preferencesArray: flattenedPreferences,
           }
         : bookingData;

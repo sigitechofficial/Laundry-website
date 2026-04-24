@@ -145,6 +145,13 @@ export const api = createApi({
         method: "GET",
       }),
     }),
+    applyCoupon: builder.mutation({
+      query: (body) => ({
+        url: "customer/applyCoupon",
+        method: "POST",
+        body,
+      }),
+    }),
     getAllOrders: builder.query({
       query: () => ({
         url: "customer/allBookings",
@@ -293,6 +300,7 @@ export const {
   useRescheduleBookingMutation,
   useGetAllAddressQuery,
   useGetChargesQuery,
+  useApplyCouponMutation,
   useGetAllOrdersQuery,
   useCreateIntentMutation,
   useBookingDetailByIdQuery,

@@ -15,6 +15,7 @@ import {
   IoHandLeftOutline,
 } from "react-icons/io5";
 import {
+  useApplyCouponMutation,
   useCreateBookingMutation,
   useGetActivePoliciesQuery,
   useGetChargesQuery,
@@ -51,10 +52,13 @@ export default function Payment() {
     Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
   const [createBooking] = useCreateBookingMutation();
   const [rescheduleBooking] = useRescheduleBookingMutation();
+  const [applyCoupon, { isLoading: isApplyingCoupon }] = useApplyCouponMutation();
+  const [promoCode, setPromoCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
   const customerId =
     typeof window !== "undefined" && localStorage.getItem("stripeCustomerId");
   const { data, isLoading } = useGetServicesQuery();
-  const { data: addressData } = useGetChargesQuery(
+  const { data: addressData, refetch: refetchCharges } = useGetChargesQuery(
     {
       lat: orderData?.collectionData?.lat,
       lng: orderData?.collectionData?.lng,
@@ -93,11 +97,77 @@ export default function Payment() {
     // Add more here as needed
   ];
 
+  const couponDiscount = Number.parseFloat(appliedCoupon?.discountAmount) || 0;
+
   // Calculate total using useMemo for performance
   const totalAmount = useMemo(
     () => charges.reduce((sum, item) => sum + item.value, 0),
     [charges]
   );
+
+  const payableTotal = useMemo(
+    () => Math.max(0, totalAmount - couponDiscount),
+    [totalAmount, couponDiscount]
+  );
+
+  const handleApplyCoupon = async () => {
+    const code = promoCode.trim();
+    if (!code) {
+      addToast({
+        title: "Coupon code required",
+        description: "Please enter a coupon code first.",
+        color: "warning",
+      });
+      return;
+    }
+
+    try {
+      const response = await applyCoupon({
+        code,
+        orderAmount: Number(totalAmount.toFixed(2)),
+      }).unwrap();
+
+      if (String(response?.status) !== "1") {
+        addToast({
+          title: "Coupon not applied",
+          description: response?.message || "Invalid coupon code.",
+          color: "warning",
+        });
+        setAppliedCoupon(null);
+        return;
+      }
+
+      const data = response?.data || {};
+      const discountAmount =
+        Number.parseFloat(data?.discountAmount) ||
+        Number.parseFloat(data?.discount) ||
+        Number.parseFloat(data?.discountValue) ||
+        0;
+      const codeFromApi = data?.code || code;
+      setAppliedCoupon({ code: codeFromApi, discountAmount });
+      addToast({
+        title: "Coupon applied",
+        description:
+          response?.message ||
+          `${codeFromApi} applied successfully. You saved ${currencySymbol}${discountAmount.toFixed(2)}.`,
+        color: "success",
+      });
+
+      // Refresh zone/charges to keep totals in sync with backend pricing rules
+      await refetchCharges();
+    } catch (error) {
+      setAppliedCoupon(null);
+      addToast({
+        title: "Coupon not applied",
+        description:
+          error?.data?.message ||
+          error?.data?.error ||
+          error?.message ||
+          "Unable to apply coupon right now.",
+        color: "danger",
+      });
+    }
+  };
   const policyContent = useMemo(() => {
     const policies = activePoliciesData?.data || {};
     const cancellationConfig =
@@ -302,6 +372,7 @@ export default function Payment() {
         setupIntentId: payData?.setupIntentId ?? null,
         paymentMethodId: payData?.paymentMethodId,
         stripeCustomerId: localStorage.getItem("stripeCustomerId"),
+        couponCode: appliedCoupon?.code || undefined,
       };
 
       const finalPayload = isRescheduleFlow
@@ -464,7 +535,29 @@ export default function Payment() {
                     <p className="font-sf font-semibold">Order summary</p>
                   </div>
 
-                  <InputField label="Enter Promo Code" />
+                  <div>
+                    <InputField
+                      label="Enter Promo Code"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value)}
+                      endContent={
+                        <button
+                          type="button"
+                          onClick={handleApplyCoupon}
+                          disabled={isApplyingCoupon}
+                          className="rounded-full bg-theme-blue px-3 py-1 font-sf text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {isApplyingCoupon ? "Applying..." : "Apply"}
+                        </button>
+                      }
+                    />
+                    {appliedCoupon?.code ? (
+                      <p className="mt-2 font-sf text-xs text-green-600">
+                        Coupon {appliedCoupon.code} applied: -{currencySymbol}
+                        {couponDiscount.toFixed(2)}
+                      </p>
+                    ) : null}
+                  </div>
 
                   <h4 className="font-sf font-semibold">Frequency</h4>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 my-4">
@@ -579,7 +672,7 @@ export default function Payment() {
                         Pay now (incl. tax)
                       </h4>
                       <h4 className="font-youth font-bold">
-                        {currencySymbol}{totalAmount?.toFixed(2)}
+                        {currencySymbol}{payableTotal?.toFixed(2)}
                       </h4>
                     </div>
                     <div className="flex justify-between font-sf">
@@ -610,6 +703,15 @@ export default function Payment() {
                       <h4 className="">Collection & delivery</h4>
                       <p className="">Free</p>
                     </div>
+                    {couponDiscount > 0 && (
+                      <div className="flex justify-between font-sf text-green-700">
+                        <h4 className="">Coupon discount</h4>
+                        <p>
+                          -{currencySymbol}
+                          {couponDiscount.toFixed(2)}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {policyContent?.hasAnyPolicy && (

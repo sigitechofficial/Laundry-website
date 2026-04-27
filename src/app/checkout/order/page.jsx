@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Header from "../../../../components/Header";
 import CategoryCard from "../../../../components/CategoryCard";
 import { MdKeyboardArrowRight, MdKeyboardArrowDown, MdKeyboardArrowUp, MdOutlineDryCleaning } from "react-icons/md";
@@ -89,6 +89,19 @@ export default function Order() {
 
   const servicePreferencesData = preferencesResponse?.data?.preferencesData;
 
+  const isDryCleanService = useMemo(() => {
+    const name = (
+      data?.data?.serviceData?.find((s) => s?.id === currentServiceId)?.name || ""
+    )
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+    return (
+      name.includes("dry clean") ||
+      name.includes("dryclean") ||
+      name.includes("dry-clean")
+    );
+  }, [data, currentServiceId]);
+
   const getPreferenceId = (pref) => pref?.preferenceTypeId ?? pref?.id;
   const getPreferenceLabel = (pref) =>
     pref?.preferenceType?.name || pref?.name || "Preference";
@@ -153,6 +166,45 @@ export default function Order() {
     preferenceInstruction: "",
   });
 
+  /** Garment finish options (e.g. Shirt Hang, Shirt Folded) allow multiple picks */
+  const isMultiSelectPreferenceGroup = (pref) => {
+    const prefName = getPreferenceKey(pref);
+    if (
+      isWashTypePreference(prefName) ||
+      isTemperaturePreference(prefName) ||
+      isDetergentPreference(prefName)
+    ) {
+      return false;
+    }
+    const label = (getPreferenceLabel(pref) || "").toLowerCase();
+    const values = getPreferenceValues(pref);
+    const optionsLookLikeHangFold = values.some((v) => {
+      const t = String(v?.value ?? "").toLowerCase();
+      return t.includes("hang") || t.includes("fold");
+    });
+    return (
+      optionsLookLikeHangFold ||
+      label.includes("hang") ||
+      label.includes("fold")
+    );
+  };
+
+  const normalizeMultiPreferenceState = (prefsObj, prefsData) => {
+    if (!prefsObj || typeof prefsObj !== "object" || !Array.isArray(prefsData)) {
+      return prefsObj;
+    }
+    const out = deepClone(prefsObj);
+    prefsData.forEach((pref) => {
+      if (!isMultiSelectPreferenceGroup(pref)) return;
+      const key = getPreferenceKey(pref);
+      const v = out[key];
+      if (v && !Array.isArray(v) && v.preferenceTypeId) {
+        out[key] = [v];
+      }
+    });
+    return out;
+  };
+
   // Initialize preferences when service preferences data is loaded
   useEffect(() => {
     if (Array.isArray(servicePreferencesData) && servicePreferencesData.length > 0) {
@@ -161,7 +213,10 @@ export default function Order() {
         : null;
       const savedPrefs = existingServicePref?.selectedPreferences;
       if (savedPrefs && typeof savedPrefs === "object") {
-        const restoredPrefs = deepClone(savedPrefs);
+        const restoredPrefs = normalizeMultiPreferenceState(
+          savedPrefs,
+          servicePreferencesData
+        );
         setPreferences(restoredPrefs);
         setWashInstructionPanelOpen(getInstructionPanelState(restoredPrefs));
         return;
@@ -174,8 +229,10 @@ export default function Order() {
           if (isWashTypePreference(prefName)) {
             initialPrefs[prefName] = [];
             initialPrefs.washTypeSettings = {};
+          } else if (isMultiSelectPreferenceGroup(pref)) {
+            initialPrefs[prefName] = [];
           }
-          // Non–wash-type preferences: no default selection (user must choose)
+          // Other single-select preferences: no default until user chooses
         }
       });
       // Add additional instructions field
@@ -905,6 +962,7 @@ export default function Order() {
                     const isTempPref = isTemperaturePreference(prefName);
                     const isDetergentPref = isDetergentPreference(prefName);
                     const isWashTypePref = isWashTypePreference(prefName);
+                    const isMultiPref = isMultiSelectPreferenceGroup(pref);
 
                     if (isTempPref || isDetergentPref) {
                       return null;
@@ -915,12 +973,13 @@ export default function Order() {
                         <p className="font-sf font-semibold text-base sm:text-lg text-theme-gray-3">
                           {getPreferenceLabel(pref)}
                         </p>
-                        {getPreferenceInstruction(pref) ? (
+                        {getPreferenceInstruction(pref) &&
+                        !(isWashTypePref && isDryCleanService) ? (
                           <p className="font-sf text-sm text-theme-psGray leading-relaxed">
                             {getPreferenceInstruction(pref)}
                           </p>
                         ) : null}
-                        {isWashTypePref && !isTempPref && (
+                        {isWashTypePref && !isTempPref && !isDryCleanService && (
                           <p className="font-sf text-sm text-theme-psGray">
                             The user is responsible if the clothes color bleeds due to the
                             selected wash settings and temperature.
@@ -934,7 +993,13 @@ export default function Order() {
                                   (selectedValue) =>
                                     selectedValue.preferenceValueId === value.id
                                 )
-                              : currentPref?.preferenceValueId === value.id;
+                              : isMultiPref
+                                ? Array.isArray(currentPref) &&
+                                  currentPref.some(
+                                    (selectedValue) =>
+                                      selectedValue.preferenceValueId === value.id
+                                  )
+                                : currentPref?.preferenceValueId === value.id;
                             return (
                               <button
                                 type="button"
@@ -966,6 +1031,13 @@ export default function Order() {
                                             },
                                           ];
 
+                                      if (isDryCleanService) {
+                                        return {
+                                          ...prev,
+                                          [prefKey]: nextSelectedWashTypes,
+                                        };
+                                      }
+
                                       const existingSettings = prev.washTypeSettings || {};
                                       const nextSettings = { ...existingSettings };
 
@@ -983,6 +1055,36 @@ export default function Order() {
                                         [prefKey]: nextSelectedWashTypes,
                                         washTypeSettings: nextSettings,
                                       };
+                                    });
+                                    return;
+                                  }
+
+                                  if (isMultiPref) {
+                                    setPreferences((prev) => {
+                                      const raw = prev[prefKey];
+                                      const selected = Array.isArray(raw)
+                                        ? raw
+                                        : raw?.preferenceTypeId
+                                          ? [raw]
+                                          : [];
+                                      const alreadySelected = selected.some(
+                                        (item) => item.preferenceValueId === value.id
+                                      );
+                                      const nextSelected = alreadySelected
+                                        ? selected.filter(
+                                            (item) => item.preferenceValueId !== value.id
+                                          )
+                                        : [
+                                            ...selected,
+                                            {
+                                              preferenceTypeId: getPreferenceId(pref),
+                                              preferenceTypeName:
+                                                getPreferenceLabel(pref) || prefKey,
+                                              preferenceValueId: value.id,
+                                              value: value.value,
+                                            },
+                                          ];
+                                      return { ...prev, [prefKey]: nextSelected };
                                     });
                                     return;
                                   }
@@ -1024,6 +1126,7 @@ export default function Order() {
                           })}
                         </div>
                         {isWashTypePref &&
+                          !isDryCleanService &&
                           Array.isArray(currentPref) &&
                           currentPref.length > 0 && (
                             <div className="space-y-4 pt-2">

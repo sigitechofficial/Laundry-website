@@ -80,6 +80,7 @@ export default function OnHoldbookings() {
 
   async function handleSubmitUpdate() {
     if (!manageOrder?.orderId) return;
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
     const responses = Object.entries(responsesById)
       .filter(([, v]) => v.selected && typeof v.customerResponse === "boolean")
@@ -92,6 +93,7 @@ export default function OnHoldbookings() {
 
     const payloadObject = {
       bookingId: Number(manageOrder.orderId),
+      timeZone,
       responses,
     };
 

@@ -97,13 +97,30 @@ export default function Payment() {
     // Add more here as needed
   ];
 
-  const couponDiscount = Number.parseFloat(appliedCoupon?.discountAmount) || 0;
-
   // Calculate total using useMemo for performance
   const totalAmount = useMemo(
     () => charges.reduce((sum, item) => sum + item.value, 0),
     [charges]
   );
+
+  const couponDiscount = useMemo(() => {
+    const discountAmount = Number.parseFloat(appliedCoupon?.discountAmount);
+    if (Number.isFinite(discountAmount) && discountAmount >= 0) {
+      return discountAmount;
+    }
+
+    const discountValue = Number.parseFloat(appliedCoupon?.discountValue);
+    if (!Number.isFinite(discountValue) || discountValue <= 0) return 0;
+
+    const normalizedType = String(appliedCoupon?.discountType || "")
+      .toLowerCase()
+      .trim();
+    if (normalizedType === "percentage" || normalizedType === "percent") {
+      return (totalAmount * discountValue) / 100;
+    }
+
+    return discountValue;
+  }, [appliedCoupon, totalAmount]);
 
   const payableTotal = useMemo(
     () => Math.max(0, totalAmount - couponDiscount),
@@ -138,13 +155,28 @@ export default function Payment() {
       }
 
       const data = response?.data || {};
-      const discountAmount =
-        Number.parseFloat(data?.discountAmount) ||
-        Number.parseFloat(data?.discount) ||
-        Number.parseFloat(data?.discountValue) ||
-        0;
+      const normalizedDiscountType = String(data?.discountType || "")
+        .toLowerCase()
+        .trim();
+      const parsedDiscountAmount = Number.parseFloat(
+        data?.discountAmt ?? data?.discountAmount ?? data?.discount
+      );
+      const parsedDiscountValue = Number.parseFloat(data?.discountValue);
+      const discountAmount = Number.isFinite(parsedDiscountAmount)
+        ? parsedDiscountAmount
+        : Number.isFinite(parsedDiscountValue)
+          ? normalizedDiscountType === "percentage" ||
+            normalizedDiscountType === "percent"
+            ? (totalAmount * parsedDiscountValue) / 100
+            : parsedDiscountValue
+          : 0;
       const codeFromApi = data?.code || code;
-      setAppliedCoupon({ code: codeFromApi, discountAmount });
+      setAppliedCoupon({
+        code: codeFromApi,
+        discountAmount,
+        discountType: data?.discountType,
+        discountValue: data?.discountValue,
+      });
       addToast({
         title: "Coupon applied",
         description:
@@ -498,7 +530,7 @@ export default function Payment() {
                     setModal={setModal}
                     modal={modal}
                     booking={handleCreateBooking}
-                    totalAmount={totalAmount}
+                    totalAmount={payableTotal}
                     onOpen={onOpen}
                     customerId={customerId}
                   />

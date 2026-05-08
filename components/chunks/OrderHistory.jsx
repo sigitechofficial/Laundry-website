@@ -451,6 +451,12 @@ export default function OrderHistory() {
     );
     const tipValue = Number.parseFloat(bookingDtails?.data?.tips?.[0]?.amount);
     const orderAmountValue = Number.parseFloat(bookingDtails?.data?.orderAmount);
+    const billingTotalValue = Number.parseFloat(
+      bookingDtails?.data?.billingDetail?.total
+    );
+    const discountValue = Number.parseFloat(
+      bookingDtails?.data?.billingDetail?.discount
+    );
 
     const displaySubTotal = Number.isFinite(subTotalValue) ? subTotalValue : 0;
     const displayServiceFee = Number.isFinite(serviceFeeValue) ? serviceFeeValue : 0;
@@ -458,28 +464,15 @@ export default function OrderHistory() {
       ? upfrontAmountValue
       : 0;
     const displayTip = Number.isFinite(tipValue) ? tipValue : 0;
+    const displayDiscount = Number.isFinite(discountValue) ? discountValue : 0;
     const displayTotal =
-      Number.isFinite(orderAmountValue) && orderAmountValue > 0
+      Number.isFinite(billingTotalValue) && billingTotalValue > 0
+        ? billingTotalValue
+        : Number.isFinite(orderAmountValue) && orderAmountValue > 0
         ? orderAmountValue
         : displaySubTotal;
 
     const groupedSelectedServices = selectedServices.reduce((acc, item) => {
-      const hasCategory = Boolean(item?.category?.name);
-      const hasSubCategory = Boolean(item?.subCategory?.name);
-      const parsedQty = Number(item?.items);
-      const parsedPrice = Number.parseFloat(
-        item?.categoryprice ?? item?.subCategory?.price
-      );
-      const hasQty = Number.isFinite(parsedQty) && parsedQty > 0;
-      const hasPrice = Number.isFinite(parsedPrice);
-      const hasMeaningfulItemData =
-        hasCategory || hasSubCategory || hasQty || hasPrice;
-
-      // Skip service rows that don't contain actual item details.
-      if (!hasMeaningfulItemData) {
-        return acc;
-      }
-
       const serviceName = item?.service?.name || "Service";
       if (!acc[serviceName]) {
         acc[serviceName] = [];
@@ -491,6 +484,9 @@ export default function OrderHistory() {
       (sum, serviceItems) => sum + serviceItems.length,
       0
     );
+    const bookingPreferences = Array.isArray(bookingDtails?.data?.bookingPreferences)
+      ? bookingDtails.data.bookingPreferences
+      : [];
 
     return (
       <>
@@ -764,6 +760,11 @@ export default function OrderHistory() {
                                     Item: {subCategoryName}
                                   </p>
                                 )}
+                                {!categoryName && !subCategoryName && (
+                                  <p className="text-xs text-theme-psGray">
+                                    Selected service
+                                  </p>
+                                )}
                                 {item?.date && (
                                   <p className="text-xs text-theme-psGray">
                                     Added: {formatDate(item.date)}
@@ -780,11 +781,13 @@ export default function OrderHistory() {
                                     Qty: {quantity}
                                   </p>
                                 )}
-                                <p className="text-sm font-semibold">
-                                  {formatItemAmount(lineTotal, bookingCurrencySymbol) ||
-                                    formatItemAmount(unitPrice, bookingCurrencySymbol) ||
-                                    "N/A"}
-                                </p>
+                                {(formatItemAmount(lineTotal, bookingCurrencySymbol) ||
+                                  formatItemAmount(unitPrice, bookingCurrencySymbol)) && (
+                                  <p className="text-sm font-semibold">
+                                    {formatItemAmount(lineTotal, bookingCurrencySymbol) ||
+                                      formatItemAmount(unitPrice, bookingCurrencySymbol)}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           );
@@ -799,12 +802,60 @@ export default function OrderHistory() {
               </div>
             </div>
           </div>
+          <div className="space-y-2 font-sf border-b pb-3">
+            <h6 className="font-semibold text-xl">Booking preferences</h6>
+            {bookingPreferences.length > 0 ? (
+              <div className="space-y-2">
+                {bookingPreferences.map((pref, index) => {
+                  const typeLabel =
+                    pref?.preferenceType?.name ||
+                    pref?.preferenceTypeName ||
+                    (pref?.preferenceTypeId
+                      ? `Preference type #${pref.preferenceTypeId}`
+                      : "Preference type");
+                  const valueLabel =
+                    pref?.preferenceValue?.value ||
+                    pref?.preferenceValue?.name ||
+                    pref?.preferenceValueName ||
+                    (pref?.preferenceValueId
+                      ? `Value #${pref.preferenceValueId}`
+                      : "Not selected");
+
+                  return (
+                    <div
+                      key={pref?.id || `${pref?.preferenceTypeId || "type"}-${pref?.preferenceValueId || "value"}-${index}`}
+                      className="rounded-lg border border-gray-100 bg-[#FBFBFB] px-3 py-2"
+                    >
+                      <p className="text-sm font-medium">{typeLabel}</p>
+                      <p className="text-xs text-theme-psGray">{valueLabel}</p>
+                      {pref?.preferenceInstruction && (
+                        <p className="text-xs text-theme-psGray mt-1">
+                          Note: {pref.preferenceInstruction}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-theme-psGray">
+                No booking preferences selected.
+              </p>
+            )}
+          </div>
           <div className="space-y-1 font-sf border-b pb-3">
             <div className="flex justify-between items-center ">
               <h4 className="font-semibold">Subtotal</h4>
               <p className="font-semibold">
                 {bookingCurrencySymbol}
                 {displaySubTotal.toFixed(2)}
+              </p>
+            </div>
+            <div className="flex justify-between items-center">
+              <h4 className="text-sm text-theme-psGray">Discount</h4>
+              <p className="text-sm text-theme-psGray">
+                -{bookingCurrencySymbol}
+                {displayDiscount.toFixed(2)}
               </p>
             </div>
             <div className="flex justify-between items-center">

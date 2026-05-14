@@ -1014,6 +1014,14 @@ export default function Order() {
                                 const selectedSettings =
                                   preferences?.washTypeSettings?.[value.id] || {};
 
+                                const washInstrKey = String(value.id);
+                                const washInstrOpen = Boolean(
+                                  washInstructionPanelOpen[washInstrKey]
+                                );
+                                const washHasInstr = Boolean(
+                                  (selectedSettings.preferenceInstruction ?? "").trim()
+                                );
+
                                 const hasWashSubPickOptions =
                                   Boolean(temperaturePref) || Boolean(detergentPref);
 
@@ -1094,6 +1102,13 @@ export default function Order() {
                                           e.stopPropagation();
                                           const wasSelected = isSelected;
                                           runWashTypeToggle();
+                                          if (wasSelected) {
+                                            setWashInstructionPanelOpen((prev) => {
+                                              const next = { ...prev };
+                                              delete next[washInstrKey];
+                                              return next;
+                                            });
+                                          }
                                           if (!wasSelected) {
                                             setWashAccordionOpenId(value.id);
                                           } else {
@@ -1307,37 +1322,83 @@ export default function Order() {
                                         )}
 
                                         <div>
-                                          <div className="mb-2 flex flex-wrap items-center gap-2">
-                                            <span className="font-sf text-sm font-medium text-gray-700">
-                                              Preference Instruction
-                                            </span>
-                                            <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 font-sf text-xs text-gray-500">
-                                              Optional
-                                            </span>
-                                          </div>
-                                          <textarea
-                                            className="min-h-[100px] w-full resize-none rounded-2xl border border-gray-200 bg-white p-3 font-sf text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-theme-blue focus:ring-1 focus:ring-theme-blue"
-                                            placeholder="Add any special instructions for this wash type..."
-                                            value={
-                                              selectedSettings.preferenceInstruction ?? ""
-                                            }
-                                            onChange={(e) =>
-                                              setPreferences((prev) => {
-                                                const existing = prev.washTypeSettings || {};
-                                                const row = existing[value.id] || {};
-                                                return {
+                                          {!washInstrOpen && !washHasInstr ? (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setWashInstructionPanelOpen((prev) => ({
                                                   ...prev,
-                                                  washTypeSettings: {
-                                                    ...existing,
-                                                    [value.id]: {
-                                                      ...row,
-                                                      preferenceInstruction: e.target.value,
-                                                    },
-                                                  },
-                                                };
-                                              })
-                                            }
-                                          />
+                                                  [washInstrKey]: true,
+                                                }))
+                                              }
+                                              className="rounded-full border border-gray-200 bg-white px-3 py-1.5 font-sf text-xs font-medium text-theme-gray-3 transition hover:bg-gray-50"
+                                            >
+                                              Add instruction
+                                            </button>
+                                          ) : null}
+                                          {!washInstrOpen && washHasInstr ? (
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setWashInstructionPanelOpen((prev) => ({
+                                                  ...prev,
+                                                  [washInstrKey]: true,
+                                                }))
+                                              }
+                                              className="rounded-full border border-gray-200 bg-white px-3 py-1.5 font-sf text-xs font-medium text-theme-gray-3 transition hover:bg-gray-50"
+                                            >
+                                              Edit instruction
+                                            </button>
+                                          ) : null}
+                                          {washInstrOpen ? (
+                                            <>
+                                              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                  <span className="font-sf text-sm font-medium text-gray-700">
+                                                    Preference Instruction
+                                                  </span>
+                                                  <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 font-sf text-xs text-gray-500">
+                                                    Optional
+                                                  </span>
+                                                </div>
+                                                <button
+                                                  type="button"
+                                                  onClick={() =>
+                                                    setWashInstructionPanelOpen((prev) => ({
+                                                      ...prev,
+                                                      [washInstrKey]: false,
+                                                    }))
+                                                  }
+                                                  className="shrink-0 font-sf text-xs text-theme-psGray underline-offset-2 hover:text-theme-gray-3 hover:underline"
+                                                >
+                                                  Hide
+                                                </button>
+                                              </div>
+                                              <textarea
+                                                className="min-h-[100px] w-full resize-none rounded-2xl border border-gray-200 bg-white p-3 font-sf text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-theme-blue focus:ring-1 focus:ring-theme-blue"
+                                                placeholder="Add any special instructions for this wash type..."
+                                                value={
+                                                  selectedSettings.preferenceInstruction ?? ""
+                                                }
+                                                onChange={(e) =>
+                                                  setPreferences((prev) => {
+                                                    const existing = prev.washTypeSettings || {};
+                                                    const row = existing[value.id] || {};
+                                                    return {
+                                                      ...prev,
+                                                      washTypeSettings: {
+                                                        ...existing,
+                                                        [value.id]: {
+                                                          ...row,
+                                                          preferenceInstruction: e.target.value,
+                                                        },
+                                                      },
+                                                    };
+                                                  })
+                                                }
+                                              />
+                                            </>
+                                          ) : null}
                                         </div>
                                       </div>
                                     )}

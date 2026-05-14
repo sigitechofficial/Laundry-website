@@ -97,6 +97,19 @@ export default function orderRegistration() {
     });
   };
 
+  /** ISO yyyy-mm-dd → DD/MM/YY for read-only field display */
+  const formatIsoDateAsDdMmYy = (isoDate) => {
+    if (!isoDate || typeof isoDate !== "string") return "";
+    const parts = isoDate.split("-");
+    if (parts.length < 3) return "";
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    const d = parseInt(parts[2], 10);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return "";
+    const yy = String(y).slice(-2);
+    return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${yy}`;
+  };
+
   const initialCollectionSlot = React.useMemo(() => {
     const today = getLocalDateString();
     return slots?.find((slot) => slot.date === today) || slots?.[0] || null;
@@ -1037,7 +1050,7 @@ export default function orderRegistration() {
                       <InputHeroUi
                         type="text"
                         label="Collection"
-                        value={collectionData?.collectionDate}
+                        value={formatIsoDateAsDdMmYy(collectionData?.collectionDate)}
                         endContent={
                           <span className="whitespace-nowrap">
                             {collectionData?.collectionTimeFrom
@@ -1072,7 +1085,7 @@ export default function orderRegistration() {
                       <InputHeroUi
                         type="text"
                         label="Delivery"
-                        value={deliveryData?.deliveryDate}
+                        value={formatIsoDateAsDdMmYy(deliveryData?.deliveryDate)}
                         endContent={
                           <span className="whitespace-nowrap">
                             {deliveryData?.deliveryTimeFrom

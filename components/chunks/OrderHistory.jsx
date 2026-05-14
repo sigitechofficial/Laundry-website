@@ -484,9 +484,6 @@ export default function OrderHistory() {
       (sum, serviceItems) => sum + serviceItems.length,
       0
     );
-    const bookingPreferences = Array.isArray(bookingDtails?.data?.bookingPreferences)
-      ? bookingDtails.data.bookingPreferences
-      : [];
 
     return (
       <>
@@ -801,47 +798,6 @@ export default function OrderHistory() {
               )}
               </div>
             </div>
-          </div>
-          <div className="space-y-2 font-sf border-b pb-3">
-            <h6 className="font-semibold text-xl">Booking preferences</h6>
-            {bookingPreferences.length > 0 ? (
-              <div className="space-y-2">
-                {bookingPreferences.map((pref, index) => {
-                  const typeLabel =
-                    pref?.preferenceType?.name ||
-                    pref?.preferenceTypeName ||
-                    (pref?.preferenceTypeId
-                      ? `Preference type #${pref.preferenceTypeId}`
-                      : "Preference type");
-                  const valueLabel =
-                    pref?.preferenceValue?.value ||
-                    pref?.preferenceValue?.name ||
-                    pref?.preferenceValueName ||
-                    (pref?.preferenceValueId
-                      ? `Value #${pref.preferenceValueId}`
-                      : "Not selected");
-
-                  return (
-                    <div
-                      key={pref?.id || `${pref?.preferenceTypeId || "type"}-${pref?.preferenceValueId || "value"}-${index}`}
-                      className="rounded-lg border border-gray-100 bg-[#FBFBFB] px-3 py-2"
-                    >
-                      <p className="text-sm font-medium">{typeLabel}</p>
-                      <p className="text-xs text-theme-psGray">{valueLabel}</p>
-                      {pref?.preferenceInstruction && (
-                        <p className="text-xs text-theme-psGray mt-1">
-                          Note: {pref.preferenceInstruction}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-sm text-theme-psGray">
-                No booking preferences selected.
-              </p>
-            )}
           </div>
           <div className="space-y-1 font-sf border-b pb-3">
             <div className="flex justify-between items-center ">

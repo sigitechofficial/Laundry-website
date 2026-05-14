@@ -22,7 +22,7 @@ import {
   setPage,
   updatePreference,
 } from "@/app/store/slices/cartItemSlice";
-import { FaTruck } from "react-icons/fa6";
+import { FaTruck, FaCheck, FaChevronDown, FaChevronUp } from "react-icons/fa6";
 import { formatDate, to24Hour } from "../../../../utilities/ConversionFunction";
 import FAQs from "../../../../components/FAQs";
 import Footer from "../../../../components/Footer";
@@ -64,6 +64,8 @@ export default function Order() {
   const [preferences, setPreferences] = useState({});
   /** `preferenceValueId` (string) -> whether per–wash-type instruction textarea is shown */
   const [washInstructionPanelOpen, setWashInstructionPanelOpen] = useState({});
+  /** Wash accordion: `null` = expand first selected row; `"__none__"` = all bodies collapsed; else open that value id */
+  const [washAccordionOpenId, setWashAccordionOpenId] = useState(null);
 
   const handleCancelModal = useCallback(() => {
     if (openModalTimeoutRef.current) {
@@ -73,6 +75,7 @@ export default function Order() {
     setCurrentServiceId(null);
     setPreferences({});
     setWashInstructionPanelOpen({});
+    setWashAccordionOpenId(null);
     setModal((prev) => ({ ...prev, modType: "" }));
     onClose();
   }, [onClose]);
@@ -132,6 +135,8 @@ export default function Order() {
     (name.includes("wash") || name.includes("type")) &&
     !isTemperaturePreference(name) &&
     !isDetergentPreference(name);
+
+  const WASH_ACCORDION_ALL_COLLAPSED = "__none__";
 
   const getSettingPreference = (prefsData = [], matcher) => {
     const topLevelMatch = prefsData.find((pref) =>
@@ -219,6 +224,7 @@ export default function Order() {
         );
         setPreferences(restoredPrefs);
         setWashInstructionPanelOpen(getInstructionPanelState(restoredPrefs));
+        setWashAccordionOpenId(null);
         return;
       }
       const initialPrefs = {};
@@ -239,9 +245,11 @@ export default function Order() {
       initialPrefs.additionalInstructions = "";
       setPreferences(initialPrefs);
       setWashInstructionPanelOpen({});
+      setWashAccordionOpenId(null);
     } else if (servicePreferencesData) {
       setPreferences({});
       setWashInstructionPanelOpen({});
+      setWashAccordionOpenId(null);
     }
   }, [servicePreferencesData, currentServiceId, preferencesData]);
 
@@ -531,6 +539,7 @@ export default function Order() {
     // Reset state
     setPreferences({});
     setWashInstructionPanelOpen({});
+    setWashAccordionOpenId(null);
     setCurrentServiceId(null);
     setModal({ ...modal, modType: "" });
     onClose();
@@ -902,6 +911,7 @@ export default function Order() {
             setCurrentServiceId(null);
             setPreferences({});
             setWashInstructionPanelOpen({});
+            setWashAccordionOpenId(null);
             setModal({ ...modal, modType: "" });
           }
         }}
@@ -973,41 +983,399 @@ export default function Order() {
                         <p className="font-sf font-semibold text-base sm:text-lg text-theme-gray-3">
                           {getPreferenceLabel(pref)}
                         </p>
-                        {getPreferenceInstruction(pref) &&
-                        !(isWashTypePref && isDryCleanService) ? (
-                          <p className="font-sf text-sm text-theme-psGray leading-relaxed">
-                            {getPreferenceInstruction(pref)}
-                          </p>
-                        ) : null}
-                        {isWashTypePref && !isTempPref && !isDryCleanService && (
-                          <p className="font-sf text-sm text-theme-psGray">
-                            The user is responsible if the clothes color bleeds due to the
-                            selected wash settings and temperature.
-                          </p>
-                        )}
-                        <div className="flex flex-wrap gap-2">
-                          {values.map((value) => {
-                            const isSelected = isWashTypePref
-                              ? Array.isArray(currentPref) &&
-                                currentPref.some(
-                                  (selectedValue) =>
-                                    selectedValue.preferenceValueId === value.id
-                                )
-                              : isMultiPref
-                                ? Array.isArray(currentPref) &&
-                                  currentPref.some(
-                                    (selectedValue) =>
-                                      selectedValue.preferenceValueId === value.id
-                                  )
-                                : currentPref?.preferenceValueId === value.id;
-                            return (
-                              <button
-                                type="button"
-                                key={value.id}
-                                onClick={() => {
+                        {isWashTypePref && !isDryCleanService ? (
+                          <>
+                            {getPreferenceInstruction(pref) ? (
+                              <p className="font-sf text-sm text-theme-psGray leading-relaxed">
+                                {getPreferenceInstruction(pref)}
+                              </p>
+                            ) : null}
+                            <div className="space-y-3">
+                              {values.map((value) => {
+                                const temperaturePref = getSettingPreference(
+                                  servicePreferencesData,
+                                  isTemperaturePreference
+                                );
+                                const detergentPref = getSettingPreference(
+                                  servicePreferencesData,
+                                  isDetergentPreference
+                                );
+                                const selectedWashList = Array.isArray(currentPref)
+                                  ? currentPref
+                                  : [];
+                                const isSelected = selectedWashList.some(
+                                  (sv) => sv.preferenceValueId === value.id
+                                );
+                                const firstSelectedInOrder = values.find((v) =>
+                                  selectedWashList.some((s) => s.preferenceValueId === v.id)
+                                );
+                                const firstSelectedValueId = firstSelectedInOrder?.id;
+
+                                const selectedSettings =
+                                  preferences?.washTypeSettings?.[value.id] || {};
+
+                                const hasWashSubPickOptions =
+                                  Boolean(temperaturePref) || Boolean(detergentPref);
+
+                                const isMixedWashOption =
+                                  String(value?.value ?? "")
+                                    .trim()
+                                    .toLowerCase() === "mixed wash";
+
+                                const isExpanded =
+                                  isSelected &&
+                                  (hasWashSubPickOptions
+                                    ? washAccordionOpenId === WASH_ACCORDION_ALL_COLLAPSED
+                                      ? false
+                                      : washAccordionOpenId === null
+                                        ? value.id === firstSelectedValueId
+                                        : washAccordionOpenId === value.id
+                                    : true);
+
+                                const runWashTypeToggle = () => {
+                                  setPreferences((prev) => {
+                                    const selectedWashTypes = Array.isArray(prev[prefKey])
+                                      ? prev[prefKey]
+                                      : [];
+                                    const alreadySelected = selectedWashTypes.some(
+                                      (selectedItem) =>
+                                        selectedItem.preferenceValueId === value.id
+                                    );
+                                    const nextSelectedWashTypes = alreadySelected
+                                      ? selectedWashTypes.filter(
+                                          (selectedItem) =>
+                                            selectedItem.preferenceValueId !== value.id
+                                        )
+                                      : [
+                                          ...selectedWashTypes,
+                                          {
+                                            preferenceTypeId: getPreferenceId(pref),
+                                            preferenceTypeName:
+                                              getPreferenceLabel(pref) || prefKey,
+                                            preferenceValueId: value.id,
+                                            value: value.value,
+                                          },
+                                        ];
+
+                                    const existingSettings = prev.washTypeSettings || {};
+                                    const nextSettings = { ...existingSettings };
+
+                                    if (!alreadySelected) {
+                                      nextSettings[value.id] = buildDefaultWashTypeSettings(
+                                        servicePreferencesData || []
+                                      );
+                                    } else {
+                                      delete nextSettings[value.id];
+                                    }
+
+                                    return {
+                                      ...prev,
+                                      [prefKey]: nextSelectedWashTypes,
+                                      washTypeSettings: nextSettings,
+                                    };
+                                  });
+                                };
+
+                                return (
+                                  <div
+                                    key={value.id}
+                                    className={`overflow-hidden rounded-lg border-2 bg-white transition-colors ${
+                                      isSelected &&
+                                      (!hasWashSubPickOptions || isExpanded)
+                                        ? "border-theme-blue shadow-sm"
+                                        : "border-gray-200"
+                                    }`}
+                                  >
+                                    <div className="flex items-stretch gap-3 px-3 py-3.5">
+                                      <button
+                                        type="button"
+                                        aria-pressed={isSelected}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          const wasSelected = isSelected;
+                                          runWashTypeToggle();
+                                          if (!wasSelected) {
+                                            setWashAccordionOpenId(value.id);
+                                          } else {
+                                            setWashAccordionOpenId(null);
+                                          }
+                                        }}
+                                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                                          isSelected
+                                            ? "border-theme-blue bg-theme-blue text-white"
+                                            : "border-gray-300 bg-white"
+                                        }`}
+                                      >
+                                        {isSelected ? (
+                                          <FaCheck className="h-3 w-3" aria-hidden />
+                                        ) : null}
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+                                        onClick={() => {
+                                          if (!hasWashSubPickOptions) {
+                                            runWashTypeToggle();
+                                            return;
+                                          }
+                                          if (!isSelected) {
+                                            runWashTypeToggle();
+                                            setWashAccordionOpenId(value.id);
+                                          } else {
+                                            setWashAccordionOpenId(
+                                              isExpanded
+                                                ? WASH_ACCORDION_ALL_COLLAPSED
+                                                : value.id
+                                            );
+                                          }
+                                        }}
+                                      >
+                                        <span
+                                          className={`font-sf text-base ${
+                                            isSelected
+                                              ? "font-semibold text-theme-blue"
+                                              : "font-medium text-gray-900"
+                                          }`}
+                                        >
+                                          {value.value}
+                                        </span>
+                                        {hasWashSubPickOptions ? (
+                                          <span className="shrink-0 text-gray-500">
+                                            {isExpanded ? (
+                                              <FaChevronUp className="h-4 w-4" aria-hidden />
+                                            ) : (
+                                              <FaChevronDown className="h-4 w-4" aria-hidden />
+                                            )}
+                                          </span>
+                                        ) : null}
+                                      </button>
+                                    </div>
+
+                                    {isSelected && isExpanded && (
+                                      <div className="space-y-4 border-t border-gray-100 px-3 pb-4 pt-3">
+                                        {isMixedWashOption && (
+                                        <div
+                                          className="flex gap-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2.5 font-sf text-sm leading-snug text-amber-950"
+                                          role="note"
+                                        >
+                                          <IoInformationCircleOutline
+                                            className="mt-0.5 h-5 w-5 shrink-0 text-amber-700"
+                                            aria-hidden
+                                          />
+                                          <span>
+                                            You are responsible if clothes colour bleeds due to
+                                            the selected wash settings.
+                                          </span>
+                                        </div>
+                                        )}
+
+                                        {temperaturePref && (
+                                          <div>
+                                            <p className="pb-2 font-sf text-xs font-medium uppercase tracking-wide text-gray-500">
+                                              {getPreferenceLabel(temperaturePref) ||
+                                                "Wash temperature"}
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                              {getPreferenceValues(temperaturePref).map(
+                                                (tempValue) => {
+                                                  const isTempSelected =
+                                                    selectedSettings?.temperature
+                                                      ?.preferenceValueId === tempValue.id;
+                                                  return (
+                                                    <button
+                                                      key={tempValue.id}
+                                                      type="button"
+                                                      className={`rounded-full border px-3 py-1.5 font-sf text-sm transition-colors ${
+                                                        isTempSelected
+                                                          ? "border-theme-blue bg-theme-blue text-white"
+                                                          : "border-gray-300 bg-white text-gray-900"
+                                                      }`}
+                                                      onClick={() =>
+                                                        setPreferences((prev) => {
+                                                          const existing =
+                                                            prev.washTypeSettings || {};
+                                                          const selectedWashSettings =
+                                                            existing[value.id] || {};
+                                                          const isAlreadySelected =
+                                                            selectedWashSettings?.temperature
+                                                              ?.preferenceValueId ===
+                                                            tempValue.id;
+                                                          const nextSettings = {
+                                                            ...selectedWashSettings,
+                                                          };
+                                                          if (isAlreadySelected) {
+                                                            delete nextSettings.temperature;
+                                                          } else {
+                                                            nextSettings.temperature = {
+                                                              preferenceTypeId: getPreferenceId(
+                                                                temperaturePref
+                                                              ),
+                                                              preferenceTypeName:
+                                                                getPreferenceLabel(
+                                                                  temperaturePref
+                                                                ) || "Temperature",
+                                                              preferenceValueId: tempValue.id,
+                                                              value: tempValue.value,
+                                                            };
+                                                          }
+                                                          return {
+                                                            ...prev,
+                                                            washTypeSettings: {
+                                                              ...existing,
+                                                              [value.id]: nextSettings,
+                                                            },
+                                                          };
+                                                        })
+                                                      }
+                                                    >
+                                                      {tempValue.value}
+                                                    </button>
+                                                  );
+                                                }
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {detergentPref && (
+                                          <div>
+                                            <p className="pb-2 font-sf text-xs font-medium uppercase tracking-wide text-gray-500">
+                                              {getPreferenceLabel(detergentPref) || "Detergent"}
+                                            </p>
+                                            <div className="flex flex-wrap gap-2">
+                                              {getPreferenceValues(detergentPref).map(
+                                                (detergentValue) => {
+                                                  const isDetergentSelected =
+                                                    selectedSettings?.detergent
+                                                      ?.preferenceValueId ===
+                                                    detergentValue.id;
+                                                  return (
+                                                    <button
+                                                      key={detergentValue.id}
+                                                      type="button"
+                                                      className={`rounded-full border px-3 py-1.5 font-sf text-sm transition-colors ${
+                                                        isDetergentSelected
+                                                          ? "border-theme-blue bg-theme-blue text-white"
+                                                          : "border-gray-300 bg-white text-gray-900"
+                                                      }`}
+                                                      onClick={() =>
+                                                        setPreferences((prev) => {
+                                                          const existing =
+                                                            prev.washTypeSettings || {};
+                                                          const selectedWashSettings =
+                                                            existing[value.id] || {};
+                                                          const isAlreadySelected =
+                                                            selectedWashSettings?.detergent
+                                                              ?.preferenceValueId ===
+                                                            detergentValue.id;
+                                                          const nextSettings = {
+                                                            ...selectedWashSettings,
+                                                          };
+                                                          if (isAlreadySelected) {
+                                                            delete nextSettings.detergent;
+                                                          } else {
+                                                            nextSettings.detergent = {
+                                                              preferenceTypeId: getPreferenceId(
+                                                                detergentPref
+                                                              ),
+                                                              preferenceTypeName:
+                                                                getPreferenceLabel(
+                                                                  detergentPref
+                                                                ) || "Detergent",
+                                                              preferenceValueId:
+                                                                detergentValue.id,
+                                                              value: detergentValue.value,
+                                                            };
+                                                          }
+                                                          return {
+                                                            ...prev,
+                                                            washTypeSettings: {
+                                                              ...existing,
+                                                              [value.id]: nextSettings,
+                                                            },
+                                                          };
+                                                        })
+                                                      }
+                                                    >
+                                                      {detergentValue.value}
+                                                    </button>
+                                                  );
+                                                }
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        <div>
+                                          <div className="mb-2 flex flex-wrap items-center gap-2">
+                                            <span className="font-sf text-sm font-medium text-gray-700">
+                                              Preference Instruction
+                                            </span>
+                                            <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 font-sf text-xs text-gray-500">
+                                              Optional
+                                            </span>
+                                          </div>
+                                          <textarea
+                                            className="min-h-[100px] w-full resize-none rounded-2xl border border-gray-200 bg-white p-3 font-sf text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-theme-blue focus:ring-1 focus:ring-theme-blue"
+                                            placeholder="Add any special instructions for this wash type..."
+                                            value={
+                                              selectedSettings.preferenceInstruction ?? ""
+                                            }
+                                            onChange={(e) =>
+                                              setPreferences((prev) => {
+                                                const existing = prev.washTypeSettings || {};
+                                                const row = existing[value.id] || {};
+                                                return {
+                                                  ...prev,
+                                                  washTypeSettings: {
+                                                    ...existing,
+                                                    [value.id]: {
+                                                      ...row,
+                                                      preferenceInstruction: e.target.value,
+                                                    },
+                                                  },
+                                                };
+                                              })
+                                            }
+                                          />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {getPreferenceInstruction(pref) &&
+                            !(isWashTypePref && isDryCleanService) ? (
+                              <p className="font-sf text-sm text-theme-psGray leading-relaxed">
+                                {getPreferenceInstruction(pref)}
+                              </p>
+                            ) : null}
+                            <div className="space-y-3">
+                              {values.map((value) => {
+                                const isSelected = isWashTypePref
+                                  ? Array.isArray(currentPref) &&
+                                    currentPref.some(
+                                      (selectedValue) =>
+                                        selectedValue.preferenceValueId === value.id
+                                    )
+                                  : isMultiPref
+                                    ? Array.isArray(currentPref) &&
+                                      currentPref.some(
+                                        (selectedValue) =>
+                                          selectedValue.preferenceValueId === value.id
+                                      )
+                                    : currentPref?.preferenceValueId === value.id;
+
+                                const runToggle = () => {
                                   if (isWashTypePref) {
                                     setPreferences((prev) => {
-                                      const selectedWashTypes = Array.isArray(prev[prefKey])
+                                      const selectedWashTypes = Array.isArray(
+                                        prev[prefKey]
+                                      )
                                         ? prev[prefKey]
                                         : [];
                                       const alreadySelected = selectedWashTypes.some(
@@ -1042,9 +1410,10 @@ export default function Order() {
                                       const nextSettings = { ...existingSettings };
 
                                       if (!alreadySelected) {
-                                        nextSettings[value.id] = buildDefaultWashTypeSettings(
-                                          servicePreferencesData || []
-                                        );
+                                        nextSettings[value.id] =
+                                          buildDefaultWashTypeSettings(
+                                            servicePreferencesData || []
+                                          );
                                       }
                                       if (alreadySelected) {
                                         delete nextSettings[value.id];
@@ -1089,310 +1458,92 @@ export default function Order() {
                                     return;
                                   }
 
-                                  setPreferences((prev) => ({
-                                    ...prev,
-                                    [prefKey]: {
-                                      preferenceTypeId: getPreferenceId(pref),
-                                      preferenceTypeName:
-                                        getPreferenceLabel(pref) || prefKey,
-                                      preferenceValueId: value.id,
-                                      value: value.value,
-                                    },
-                                  }));
-                                }}
-                                className={`inline-flex max-w-full flex-col items-stretch rounded-2xl border-2 px-3.5 py-2 text-left font-sf text-xs font-medium leading-snug transition-all sm:text-sm ${
-                                  isSelected
-                                    ? "border-gray-800 bg-gray-100 text-gray-900 shadow-sm"
-                                    : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
-                                }`}
-                              >
-                                <span className="whitespace-normal">
-                                  {value.value}
-                                </span>
-                                {(value.temperature || value.meta) && (
-                                  <span className="mt-0.5 font-sf text-[10px] font-normal text-gray-500">
-                                    {value.temperature || value.meta}
-                                  </span>
-                                )}
-                                {(value.price != null || value.weight != null) && (
-                                  <span className="mt-0.5 font-sf text-[10px] font-normal text-gray-500">
-                                    {value.price != null && `£${value.price}`}
-                                    {value.price != null && value.weight != null && " · "}
-                                    {value.weight != null && `${value.weight}kg`}
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {isWashTypePref &&
-                          !isDryCleanService &&
-                          Array.isArray(currentPref) &&
-                          currentPref.length > 0 && (
-                            <div className="space-y-4 pt-2">
-                              <p className="font-sf text-base uppercase tracking-wide text-theme-psGray">
-                                Settings per wash type
-                              </p>
-                              {currentPref.map((selectedWashType) => {
-                                const temperaturePref = getSettingPreference(
-                                  servicePreferencesData,
-                                  isTemperaturePreference
-                                );
-                                const detergentPref = getSettingPreference(
-                                  servicePreferencesData,
-                                  isDetergentPreference
-                                );
-                                const selectedSettings =
-                                  preferences?.washTypeSettings?.[
-                                    selectedWashType.preferenceValueId
-                                  ] || {};
-                                const washInstrKey = String(
-                                  selectedWashType.preferenceValueId
-                                );
-                                const washInstrOpen =
-                                  washInstructionPanelOpen[washInstrKey];
-                                const washHasInstr = Boolean(
-                                  (selectedSettings.preferenceInstruction ?? "").trim()
-                                );
+                                  setPreferences((prev) => {
+                                    const current = prev[prefKey];
+                                    const alreadyThis =
+                                      current?.preferenceTypeId &&
+                                      current?.preferenceValueId === value.id;
+                                    if (alreadyThis) {
+                                      const next = { ...prev };
+                                      delete next[prefKey];
+                                      return next;
+                                    }
+                                    return {
+                                      ...prev,
+                                      [prefKey]: {
+                                        preferenceTypeId: getPreferenceId(pref),
+                                        preferenceTypeName:
+                                          getPreferenceLabel(pref) || prefKey,
+                                        preferenceValueId: value.id,
+                                        value: value.value,
+                                      },
+                                    };
+                                  });
+                                };
 
                                 return (
                                   <div
-                                    key={selectedWashType.preferenceValueId}
-                                    className="rounded-2xl border border-theme-gray-2 p-3"
+                                    key={value.id}
+                                    className={`overflow-hidden rounded-lg border-2 bg-white transition-colors ${
+                                      isSelected
+                                        ? "border-theme-blue shadow-sm"
+                                        : "border-gray-200"
+                                    }`}
                                   >
-                                    <p className="font-sf font-semibold text-lg pb-2">
-                                      {selectedWashType.value}
-                                    </p>
-
-                                    {temperaturePref && (
-                                      <div className="pb-2">
-                                        <p className="font-sf text-sm text-theme-psGray pb-1.5">
-                                          {getPreferenceLabel(temperaturePref) || "Temperature"}
-                                        </p>
-                                        {getPreferenceInstruction(temperaturePref) ? (
-                                          <p className="font-sf text-xs text-theme-psGray/90 pb-2 leading-relaxed">
-                                            {getPreferenceInstruction(temperaturePref)}
-                                          </p>
+                                    <div className="flex items-stretch gap-3 px-3 py-3.5">
+                                      <button
+                                        type="button"
+                                        aria-pressed={isSelected}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          runToggle();
+                                        }}
+                                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
+                                          isSelected
+                                            ? "border-theme-blue bg-theme-blue text-white"
+                                            : "border-gray-300 bg-white"
+                                        }`}
+                                      >
+                                        {isSelected ? (
+                                          <FaCheck className="h-3 w-3" aria-hidden />
                                         ) : null}
-                                        <div className="flex flex-wrap gap-2">
-                                          {getPreferenceValues(temperaturePref).map(
-                                            (tempValue) => {
-                                              const isTempSelected =
-                                                selectedSettings?.temperature
-                                                  ?.preferenceValueId === tempValue.id;
-                                              return (
-                                                <button
-                                                  key={tempValue.id}
-                                                  type="button"
-                                                  className={`rounded-full border px-2.5 py-1 font-sf text-xs ${
-                                                    isTempSelected
-                                                      ? "border-theme-blue bg-theme-blue text-white"
-                                                      : "border-theme-gray-2 bg-white text-theme-gray-3"
-                                                  }`}
-                                                  onClick={() =>
-                                                    setPreferences((prev) => {
-                                                      const existing =
-                                                        prev.washTypeSettings || {};
-                                                      const selectedWashSettings =
-                                                        existing[
-                                                          selectedWashType.preferenceValueId
-                                                        ] || {};
-                                                      const isAlreadySelected =
-                                                        selectedWashSettings?.temperature
-                                                          ?.preferenceValueId ===
-                                                        tempValue.id;
-                                                      const nextSettings = {
-                                                        ...selectedWashSettings,
-                                                      };
-                                                      if (isAlreadySelected) {
-                                                        delete nextSettings.temperature;
-                                                      } else {
-                                                        nextSettings.temperature = {
-                                                          preferenceTypeId: getPreferenceId(
-                                                            temperaturePref
-                                                          ),
-                                                          preferenceTypeName:
-                                                            getPreferenceLabel(
-                                                              temperaturePref
-                                                            ) || "Temperature",
-                                                          preferenceValueId: tempValue.id,
-                                                          value: tempValue.value,
-                                                        };
-                                                      }
-                                                      return {
-                                                        ...prev,
-                                                        washTypeSettings: {
-                                                          ...existing,
-                                                          [selectedWashType.preferenceValueId]:
-                                                            nextSettings,
-                                                        },
-                                                      };
-                                                    })
-                                                  }
-                                                >
-                                                  {tempValue.value}
-                                                </button>
-                                              );
-                                            }
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {detergentPref && (
-                                      <div>
-                                        <p className="font-sf text-sm text-theme-psGray pb-1.5">
-                                          {getPreferenceLabel(detergentPref) || "Detergent"}
-                                        </p>
-                                        {getPreferenceInstruction(detergentPref) ? (
-                                          <p className="font-sf text-xs text-theme-psGray/90 pb-2 leading-relaxed">
-                                            {getPreferenceInstruction(detergentPref)}
-                                          </p>
-                                        ) : null}
-                                        <div className="flex flex-wrap gap-2">
-                                          {getPreferenceValues(detergentPref).map(
-                                            (detergentValue) => {
-                                              const isDetergentSelected =
-                                                selectedSettings?.detergent
-                                                  ?.preferenceValueId ===
-                                                detergentValue.id;
-                                              return (
-                                                <button
-                                                  key={detergentValue.id}
-                                                  type="button"
-                                                  className={`rounded-full border px-4 py-1.5 font-sf text-sm ${
-                                                    isDetergentSelected
-                                                      ? "border-theme-blue bg-theme-blue text-white"
-                                                      : "border-theme-gray-2 bg-white text-theme-gray-3"
-                                                  }`}
-                                                  onClick={() =>
-                                                    setPreferences((prev) => {
-                                                      const existing =
-                                                        prev.washTypeSettings || {};
-                                                      const selectedWashSettings =
-                                                        existing[
-                                                          selectedWashType.preferenceValueId
-                                                        ] || {};
-                                                      const isAlreadySelected =
-                                                        selectedWashSettings?.detergent
-                                                          ?.preferenceValueId ===
-                                                        detergentValue.id;
-                                                      const nextSettings = {
-                                                        ...selectedWashSettings,
-                                                      };
-                                                      if (isAlreadySelected) {
-                                                        delete nextSettings.detergent;
-                                                      } else {
-                                                        nextSettings.detergent = {
-                                                          preferenceTypeId: getPreferenceId(
-                                                            detergentPref
-                                                          ),
-                                                          preferenceTypeName:
-                                                            getPreferenceLabel(
-                                                              detergentPref
-                                                            ) || "Detergent",
-                                                          preferenceValueId:
-                                                            detergentValue.id,
-                                                          value: detergentValue.value,
-                                                        };
-                                                      }
-                                                      return {
-                                                        ...prev,
-                                                        washTypeSettings: {
-                                                          ...existing,
-                                                          [selectedWashType.preferenceValueId]:
-                                                            nextSettings,
-                                                        },
-                                                      };
-                                                    })
-                                                  }
-                                                >
-                                                  {detergentValue.value}
-                                                </button>
-                                              );
-                                            }
-                                          )}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {(temperaturePref || detergentPref) && (
-                                      <div className="mt-3 border-t border-theme-gray-2/40 pt-3">
-                                        {!washInstrOpen ? (
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              setWashInstructionPanelOpen((prev) => ({
-                                                ...prev,
-                                                [washInstrKey]: true,
-                                              }))
-                                            }
-                                            className="rounded-full border border-theme-gray-2 bg-white px-2.5 py-1 font-sf text-xs font-medium text-theme-gray-3 transition hover:bg-theme-gray"
-                                          >
-                                            {washHasInstr
-                                              ? "Edit instruction"
-                                              : "Add instruction"}
-                                          </button>
-                                        ) : (
-                                          <>
-                                            <div className="mb-1.5 flex items-start justify-between gap-2">
-                                              <label className="block font-sf text-xs font-medium text-theme-gray-3">
-                                                Instructions for this wash type
-                                                <span className="font-normal text-theme-psGray">
-                                                  {" "}
-                                                  (optional)
-                                                </span>
-                                              </label>
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  setWashInstructionPanelOpen((prev) => ({
-                                                    ...prev,
-                                                    [washInstrKey]: false,
-                                                  }))
-                                                }
-                                                className="shrink-0 font-sf text-xs text-theme-psGray underline-offset-2 hover:text-theme-gray-3 hover:underline"
-                                              >
-                                                Hide
-                                              </button>
-                                            </div>
-                                            <textarea
-                                              className="mt-1.5 w-full h-24 resize-none rounded-lg bg-theme-gray p-3 font-sf text-sm text-theme-gray-2 outline-none"
-                                              placeholder="Add any notes for temperature, detergent, or other preferences for this wash…"
-                                              value={
-                                                selectedSettings.preferenceInstruction ?? ""
-                                              }
-                                              onChange={(e) =>
-                                                setPreferences((prev) => {
-                                                  const existing =
-                                                    prev.washTypeSettings || {};
-                                                  const row =
-                                                    existing[
-                                                      selectedWashType.preferenceValueId
-                                                    ] || {};
-                                                  return {
-                                                    ...prev,
-                                                    washTypeSettings: {
-                                                      ...existing,
-                                                      [selectedWashType.preferenceValueId]: {
-                                                        ...row,
-                                                        preferenceInstruction:
-                                                          e.target.value,
-                                                      },
-                                                    },
-                                                  };
-                                                })
-                                              }
-                                            />
-                                          </>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="flex min-w-0 flex-1 flex-col items-stretch gap-0.5 text-left"
+                                        onClick={() => runToggle()}
+                                      >
+                                        <span
+                                          className={`font-sf text-base ${
+                                            isSelected
+                                              ? "font-semibold text-theme-blue"
+                                              : "font-medium text-gray-900"
+                                          }`}
+                                        >
+                                          {value.value}
+                                        </span>
+                                        {(value.temperature || value.meta) && (
+                                          <span className="font-sf text-xs font-normal text-gray-500">
+                                            {value.temperature || value.meta}
+                                          </span>
                                         )}
-                                      </div>
-                                    )}
+                                        {(value.price != null || value.weight != null) && (
+                                          <span className="font-sf text-xs font-normal text-gray-500">
+                                            {value.price != null && `£${value.price}`}
+                                            {value.price != null &&
+                                              value.weight != null &&
+                                              " · "}
+                                            {value.weight != null && `${value.weight}kg`}
+                                          </span>
+                                        )}
+                                      </button>
+                                    </div>
                                   </div>
                                 );
                               })}
                             </div>
-                          )}
+                          </>
+                        )}
                       </div>
                     );
                   })}

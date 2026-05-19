@@ -1,9 +1,9 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Header from "../../../../components/Header";
-import { useRouter, useSearchParams } from "next/navigation";
-import { MdArrowBackIos, MdOutlineDryCleaning } from "react-icons/md";
-import { TbIroning, TbIroningSteam, TbWash } from "react-icons/tb";
+import ServiceChip from "../../../../components/ServiceChip";
+import { useSearchParams } from "next/navigation";
+import { MdArrowBackIos } from "react-icons/md";
 import { FaPlus, FaMinus, FaTrash } from "react-icons/fa6";
 import Footer from "../../../../components/Footer";
 import HomeClientWrapper from "../../../../utilities/Test";
@@ -12,16 +12,8 @@ import { useDispatch } from "react-redux";
 import { setPage } from "@/app/store/slices/cartItemSlice";
 import { useGetServiceDetailsQuery } from "@/app/store/services/api";
 import { MiniLoader } from "../../../../components/Loader";
-export const dynamic = "force-dynamic";
 
-// Map backend serviceId → icon + colour tokens
-const SERVICE_CONFIG = {
-  1: { Icon: TbWash, bannerBg: "bg-[#0890F1]", iconBg: "bg-theme-blue-2" },
-  2: { Icon: TbIroningSteam, bannerBg: "bg-card-pink", iconBg: "bg-card-pink" },
-  3: { Icon: MdOutlineDryCleaning, bannerBg: "bg-card-green", iconBg: "bg-card-green" },
-  4: { Icon: TbIroning, bannerBg: "bg-[#FFD06D]", iconBg: "bg-[#FFD06D]" },
-};
-const DEFAULT_CONFIG = { Icon: TbWash, bannerBg: "bg-theme-blue", iconBg: "bg-theme-blue-2" };
+export const dynamic = "force-dynamic";
 
 export default function ServiceDetail() {
   const searchParams = useSearchParams();
@@ -34,6 +26,7 @@ export default function ServiceDetail() {
   const [selectedServiceId, setSelectedServiceId] = useState(
     urlId ? Number(urlId) : null
   );
+
   useEffect(() => {
     if (!selectedServiceId && services.length > 0) {
       setSelectedServiceId(services[0].serviceId);
@@ -41,8 +34,6 @@ export default function ServiceDetail() {
   }, [services, selectedServiceId]);
 
   const [activeTab, setActiveTab] = useState(1);
-
-  // cartItems: { id, name, price, quantity, categoryName, serviceId }
   const [cartItems, setCartItems] = useState([]);
 
   const addToCart = (subCat, categoryName, serviceId) => {
@@ -85,15 +76,10 @@ export default function ServiceDetail() {
     setCartItems((prev) => prev.filter((i) => !(i.id === id && i.serviceId === serviceId)));
   };
 
-  const estimatedTotal = cartItems.reduce(
-    (sum, i) => sum + i.price * i.quantity,
-    0
-  );
+  const estimatedTotal = cartItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   const selectedService =
     services.find((s) => s.serviceId === selectedServiceId) ?? services[0];
-  const cfg = SERVICE_CONFIG[selectedServiceId] ?? DEFAULT_CONFIG;
-  const { Icon, bannerBg, iconBg } = cfg;
 
   return (
     <HomeClientWrapper>
@@ -108,211 +94,215 @@ export default function ServiceDetail() {
               <Header type="service" />
             </div>
 
-            <div className="w-full max-w-[1290px] mx-auto font-sf px-5 sm:px-[45px] pt-20 sm:pt-[90px] lg:pt-20">
-              {/* Back link */}
+            <div className="w-full max-w-[1290px] mx-auto font-sf px-5 sm:px-[45px] pt-20 sm:pt-24 pb-12 lg:pb-16">
               <Link
                 href="/pricing"
                 onClick={() => dispatch(setPage(true))}
-                className="flex items-center gap-2 mb-[40px]"
+                className="inline-flex items-center gap-2 mb-6 sm:mb-8 text-black hover:opacity-70 transition-opacity"
               >
-                <MdArrowBackIos size={20} />
-                <p className="text-xl">Service List</p>
+                <MdArrowBackIos size={18} />
+                <span className="font-sf text-base sm:text-lg">Service List</span>
               </Link>
 
-              {/* Dynamic service tabs */}
-              <div
-                className="grid gap-3"
-                style={{
-                  gridTemplateColumns: `repeat(${Math.min(services.length, 5)}, minmax(0, 1fr))`,
-                }}
-              >
-                {services.map((svc) => {
-                  const tabCfg = SERVICE_CONFIG[svc.serviceId] ?? DEFAULT_CONFIG;
-                  const TabIcon = tabCfg.Icon;
-                  const isActive = svc.serviceId === selectedServiceId;
-                  return (
-                    <div
-                      key={svc.serviceId}
-                      onClick={() => {
-                        setSelectedServiceId(svc.serviceId);
-                        setActiveTab(1);
-                      }}
-                      className={`flex h-[56px] items-center gap-x-3 cursor-pointer rounded px-2 border-2 border-theme-gray transition-colors ${
-                        isActive ? "bg-theme-blue text-white" : "text-black"
-                      }`}
-                    >
-                      <div className={`${tabCfg.iconBg} rounded-full shrink-0 size-10 flex justify-center items-center`}>
-                        <TabIcon size="25" />
-                      </div>
-                      <p className="font-semibold text-lg truncate">{svc.service.name}</p>
-                    </div>
-                  );
-                })}
+              <div className="flex flex-wrap gap-2 sm:gap-3 mb-8 sm:mb-10 overflow-x-auto pb-1">
+                {services.map((svc) => (
+                  <ServiceChip
+                    key={svc.serviceId}
+                    label={svc.service.name}
+                    isSelected={svc.serviceId === selectedServiceId}
+                    onClick={() => {
+                      setSelectedServiceId(svc.serviceId);
+                      setActiveTab(1);
+                    }}
+                  />
+                ))}
               </div>
 
-              {/* Banner */}
-              {selectedService && (
-                <div className="w-full rounded-none bg-[#BAEBFF] flex justify-between items-center px-4 py-4 my-8 gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="font-youth font-bold text-2xl sm:text-3xl text-theme-blue leading-tight">
-                      {selectedService.service.name}
-                    </h4>
-                    <p className="text-sm sm:text-base text-theme-darkBlue mt-1">
-                      {selectedService.service.description}
-                    </p>
-                  </div>
-                  <div className={`${bannerBg} rounded-full shrink-0 size-20 flex justify-center items-center`}>
-                    <Icon size="55" />
-                  </div>
-                </div>
-              )}
-
-              {/* Two-column layout: items list + cart card */}
-              <div className="flex flex-col lg:flex-row gap-8 items-start">
-
-                {/* LEFT — Prices / About Service */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-5 mb-2">
-                    <p
+              <div className="flex flex-col lg:flex-row gap-8 lg:gap-10 items-start">
+                <div className="flex-1 min-w-0 w-full">
+                  <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 mb-6 sm:mb-8">
+                    <button
+                      type="button"
                       onClick={() => setActiveTab(1)}
-                      className={`text-xl font-semibold cursor-pointer ${activeTab === 1 ? "underline underline-offset-4" : ""}`}
+                      className={`font-youth font-bold text-3xl sm:text-4xl text-left transition-colors ${
+                        activeTab === 1 ? "text-black" : "text-theme-psGray hover:text-black"
+                      }`}
                     >
                       Prices
-                    </p>
-                    <p
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setActiveTab(2)}
-                      className={`text-xl font-semibold cursor-pointer ${activeTab === 2 ? "underline underline-offset-4" : ""}`}
+                      className={`font-sf text-base sm:text-lg transition-colors ${
+                        activeTab === 2
+                          ? "text-black font-semibold underline underline-offset-4"
+                          : "text-theme-psGray hover:text-black"
+                      }`}
                     >
                       About Service
-                    </p>
+                    </button>
                   </div>
 
-                  {/* Prices tab */}
                   {activeTab === 1 && (
                     <>
                       {selectedService?.categories?.length ? (
                         selectedService.categories.map((cat, idx) => (
-                          <div key={cat.categoryId ?? idx} className="my-6 border-b-2 border-theme-gray">
-                            <p className="text-xl font-bold mb-2 text-theme-blue font-youth">
+                          <div
+                            key={cat.categoryId ?? idx}
+                            className="border-b border-theme-gray pb-6 mb-6 last:mb-0"
+                          >
+                            <h2 className="font-youth font-bold text-xl sm:text-2xl text-black mb-4">
                               {cat.category.name}
-                            </p>
+                            </h2>
                             {cat.subCategories?.length ? (
-                              cat.subCategories.map((subCat) => {
-                                const cartItem = cartItems.find(
-                                  (i) => i.id === subCat.id && i.serviceId === selectedServiceId
-                                );
-                                return (
-                                  <div key={subCat.id} className="flex justify-between items-center my-5">
-                                    <div>
-                                      <h4 className="text-2xl">{subCat.name}</h4>
-                                      <p className="text-xl text-theme-psGray">
-                                        {cat.category.description?.trim() || "Professional care for your garments."}
-                                      </p>
-                                    </div>
-                                    <div className="flex gap-4 items-center shrink-0">
-                                      <p className="font-semibold text-lg">
-                                        ${parseFloat(subCat.price).toFixed(2)}
-                                      </p>
-                                      {cartItem ? (
-                                        <div className="flex items-center gap-2">
+                              <div className="space-y-5">
+                                {cat.subCategories.map((subCat) => {
+                                  const cartItem = cartItems.find(
+                                    (i) =>
+                                      i.id === subCat.id &&
+                                      i.serviceId === selectedServiceId
+                                  );
+                                  return (
+                                    <div
+                                      key={subCat.id}
+                                      className="flex justify-between items-start gap-4"
+                                    >
+                                      <div className="flex-1 min-w-0">
+                                        <h3 className="font-sf font-semibold text-base sm:text-lg text-black">
+                                          {subCat.name}
+                                        </h3>
+                                        <p className="font-sf text-sm text-theme-psGray mt-1 leading-snug">
+                                          {cat.category.description?.trim() ||
+                                            "Professional care for your garments."}
+                                        </p>
+                                      </div>
+                                      <div className="flex gap-3 sm:gap-4 items-center shrink-0">
+                                        <p className="font-sf font-semibold text-base sm:text-lg text-black">
+                                          ${parseFloat(subCat.price).toFixed(2)}
+                                        </p>
+                                        {cartItem ? (
+                                          <div className="flex items-center gap-2">
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                changeQty(subCat.id, selectedServiceId, -1)
+                                              }
+                                              className="rounded-lg border border-theme-gray flex justify-center items-center size-9 sm:size-10 hover:bg-theme-gray transition-colors"
+                                            >
+                                              <FaMinus size={12} />
+                                            </button>
+                                            <span className="w-6 text-center font-semibold text-base">
+                                              {cartItem.quantity}
+                                            </span>
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                changeQty(subCat.id, selectedServiceId, 1)
+                                              }
+                                              className="rounded-lg border border-theme-gray flex justify-center items-center size-9 sm:size-10 hover:bg-theme-gray transition-colors"
+                                            >
+                                              <FaPlus size={12} />
+                                            </button>
+                                          </div>
+                                        ) : (
                                           <button
-                                            onClick={() => changeQty(subCat.id, selectedServiceId, -1)}
-                                            className="rounded-lg border-2 border-theme-gray flex justify-center items-center size-10 hover:bg-theme-gray transition-colors"
+                                            type="button"
+                                            onClick={() =>
+                                              addToCart(
+                                                subCat,
+                                                cat.category.name,
+                                                selectedServiceId
+                                              )
+                                            }
+                                            className="rounded-lg border border-theme-gray flex justify-center items-center size-10 sm:size-11 hover:bg-theme-gray transition-colors text-black"
                                           >
-                                            <FaMinus size={14} />
+                                            <FaPlus size={18} />
                                           </button>
-                                          <span className="w-6 text-center font-semibold text-lg">
-                                            {cartItem.quantity}
-                                          </span>
-                                          <button
-                                            onClick={() => changeQty(subCat.id, selectedServiceId, 1)}
-                                            className="rounded-lg border-2 border-theme-gray flex justify-center items-center size-10 hover:bg-theme-gray transition-colors"
-                                          >
-                                            <FaPlus size={14} />
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <button
-                                          onClick={() => addToCart(subCat, cat.category.name, selectedServiceId)}
-                                          className="rounded-lg border-2 border-theme-gray flex justify-center items-center font-semibold size-12 hover:bg-theme-gray transition-colors"
-                                        >
-                                          <FaPlus size={25} />
-                                        </button>
-                                      )}
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                );
-                              })
+                                  );
+                                })}
+                              </div>
                             ) : (
-                              <p className="text-theme-psGray text-lg my-4">
-                                {cat.category.description?.trim() || "Pricing available on request."}
+                              <p className="font-sf text-sm text-theme-psGray">
+                                {cat.category.description?.trim() ||
+                                  "Pricing available on request."}
                               </p>
                             )}
                           </div>
                         ))
                       ) : (
-                        <p className="text-theme-psGray text-lg mt-6">
+                        <p className="font-sf text-base text-theme-psGray">
                           No pricing available for this service yet.
                         </p>
                       )}
                     </>
                   )}
 
-                  {/* About Service tab */}
                   {activeTab === 2 && (
-                    <div className="mt-6 space-y-4">
-                      <p className="text-xl text-black/80 leading-relaxed">
+                    <div className="space-y-4">
+                      <p className="font-sf text-base sm:text-lg text-theme-psGray leading-relaxed">
                         {selectedService?.service?.description}
                       </p>
                       {selectedService?.categories?.length > 0 && (
-                        <div className="space-y-3 mt-4">
-                          <h4 className="font-semibold text-lg">Available categories:</h4>
-                          <ul className="list-disc pl-5 space-y-1 text-black/70 text-base">
+                        <div className="space-y-3">
+                          <h2 className="font-youth font-bold text-xl text-black">
+                            Available categories
+                          </h2>
+                          <ul className="list-disc pl-5 space-y-1 font-sf text-base text-theme-psGray">
                             {selectedService.categories.map((cat) => (
                               <li key={cat.categoryId}>{cat.category.name}</li>
                             ))}
                           </ul>
                         </div>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab(1)}
+                        className="font-sf text-base text-theme-blue underline underline-offset-4"
+                      >
+                        View prices
+                      </button>
                     </div>
                   )}
-
                 </div>
 
-                {/* RIGHT — Order summary card (sticky) */}
                 <div className="w-full lg:w-[340px] xl:w-[380px] shrink-0">
                   <div className="sticky top-24 rounded-2xl border border-theme-gray shadow-theme-shadow-light overflow-hidden">
-                    {/* Card header */}
                     <div className="bg-theme-gray px-5 py-4">
-                      <h4 className="font-youth font-bold text-lg text-black">
+                      <h2 className="font-youth font-bold text-lg text-black">
                         Order Summary
-                      </h4>
+                      </h2>
                       {cartItems.length > 0 && (
-                        <p className="text-sm text-black/60 mt-0.5">
+                        <p className="text-sm text-black/60 mt-0.5 font-sf">
                           {cartItems.reduce((s, i) => s + i.quantity, 0)} item
                           {cartItems.reduce((s, i) => s + i.quantity, 0) !== 1 ? "s" : ""}
                         </p>
                       )}
                     </div>
 
-                    {/* Card body */}
                     <div className="px-5 py-4 bg-white min-h-[120px]">
                       {cartItems.length === 0 ? (
-                        <p className="text-black/40 text-base text-center py-6">
+                        <p className="text-black/40 text-base text-center py-6 font-sf">
                           Add items to see your estimate
                         </p>
                       ) : (
                         <ul className="space-y-4">
                           {cartItems.map((item) => (
-                            <li key={`${item.serviceId}-${item.id}`} className="flex items-start gap-3">
+                            <li
+                              key={`${item.serviceId}-${item.id}`}
+                              className="flex items-start gap-3"
+                            >
                               <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-sm leading-tight">{item.name}</p>
+                                <p className="font-semibold text-sm leading-tight">
+                                  {item.name}
+                                </p>
                                 <p className="text-xs text-black/50">{item.categoryName}</p>
                               </div>
-
-                              {/* Qty controls */}
                               <div className="flex items-center gap-1.5 shrink-0">
                                 <button
+                                  type="button"
                                   onClick={() => changeQty(item.id, item.serviceId, -1)}
                                   className="size-7 rounded border border-theme-gray flex justify-center items-center hover:bg-theme-gray transition-colors"
                                 >
@@ -322,19 +312,19 @@ export default function ServiceDetail() {
                                   {item.quantity}
                                 </span>
                                 <button
+                                  type="button"
                                   onClick={() => changeQty(item.id, item.serviceId, 1)}
                                   className="size-7 rounded border border-theme-gray flex justify-center items-center hover:bg-theme-gray transition-colors"
                                 >
                                   <FaPlus size={10} />
                                 </button>
                               </div>
-
-                              {/* Line total + remove */}
                               <div className="flex items-center gap-2 shrink-0">
                                 <span className="text-sm font-semibold w-14 text-right">
                                   ${(item.price * item.quantity).toFixed(2)}
                                 </span>
                                 <button
+                                  type="button"
                                   onClick={() => removeItem(item.id, item.serviceId)}
                                   className="text-black/30 hover:text-red-500 transition-colors"
                                 >
@@ -347,10 +337,9 @@ export default function ServiceDetail() {
                       )}
                     </div>
 
-                    {/* Totals + CTA */}
                     {cartItems.length > 0 && (
-                      <div className="border-t border-theme-gray px-5 py-4 bg-white space-y-3">
-                        <div className="flex justify-between items-center text-base font-semibold">
+                      <div className="border-t border-theme-gray px-5 py-4 bg-white">
+                        <div className="flex justify-between items-center font-sf text-base font-semibold">
                           <span>Estimated Total</span>
                           <span className="text-theme-blue text-lg">
                             ${estimatedTotal.toFixed(2)}
@@ -360,7 +349,6 @@ export default function ServiceDetail() {
                     )}
                   </div>
                 </div>
-
               </div>
             </div>
           </div>

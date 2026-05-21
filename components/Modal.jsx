@@ -71,7 +71,7 @@ const ReusableModal = ({
         },
       }}
     >
-      <ModalContent className="overflow-hidden">
+      <ModalContent className="overflow-hidden bg-white">
         {(onCloseModal) => (
           <>
             {showHeader && (

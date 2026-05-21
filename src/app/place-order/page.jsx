@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import InputHeroUi from "../../../components/InputHeroUi";
 import { ButtonYouth70018 } from "../../../components/Buttons";
 import { PiArrowRight } from "react-icons/pi";
@@ -15,7 +15,18 @@ import { useRouter } from "next/navigation";
 import { generateCollectionSlots } from "../../../utilities/generateSlots";
 import { useDispatch, useSelector } from "react-redux";
 import { setOrderData, setPage } from "../store/slices/cartItemSlice";
-import { useGetAllAddressQuery, useLazyGetAddressesByPostcodeQuery } from "../store/services/api";
+import {
+  useGetAllAddressQuery,
+  useGetServicesQuery,
+  useLazyGetAddressesByPostcodeQuery,
+} from "../store/services/api";
+import {
+  buildDeliveryUpdateForMinDate,
+  formatIsoDateLong,
+  getMinDeliveryDate,
+  getMaxTurnaroundDays,
+  getTurnaroundConflict,
+} from "../../../utilities/turnaroundTime";
 import Link from "next/link";
 import Header from "../../../components/Header";
 import HomeClientWrapper from "../../../utilities/Test";
@@ -38,6 +49,8 @@ const delivery = [
 export default function orderRegistration() {
   const router = useRouter();
   const orderData = useSelector((state) => state.cart.orderData);
+  const preferencesData = useSelector((state) => state.cart.preferences) || [];
+  const { data: servicesApiData } = useGetServicesQuery();
   const isRescheduleFlow = Boolean(orderData?.rescheduleData?.isReschedule);
   const state = history.state?.customData?.step || null;
   const dispatch = useDispatch();
@@ -54,6 +67,30 @@ export default function orderRegistration() {
   });
   const [modalScroll, setModalScroll] = useState(false);
   const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  const [turnaroundModal, setTurnaroundModal] = useState({
+    open: false,
+    minDeliveryDate: "",
+    maxDays: 0,
+    serviceLabels: [],
+  });
+  const [proceedAfterTurnaroundAccept, setProceedAfterTurnaroundAccept] =
+    useState(false);
+
+  const cartServiceIds = useMemo(() => {
+    const ids = new Set();
+    preferencesData.forEach((item) => {
+      if (item?.serviceId) ids.add(Number(item.serviceId));
+    });
+    return [...ids];
+  }, [preferencesData]);
+
+  const serviceList = servicesApiData?.data?.serviceData ?? [];
+
+  const { maxDays: cartMaxTurnaroundDays } = useMemo(
+    () => getMaxTurnaroundDays(serviceList, cartServiceIds),
+    [serviceList, cartServiceIds]
+  );
+
   const isPostcodeDisabled = true;
   const clientTimeZone =
     Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
@@ -171,6 +208,11 @@ export default function orderRegistration() {
     addressType: "dropOff",
   });
 
+  const minDeliveryForCart = useMemo(() => {
+    if (!collectionData?.collectionDate) return "";
+    return getMinDeliveryDate(collectionData.collectionDate, cartMaxTurnaroundDays);
+  }, [collectionData?.collectionDate, cartMaxTurnaroundDays]);
+
   // Parse time string to minutes since midnight for comparison (handles "1:00 PM", "10:00 AM", or "13:00:00")
   const parseTimeToMinutes = (timeStr) => {
     if (!timeStr || typeof timeStr !== "string") return 0;
@@ -214,7 +256,19 @@ export default function orderRegistration() {
     return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
   };
 
-  // Delivery date must be strictly after collection date
+  // Delivery date must be on or after minimum (collection + turnaround when applicable)
+  const isDeliveryBeforeMinimum = useMemo(() => {
+    if (!collectionData?.collectionDate || !deliveryData?.deliveryDate) return false;
+    const minStr =
+      minDeliveryForCart ||
+      getMinDeliveryDate(collectionData.collectionDate, 0);
+    return deliveryData.deliveryDate < minStr;
+  }, [
+    collectionData?.collectionDate,
+    deliveryData?.deliveryDate,
+    minDeliveryForCart,
+  ]);
+
   const isDeliverySameOrBeforeCollection =
     !!collectionData?.collectionDate &&
     !!deliveryData?.deliveryDate &&
@@ -600,14 +654,16 @@ export default function orderRegistration() {
     }
   }, [modal?.modType, deliveryData?.deliveryDate]);
 
-  // If delivery date is missing or before collection, snap to first delivery day after pickup (ISO string compare).
+  // If delivery date is missing or before minimum (collection + turnaround), snap forward.
   useEffect(() => {
     if (!collectionData?.collectionDate || !slotsDelivery?.length) return;
-    const collectionStr = collectionData.collectionDate;
-    const firstValid = slotsDelivery.find((slot) => slot.date > collectionStr);
+    const minStr =
+      minDeliveryForCart ||
+      getMinDeliveryDate(collectionData.collectionDate, 0);
+    const firstValid = slotsDelivery.find((slot) => slot.date >= minStr);
     if (!firstValid) return;
     const deliveryStr = deliveryData?.deliveryDate || "";
-    const invalid = !deliveryStr || deliveryStr < collectionStr;
+    const invalid = !deliveryStr || deliveryStr < minStr;
     if (!invalid) return;
     setDeliveryData((prev) => ({
       ...prev,
@@ -616,7 +672,16 @@ export default function orderRegistration() {
       deliveryTimeTo: firstValid.timeSlots?.[0]?.end || prev.deliveryTimeTo,
       availableTimeSlots: firstValid.timeSlots || [],
     }));
-  }, [collectionData?.collectionDate, slotsDelivery]);
+  }, [collectionData?.collectionDate, slotsDelivery, minDeliveryForCart]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (sessionStorage.getItem("openDeliveryDateModal") === "1") {
+      sessionStorage.removeItem("openDeliveryDateModal");
+      setModal({ modType: "delivery-date" });
+      onOpen();
+    }
+  }, [onOpen]);
 
   // Same day: if delivery time is before collection end, reset to first valid delivery slot
   useEffect(() => {
@@ -685,7 +750,7 @@ export default function orderRegistration() {
     setShowAddressDropdown(false);
   };
 
-  const handleProceedToCheckout = async () => {
+  const finishProceedToCheckout = async () => {
     const lat = collectionData?.lat;
     const lng = collectionData?.lng;
 
@@ -761,6 +826,53 @@ export default function orderRegistration() {
     setStep("");
     onClose();
     router.push("/checkout/order");
+  };
+
+  const handleProceedToCheckout = async () => {
+    if (cartServiceIds.length > 0) {
+      const check = getTurnaroundConflict({
+        serviceList,
+        serviceIds: cartServiceIds,
+        collectionDate: collectionData?.collectionDate,
+        deliveryDate: deliveryData?.deliveryDate,
+      });
+      if (check.conflict) {
+        setTurnaroundModal({
+          open: true,
+          minDeliveryDate: check.minDeliveryDate,
+          maxDays: check.maxDays,
+          serviceLabels: check.serviceLabels,
+        });
+        setProceedAfterTurnaroundAccept(true);
+        return;
+      }
+    }
+    await finishProceedToCheckout();
+  };
+
+  const handleAcceptTurnaroundOnPlaceOrder = () => {
+    const update = buildDeliveryUpdateForMinDate(
+      slotsDelivery,
+      collectionData?.collectionDate,
+      collectionData?.collectionTimeTo,
+      turnaroundModal.minDeliveryDate,
+      parseTimeToMinutes
+    );
+    if (update) {
+      setDeliveryData((prev) => ({ ...prev, ...update }));
+    }
+    setTurnaroundModal((prev) => ({ ...prev, open: false }));
+    if (proceedAfterTurnaroundAccept) {
+      setProceedAfterTurnaroundAccept(false);
+      void finishProceedToCheckout();
+    }
+  };
+
+  const handleChangeDeliveryFromTurnaround = () => {
+    setTurnaroundModal((prev) => ({ ...prev, open: false }));
+    setProceedAfterTurnaroundAccept(false);
+    setModal({ modType: "delivery-date" });
+    onOpen();
   };
 
   // Show dropdown when addresses are loaded
@@ -1144,6 +1256,7 @@ export default function orderRegistration() {
                         text={isCheckingZone ? "Checking..." : "Continue"}
                         isDisabled={
                           isCheckingZone ||
+                          isDeliveryBeforeMinimum ||
                           isDeliverySameOrBeforeCollection ||
                           isSameDayDeliveryBeforeCollection ||
                           !collectionData?.collectionDate ||
@@ -1492,9 +1605,15 @@ export default function orderRegistration() {
                   <div className="flex gap-5 items-center font-sf overflow-x-auto pb-2 -mx-1 px-1 flex-nowrap [scrollbar-width:thin]">
                     <div className="flex gap-5 items-center font-sf flex-nowrap">
                       {(collectionData?.collectionDate
-                        ? slotsDelivery?.filter(
-                            (item) => item.date > collectionData.collectionDate
-                          )
+                        ? slotsDelivery?.filter((item) => {
+                            const minStr =
+                              minDeliveryForCart ||
+                              getMinDeliveryDate(
+                                collectionData.collectionDate,
+                                0
+                              );
+                            return item.date >= minStr;
+                          })
                         : slotsDelivery
                       )?.map((item, idx) => {
                         return (
@@ -1682,6 +1801,55 @@ export default function orderRegistration() {
           ) : (
             ""
           )}
+        </ReusableModal>
+
+        <ReusableModal
+          isOpen={turnaroundModal.open}
+          onOpenChange={(open) => {
+            if (!open) {
+              setTurnaroundModal((prev) => ({ ...prev, open: false }));
+              setProceedAfterTurnaroundAccept(false);
+            }
+          }}
+          showHeader
+          headerTitle="Delivery date update"
+          showFooter
+          footerContent={
+            <div className="w-full flex flex-col gap-3 px-6 pb-6">
+              <ButtonYouth70018
+                size="compact"
+                text="Use suggested date"
+                onClick={handleAcceptTurnaroundOnPlaceOrder}
+              />
+              <ButtonYouth70018
+                size="compact"
+                variant="outline"
+                text="Change delivery date"
+                onClick={handleChangeDeliveryFromTurnaround}
+              />
+            </div>
+          }
+        >
+          <div className="px-6 py-4 font-sf text-base text-theme-psGray space-y-3">
+            <p>
+              Your selected services need more time
+              {turnaroundModal.maxDays
+                ? ` (${turnaroundModal.maxDays} day${turnaroundModal.maxDays > 1 ? "s" : ""})`
+                : ""}
+              .
+            </p>
+            {turnaroundModal.serviceLabels?.length > 0 && (
+              <p className="font-medium text-gray-900">
+                {turnaroundModal.serviceLabels.join(", ")}
+              </p>
+            )}
+            <p>
+              Earliest delivery:{" "}
+              <span className="font-semibold text-gray-900">
+                {formatIsoDateLong(turnaroundModal.minDeliveryDate)}
+              </span>
+            </p>
+          </div>
         </ReusableModal>
       </GoogleMapsProvider>
     </HomeClientWrapper>

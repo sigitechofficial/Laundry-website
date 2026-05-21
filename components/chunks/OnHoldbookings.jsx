@@ -2,15 +2,21 @@
 import {
   useGetOnHoldBookingByIdQuery,
   useGetOnHoldBookingsQuery,
+  useGetOnHoldCustomerShowQuery,
   useUpdateOnHoldBookingMutation,
 } from "@/app/store/services/api";
 import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
 import Loader, { MiniLoader } from "../Loader";
 import ReusableModal from "../Modal";
-import { useDisclosure } from "@heroui/react";
+import { useDisclosure, addToast } from "@heroui/react";
+import { clearCartData, setPage } from "@/app/store/slices/cartItemSlice";
 import { BASE_URL } from "../../utilities/URL";
 
 export default function OnHoldbookings() {
+  const router = useRouter();
+  const dispatch = useDispatch();
   const { data, isLoading, refetch: refetchList } = useGetOnHoldBookingsQuery();
 
   const [updateOnHoldBooking, { isLoading: updateBookingLoading }] =
@@ -34,6 +40,18 @@ export default function OnHoldbookings() {
     skip: !manageOrder?.orderId,
   });
 
+  const { data: onHoldOptionData } = useGetOnHoldCustomerShowQuery(
+    manageOrder?.orderId,
+    { skip: !manageOrder?.orderId || !isOpen }
+  );
+
+  const holdOptionLabels = onHoldOptionData?.data ?? {};
+  const confirmLabel =
+    holdOptionLabels?.conformationText?.trim() || "Yes, I accept and proceed";
+  const declineLabel =
+    holdOptionLabels?.notConfirmText?.trim() || "No, I want a recheck";
+  const otherLabel = holdOptionLabels?.otherText?.trim() || "Other";
+
   const holdItems = useMemo(
     () => onHoldBookingById?.data?.onHoldBookings || [],
     [onHoldBookingById]
@@ -45,11 +63,14 @@ export default function OnHoldbookings() {
     for (const itm of holdItems) {
       next[itm.id] = {
         selected: false,
-        customerResponse:
+        responseChoice:
           typeof itm?.customerResponse === "boolean"
             ? itm.customerResponse
+              ? "yes"
+              : "no"
             : null,
         note: "",
+        otherText: "",
       };
     }
     setResponsesById(next);
@@ -66,10 +87,10 @@ export default function OnHoldbookings() {
       [id]: { ...s[id], selected: !s[id]?.selected },
     }));
 
-  const setResponse = (id, val) =>
+  const setResponseChoice = (id, choice) =>
     setResponsesById((s) => ({
       ...s,
-      [id]: { ...s[id], customerResponse: val },
+      [id]: { ...s[id], responseChoice: choice },
     }));
 
   const setNote = (id, val) =>
@@ -78,31 +99,47 @@ export default function OnHoldbookings() {
       [id]: { ...s[id], note: val },
     }));
 
-  async function handleSubmitUpdate() {
-    if (!manageOrder?.orderId) return;
+  const setOtherText = (id, val) =>
+    setResponsesById((s) => ({
+      ...s,
+      [id]: { ...s[id], otherText: val },
+    }));
+
+  const buildResponsesPayload = () => {
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
     const responses = Object.entries(responsesById)
-      .filter(([, v]) => v.selected && typeof v.customerResponse === "boolean")
-      .map(([onHoldId, v]) => ({
-        onHoldId: Number(onHoldId),
-        customerResponse: v.customerResponse === true,
-      }));
+      .filter(([, v]) => v.selected && v.responseChoice)
+      .map(([onHoldId, v]) => {
+        const entry = {
+          onHoldId: Number(onHoldId),
+          customerResponse: v.responseChoice === "yes",
+        };
+        const noteText =
+          v.responseChoice === "other"
+            ? v.otherText?.trim()
+            : v.responseChoice === "no"
+              ? v.note?.trim()
+              : "";
+        if (noteText) entry.note = noteText;
+        return entry;
+      });
 
-    if (!responses.length) return;
-
-    const payloadObject = {
-      bookingId: Number(manageOrder.orderId),
+    return {
       timeZone,
       responses,
+      payloadObject: {
+        bookingId: Number(manageOrder.orderId),
+        timeZone,
+        responses,
+      },
     };
+  };
 
+  async function submitOnHoldResponses(payloadObject) {
     const payloadArray = [payloadObject];
-
     try {
       await updateOnHoldBooking(payloadObject).unwrap();
-      await Promise.all([refetchList(), refetchById()]);
-      onClose();
+      return true;
     } catch (e) {
       const serverMsg =
         e?.data?.message || e?.data?.error || e?.error || e?.message || "";
@@ -113,26 +150,64 @@ export default function OnHoldbookings() {
       if (looksLikeArrayRequired) {
         try {
           await updateOnHoldBooking(payloadArray).unwrap();
-          await Promise.all([refetchList(), refetchById()]);
-          onClose();
-          return;
+          return true;
         } catch (e2) {
           console.error("Update failed (array payload):", e2);
+          throw e2;
         }
-      } else {
-        console.error("Update failed (object payload):", e);
       }
+      throw e;
     }
   }
 
-  const selectedIds = Object.entries(responsesById).filter(
-    ([, v]) => v.selected
-  );
-  const anySelectedWithoutResponse = selectedIds.some(
-    ([, v]) => typeof v.customerResponse !== "boolean"
-  );
+  async function handleFooterContinue() {
+    if (!manageOrder?.orderId) return;
+
+    const selectedEntries = Object.entries(responsesById).filter(([, v]) => v.selected);
+    if (!selectedEntries.length) return;
+
+    const { payloadObject, responses } = buildResponsesPayload();
+    if (!responses.length) return;
+
+    const allYes = selectedEntries.every(([, v]) => v.responseChoice === "yes");
+    const shouldCreateNewOrder = allYes;
+
+    try {
+      await submitOnHoldResponses(payloadObject);
+      await Promise.all([refetchList(), refetchById()]);
+
+      if (shouldCreateNewOrder) {
+        dispatch(clearCartData());
+        dispatch(setPage(true));
+        onClose();
+        router.push("/place-order");
+        return;
+      }
+
+      addToast({
+        title: "Response submitted",
+        description: "Your on-hold response was sent successfully.",
+        color: "success",
+      });
+      onClose();
+    } catch (e) {
+      addToast({
+        title: "Could not submit response",
+        description:
+          e?.data?.message || e?.data?.error || e?.message || "Please try again.",
+        color: "danger",
+      });
+    }
+  }
+
+  const selectedEntries = Object.entries(responsesById).filter(([, v]) => v.selected);
+  const anySelectedWithoutResponse = selectedEntries.some(([, v]) => !v.responseChoice);
+  const allSelectedAreYes =
+    selectedEntries.length > 0 &&
+    selectedEntries.every(([, v]) => v.responseChoice === "yes");
+  const continueLabel = allSelectedAreYes ? "Create new order" : "Submit";
   const disableContinue =
-    updateBookingLoading || !selectedIds.length || anySelectedWithoutResponse;
+    updateBookingLoading || !selectedEntries.length || anySelectedWithoutResponse;
 
   return isLoading ? (
     <Loader />
@@ -199,10 +274,14 @@ export default function OnHoldbookings() {
                   ? "bg-gray-300 cursor-not-allowed"
                   : "bg-black text-white"
               }`}
-              onClick={handleSubmitUpdate}
+              onClick={handleFooterContinue}
               disabled={disableContinue}
             >
-              {updateBookingLoading ? "Updating..." : "Continue"}
+              {updateBookingLoading
+                ? allSelectedAreYes
+                  ? "Loading..."
+                  : "Submitting..."
+                : continueLabel}
             </button>
           </div>
         }
@@ -241,8 +320,9 @@ export default function OnHoldbookings() {
                 {holdItems.map((itm) => {
                   const state = responsesById[itm.id] || {
                     selected: false,
-                    customerResponse: null,
+                    responseChoice: null,
                     note: "",
+                    otherText: "",
                   };
                   return (
                     <div
@@ -295,35 +375,78 @@ export default function OnHoldbookings() {
                           </div>
                         )}
 
-                        <div className="space-y-2 pt-2">
-                          <label className="flex gap-2 items-center cursor-pointer">
+                        {holdOptionLabels?.title ? (
+                          <p className="font-semibold text-base text-black pt-1">
+                            {holdOptionLabels.title}
+                          </p>
+                        ) : null}
+
+                        <div className="space-y-3 pt-2">
+                          <label className="flex gap-2 items-start cursor-pointer">
                             <input
                               type="radio"
                               name={`resp-${itm.id}`}
                               disabled={!state.selected}
-                              checked={state.customerResponse === true}
-                              onChange={() => setResponse(itm.id, true)}
+                              checked={state.responseChoice === "yes"}
+                              onChange={() => setResponseChoice(itm.id, "yes")}
+                              className="mt-1 shrink-0"
                             />
-                            <span>Yes, I accept and proceed</span>
+                            <span className="text-base leading-snug">{confirmLabel}</span>
                           </label>
-                          <label className="flex gap-2 items-center cursor-pointer">
+
+                          <label className="flex gap-2 items-start cursor-pointer">
                             <input
                               type="radio"
                               name={`resp-${itm.id}`}
                               disabled={!state.selected}
-                              checked={state.customerResponse === false}
-                              onChange={() => setResponse(itm.id, false)}
+                              checked={state.responseChoice === "no"}
+                              onChange={() => setResponseChoice(itm.id, "no")}
+                              className="mt-1 shrink-0"
                             />
-                            <span>No, I want a recheck</span>
+                            <span className="text-base leading-snug">{declineLabel}</span>
                           </label>
+
+                          {state.selected && state.responseChoice === "no" && (
+                            <div className="pl-6 space-y-1.5">
+                              <p className="text-sm font-medium text-theme-psGray">
+                                Tell us what you&apos;d like rechecked (optional)
+                              </p>
+                              <textarea
+                                className="w-full h-24 bg-theme-gray rounded-lg p-3 text-sm text-theme-gray-2 resize-none outline-none focus:ring-1 focus:ring-theme-blue"
+                                placeholder="Describe the issue or what needs another look"
+                                value={state.note}
+                                onChange={(e) => setNote(itm.id, e.target.value)}
+                              />
+                            </div>
+                          )}
+
+                          <label className="flex gap-2 items-start cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`resp-${itm.id}`}
+                              disabled={!state.selected}
+                              checked={state.responseChoice === "other"}
+                              onChange={() => setResponseChoice(itm.id, "other")}
+                              className="mt-1 shrink-0"
+                            />
+                            <span className="text-base leading-snug">{otherLabel}</span>
+                          </label>
+
+                          {state.selected && state.responseChoice === "other" && (
+                            <div className="pl-6 space-y-1.5">
+                              <p className="text-sm font-medium text-theme-psGray">
+                                Please specify (optional)
+                              </p>
+                              <input
+                                type="text"
+                                className="w-full h-11 bg-theme-gray rounded-lg px-3 text-sm text-black outline-none focus:ring-1 focus:ring-theme-blue"
+                                placeholder="Type your response here..."
+                                value={state.otherText}
+                                onChange={(e) => setOtherText(itm.id, e.target.value)}
+                              />
+                            </div>
+                          )}
                         </div>
-                        <textarea
-                          className="w-full h-24 bg-theme-gray rounded-lg p-3 text-base text-theme-gray-2 resize-none outline-none mt-2"
-                          placeholder="Add a note (optional)"
-                          disabled={!state.selected}
-                          value={state.note}
-                          onChange={(e) => setNote(itm.id, e.target.value)}
-                        />
                       </div>
                     </div>
                   );

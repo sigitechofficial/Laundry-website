@@ -9,6 +9,7 @@ export default function CategoryCard({
   bg,
   h,
   p,
+  turnaroundDays = 0,
   Icon,
   src,
   right,
@@ -16,6 +17,8 @@ export default function CategoryCard({
   type,
   serviceId,
 }) {
+  const days = Number(turnaroundDays);
+  const showTurnaround = Number.isFinite(days) && days > 0;
   const [hovered, setHovered] = useState(false);
   const dispatch = useDispatch();
   return (
@@ -45,10 +48,21 @@ export default function CategoryCard({
             <p className="font-youth font-bold sm:text-2xl whitespace-nowrap">{h}</p>
           </div>
 
-          <p className="font-sf text-sm sm:text-base pt-2 sm:pt-[22px] line-clamp-4 sm:line-clamp-5">
-            From delicate fabrics to everyday wear, our washing service ensures
-            your clothes stay fresh and vibrant
-          </p>
+          {showTurnaround && (
+            <p className="font-sf text-xs sm:text-sm font-semibold text-theme-darkBlue pt-2 sm:pt-3">
+              Turnaround: {days} day{days !== 1 ? "s" : ""}
+            </p>
+          )}
+
+          {p ? (
+            <p
+              className={`font-sf text-sm sm:text-base text-theme-psGray line-clamp-3 sm:line-clamp-4 ${
+                showTurnaround ? "pt-1.5 sm:pt-2" : "pt-2 sm:pt-[22px]"
+              }`}
+            >
+              {p}
+            </p>
+          ) : null}
         </div>
 
         {/* Image — right column, fixed width */}

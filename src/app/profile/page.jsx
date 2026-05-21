@@ -22,9 +22,10 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   useGetProfileQuery,
   useUpdateProfileMutation,
+  useDeleteAccountMutation,
 } from "../store/services/api";
 import InputHeroUi from "../../../components/InputHeroUi";
-import { addToast, Spinner } from "@heroui/react";
+import { addToast, Spinner, useDisclosure } from "@heroui/react";
 import PhoneInputComp from "../../../components/PhoneInputComp";
 import { ButtonYouth70018 } from "../../../components/Buttons";
 import { BASE_URL } from "../../../utilities/URL";
@@ -40,6 +41,7 @@ import { signOut } from "firebase/auth";
 import { auth } from "../../../utilities/firebase";
 import { clearAllCookies } from "../../../utilities/cookieUtils";
 import { api } from "../store/services/api";
+import DeleteAccountModal from "../../../components/DeleteAccountModal";
 
 export default function Profile() {
   const router = useRouter();
@@ -59,6 +61,14 @@ export default function Profile() {
 
   const [updateProfile, { isLoading: isLoadingUpdateProfile }] =
     useUpdateProfileMutation();
+  const [deleteAccount, { isLoading: isDeletingAccount }] =
+    useDeleteAccountMutation();
+  const {
+    isOpen: isDeleteModalOpen,
+    onOpen: onDeleteModalOpen,
+    onClose: onDeleteModalClose,
+    onOpenChange: onDeleteModalOpenChange,
+  } = useDisclosure();
   const [userData, setUserData] = useState({
     firstName: "",
     lastName: "",
@@ -230,6 +240,37 @@ export default function Profile() {
     }
   };
 
+  const handleDeleteAccount = async ({ reason, otherText, email }) => {
+    try {
+      const res = await deleteAccount({ reason, otherText, email }).unwrap();
+      if (res?.status === "1") {
+        addToast({
+          title: "Account deleted",
+          description: res?.message || "Your account has been deleted.",
+          color: "success",
+        });
+        onDeleteModalClose();
+        await logoutFunc();
+      } else {
+        addToast({
+          title: "Delete failed",
+          description: res?.error || res?.message || "Could not delete account.",
+          color: "danger",
+        });
+      }
+    } catch (err) {
+      addToast({
+        title: "Delete failed",
+        description:
+          err?.data?.message ||
+          err?.data?.error ||
+          err?.message ||
+          "Could not delete account.",
+        color: "danger",
+      });
+    }
+  };
+
   const handleTabChange = (tabName) => {
     console.log(currentTab, "vvv", tabName);
     const params = new URLSearchParams(searchParams?.toString() || "");
@@ -293,6 +334,12 @@ export default function Profile() {
       };
     }
   }, [currentUserId]);
+
+  useEffect(() => {
+    if (!currentTab) {
+      handleTabChange("my-account");
+    }
+  }, []);
 
   useEffect(() => {
     if (data?.data) {
@@ -524,7 +571,8 @@ export default function Profile() {
                 <MiniLoader />
               </div>
             ) : currentTab === "my-account" ? (
-              <section className="w-full flex flex-col lg:flex-row gap-6 md:gap-10 2xl:gap-28 mt-8 sm:mt-12 md:mt-16 px-0 sm:px-4 md:px-6 2xl:px-10 xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
+              <section className="w-full flex flex-col gap-6 mt-8 sm:mt-12 md:mt-16 px-0 sm:px-4 md:px-6 2xl:px-10 xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
+                <div className="flex flex-col lg:flex-row gap-6 md:gap-10 2xl:gap-28 w-full">
                 <div className="flex-1 font-sf">
                   <h2 className="font-youth font-medium text-[40px] mb-4">
                     Profile
@@ -605,6 +653,17 @@ export default function Profile() {
                     </div>
                   </div>
                 </div>
+                </div>
+
+                <div className="w-full pt-6 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={onDeleteModalOpen}
+                    className="w-full sm:w-auto min-w-[220px] h-12 sm:h-14 px-8 rounded-full border-2 border-[#5c1a2e] bg-white text-[#5c1a2e] font-youth font-bold text-base sm:text-lg hover:bg-[#5c1a2e]/5 active:bg-[#5c1a2e]/10 transition-colors"
+                  >
+                    Delete my account
+                  </button>
+                </div>
               </section>
             ) : currentTab === "order-history" ? (
               <div className="w-full xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
@@ -627,6 +686,14 @@ export default function Profile() {
             )}
           </div>
         </div>
+        <DeleteAccountModal
+          isOpen={isDeleteModalOpen}
+          onOpenChange={onDeleteModalOpenChange}
+          onClose={onDeleteModalClose}
+          userEmail={userData?.email || userEmail}
+          onDeleteAccount={handleDeleteAccount}
+          isDeleting={isDeletingAccount}
+        />
       </HomeClientWrapper>
     </>
   );

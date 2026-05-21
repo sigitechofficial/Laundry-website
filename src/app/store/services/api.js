@@ -90,6 +90,21 @@ export const api = createApi({
       }),
     }),
 
+    deleteAccount: builder.mutation({
+      query: (body) => ({
+        url: "customer/deleteAccount",
+        method: "POST",
+        body,
+      }),
+    }),
+
+    getAccountDeletionReasons: builder.query({
+      query: () => ({
+        url: "customer/accountDeletionReasons",
+        method: "GET",
+      }),
+    }),
+
     getServices: builder.query({
       query: () => ({
         url: "customer/allServices",
@@ -176,6 +191,12 @@ export const api = createApi({
     getOnHoldBookingById: builder.query({
       query: (id) => ({
         url: `customer/getOnHoldBookings/${id}`,
+        method: "GET",
+      }),
+    }),
+    getOnHoldCustomerShow: builder.query({
+      query: (bookingId) => ({
+        url: `customer/onHoldCustomerShow?bookingId=${bookingId}`,
         method: "GET",
       }),
     }),
@@ -292,6 +313,8 @@ export const {
   useVerifyOTPRegisterMutation,
   useGetProfileQuery,
   useUpdateProfileMutation,
+  useDeleteAccountMutation,
+  useGetAccountDeletionReasonsQuery,
   useGetServicesQuery,
   useGetServiceByIdQuery,
   useGetServiceDetailsQuery,
@@ -306,6 +329,7 @@ export const {
   useBookingDetailByIdQuery,
   useGetOnHoldBookingsQuery,
   useGetOnHoldBookingByIdQuery,
+  useGetOnHoldCustomerShowQuery,
   useUpdateOnHoldBookingMutation,
   useGetCancellationPoliciesQuery,
   useGetActivePoliciesQuery,

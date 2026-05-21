@@ -17,11 +17,19 @@ import ReusableModal from "../../../../components/Modal";
 import { useDispatch, useSelector } from "react-redux";
 import {
   clearCartData,
+  setDeliveryData,
   setDriverInstruction,
   setDriverTip,
   setPage,
   updatePreference,
 } from "@/app/store/slices/cartItemSlice";
+import { generateCollectionSlots } from "../../../../utilities/generateSlots";
+import {
+  buildDeliveryUpdateForMinDate,
+  formatIsoDateLong,
+  getTurnaroundConflict,
+  parseTimeRequiredDays,
+} from "../../../../utilities/turnaroundTime";
 import { FaTruck, FaCheck, FaChevronDown, FaChevronUp } from "react-icons/fa6";
 import { formatDate, to24Hour } from "../../../../utilities/ConversionFunction";
 import FAQs from "../../../../components/FAQs";
@@ -55,6 +63,60 @@ export default function Order() {
     step: "",
   });
   const [showMobileSummary, setShowMobileSummary] = useState(false);
+  const [turnaroundModal, setTurnaroundModal] = useState({
+    open: false,
+    minDeliveryDate: "",
+    maxDays: 0,
+    serviceLabels: [],
+  });
+  const [pendingContinueAfterTurnaround, setPendingContinueAfterTurnaround] =
+    useState(false);
+
+  const slotsDeliveryForTurnaround = useMemo(
+    () =>
+      generateCollectionSlots({
+        daysCount: 21,
+        slotDurationInHours: 1,
+        lastHour: 19,
+        startAfterHours: 24,
+        includeWeekends: true,
+      }),
+    []
+  );
+
+  const cartServiceIds = useMemo(() => {
+    const ids = new Set();
+    if (isRescheduleFlow) {
+      const fromReschedule = orderData?.rescheduleData?.services;
+      if (Array.isArray(fromReschedule)) {
+        fromReschedule.forEach((s) => {
+          if (s?.serviceId) ids.add(Number(s.serviceId));
+        });
+      }
+    }
+    (preferencesData || []).forEach((item) => {
+      if (item?.serviceId) ids.add(Number(item.serviceId));
+    });
+    return [...ids];
+  }, [preferencesData, isRescheduleFlow, orderData?.rescheduleData?.services]);
+
+  const serviceList = data?.data?.serviceData ?? [];
+
+  const turnaroundCheck = useMemo(
+    () =>
+      getTurnaroundConflict({
+        serviceList,
+        serviceIds: cartServiceIds,
+        collectionDate: orderData?.collectionData?.collectionDate,
+        deliveryDate: orderData?.deliveryData?.deliveryDate,
+      }),
+    [
+      serviceList,
+      cartServiceIds,
+      orderData?.collectionData?.collectionDate,
+      orderData?.deliveryData?.deliveryDate,
+    ]
+  );
   const modalScrollRef = useRef(null);
   const openModalTimeoutRef = useRef(null);
   const [isModalAtBottom, setIsModalAtBottom] = useState(false);
@@ -348,7 +410,11 @@ export default function Order() {
     setHasModalOverflow(scrollHeight > clientHeight + 8);
   }, [isOpen, modal?.modType, isLoadingPreferences, preferences]);
 
-  const handleRescheduleSubmit = async () => {
+  const handleRescheduleSubmit = async (deliveryOverride) => {
+    const delivery = {
+      ...orderData?.deliveryData,
+      ...(deliveryOverride || {}),
+    };
     const flattenedPreferences =
       preferencesData
         ?.filter(
@@ -375,9 +441,9 @@ export default function Order() {
       collectionDate: orderData?.collectionData?.collectionDate,
       collectionTimeFrom: to24Hour(orderData?.collectionData?.collectionTimeFrom),
       collectionTimeTo: to24Hour(orderData?.collectionData?.collectionTimeTo),
-      deliveryDate: orderData?.deliveryData?.deliveryDate,
-      deliveryTimeFrom: to24Hour(orderData?.deliveryData?.deliveryTimeFrom),
-      deliveryTimeTo: to24Hour(orderData?.deliveryData?.deliveryTimeTo),
+      deliveryDate: delivery?.deliveryDate,
+      deliveryTimeFrom: to24Hour(delivery?.deliveryTimeFrom),
+      deliveryTimeTo: to24Hour(delivery?.deliveryTimeTo),
       timeZone: resolvedTimeZone,
       clientTimeZone,
       reasonText: orderData?.rescheduleData?.reasonText?.trim() || "My plans changed",
@@ -416,13 +482,77 @@ export default function Order() {
     }
   };
 
+  const proceedToPayment = () => {
+    dispatch(setPage(true));
+    router.push("/checkout/payment");
+  };
+
   const handleContinue = async () => {
     if (isRescheduleFlow) {
+      if (turnaroundCheck.conflict) {
+        setTurnaroundModal({
+          open: true,
+          minDeliveryDate: turnaroundCheck.minDeliveryDate,
+          maxDays: turnaroundCheck.maxDays,
+          serviceLabels: turnaroundCheck.serviceLabels,
+        });
+        setPendingContinueAfterTurnaround(true);
+        return;
+      }
       await handleRescheduleSubmit();
       return;
     }
-    dispatch(setPage(true));
-    router.push("/checkout/payment");
+
+    if (turnaroundCheck.conflict) {
+      setTurnaroundModal({
+        open: true,
+        minDeliveryDate: turnaroundCheck.minDeliveryDate,
+        maxDays: turnaroundCheck.maxDays,
+        serviceLabels: turnaroundCheck.serviceLabels,
+      });
+      setPendingContinueAfterTurnaround(true);
+      return;
+    }
+
+    proceedToPayment();
+  };
+
+  const handleAcceptSuggestedDelivery = () => {
+    const collectionDate = orderData?.collectionData?.collectionDate;
+    const collectionTimeTo = orderData?.collectionData?.collectionTimeTo;
+    const update = buildDeliveryUpdateForMinDate(
+      slotsDeliveryForTurnaround,
+      collectionDate,
+      collectionTimeTo,
+      turnaroundModal.minDeliveryDate
+    );
+    if (update) {
+      dispatch(setDeliveryData(update));
+    }
+    setTurnaroundModal((prev) => ({ ...prev, open: false }));
+    if (pendingContinueAfterTurnaround) {
+      setPendingContinueAfterTurnaround(false);
+      if (isRescheduleFlow) {
+        void handleRescheduleSubmit(update || undefined);
+      } else {
+        proceedToPayment();
+      }
+    }
+  };
+
+  const handleChangeDeliveryDateFromTurnaround = () => {
+    setTurnaroundModal((prev) => ({ ...prev, open: false }));
+    setPendingContinueAfterTurnaround(false);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("openDeliveryDateModal", "1");
+      if (turnaroundModal.minDeliveryDate) {
+        sessionStorage.setItem(
+          "minDeliveryDate",
+          turnaroundModal.minDeliveryDate
+        );
+      }
+    }
+    router.push("/place-order");
   };
 
   function closePreferenceModal() {
@@ -617,6 +747,8 @@ export default function Order() {
                           }}
                           bg={getBg(item?.id)}
                           h={item?.name}
+                          p={item?.description}
+                          turnaroundDays={parseTimeRequiredDays(item?.timeRequired)}
                           Icon={getIcon(item?.name)}
                           src={imageUrl}
                           right={getRight(item?.id)}
@@ -1720,6 +1852,57 @@ export default function Order() {
         ) : (
           ""
         )}
+      </ReusableModal>
+
+      <ReusableModal
+        isOpen={turnaroundModal.open}
+        onOpenChange={(open) => {
+          if (!open) {
+            setTurnaroundModal((prev) => ({ ...prev, open: false }));
+            setPendingContinueAfterTurnaround(false);
+          }
+        }}
+        showHeader
+        headerTitle="Delivery date update"
+        showFooter
+        footerContent={
+          <div className="w-full flex flex-col gap-3 px-6 pb-6">
+            <ButtonYouth70018
+              size="compact"
+              text="Use suggested date"
+              onClick={handleAcceptSuggestedDelivery}
+            />
+            <ButtonYouth70018
+              size="compact"
+              variant="outline"
+              text="Change delivery date"
+              onClick={handleChangeDeliveryDateFromTurnaround}
+            />
+          </div>
+        }
+      >
+        <div className="px-6 py-4 font-sf text-base text-theme-psGray space-y-3">
+          <p>
+            One or more services in your order need more processing time
+            {turnaroundModal.maxDays
+              ? ` (${turnaroundModal.maxDays} day${turnaroundModal.maxDays > 1 ? "s" : ""})`
+              : ""}
+            .
+          </p>
+          {turnaroundModal.serviceLabels?.length > 0 && (
+            <p className="font-medium text-gray-900">
+              {turnaroundModal.serviceLabels.join(", ")}
+            </p>
+          )}
+          <p>
+            Your current delivery date is too early. The earliest delivery we can
+            offer is{" "}
+            <span className="font-semibold text-gray-900">
+              {formatIsoDateLong(turnaroundModal.minDeliveryDate)}
+            </span>
+            .
+          </p>
+        </div>
       </ReusableModal>
     </>
   );

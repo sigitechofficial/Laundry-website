@@ -27,16 +27,39 @@ export function ButtonYouth70018({
   onClick,
   isDisabled,
   isPending,
+  variant = "primary",
+  size = "default",
 }) {
-  const baseClasses = `${width || "w-full"} ${
-    isDisabled ? "bg-theme-darkBlue/30" : "bg-theme-darkBlue"
-  } relative rounded-full flex justify-center items-center font-medium sm:font-bold px-4 sm:px-8 h-14 sm:h-[60px] font-youth text-white text-lg`;
-  
+  const isOutline = variant === "outline";
+  const variantClasses = isOutline
+    ? isDisabled
+      ? "bg-white text-theme-darkBlue/40 border-2 border-theme-darkBlue/30 cursor-not-allowed"
+      : "bg-white text-theme-darkBlue border-2 border-theme-darkBlue hover:bg-[#F4F7FF]"
+    : isDisabled
+      ? "bg-theme-darkBlue/30 text-white"
+      : "bg-theme-darkBlue text-white";
+
+  const sizeClasses =
+    size === "compact"
+      ? "h-12 min-h-12 px-5 font-sf text-sm font-semibold leading-none tracking-normal"
+      : "h-14 sm:h-[60px] px-4 sm:px-8 font-youth text-base sm:text-lg font-medium sm:font-bold leading-tight";
+
+  const baseClasses = [
+    width || "w-full",
+    variantClasses,
+    sizeClasses,
+    "relative rounded-full flex justify-center items-center text-center whitespace-nowrap",
+    className || "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <button
+      type="button"
       disabled={isDisabled}
       onClick={onClick}
-      className={className ? `${baseClasses} ${className}` : baseClasses}
+      className={baseClasses}
     >
       {isPending ? (
         <BouncingBallsLoader />

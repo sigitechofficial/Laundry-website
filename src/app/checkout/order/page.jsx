@@ -43,6 +43,17 @@ import { BASE_URL } from "../../../../utilities/URL";
 const parseServiceBooleanFlag = (value) =>
   value === true || value === "true" || value === 1 || value === "1";
 
+const resolveQuantityCountMode = (prefs, showBags, showItems) => {
+  if (!showBags && !showItems) return null;
+  if (showBags && !showItems) return "bags";
+  if (!showBags && showItems) return "items";
+  if (prefs?.quantityCountMode === "items") return "items";
+  if (prefs?.quantityCountMode === "bags") return "bags";
+  if (prefs?.itemsCount) return "items";
+  if (prefs?.bagsCount) return "bags";
+  return "bags";
+};
+
 export default function Order() {
   const dispatch = useDispatch();
   const orderData = useSelector((state) => state.cart.orderData);
@@ -311,6 +322,14 @@ export default function Order() {
                 ? String(existingServicePref.itemsCount)
                 : "";
         }
+        restoredPrefs.quantityCountMode = resolveQuantityCountMode(
+          {
+            ...restoredPrefs,
+            quantityCountMode: savedPrefs.quantityCountMode,
+          },
+          showBagsInput,
+          showItemsInput
+        );
         setPreferences(restoredPrefs);
         setWashInstructionPanelOpen(getInstructionPanelState(restoredPrefs));
         setWashAccordionOpenId(null);
@@ -344,6 +363,11 @@ export default function Order() {
             ? String(existingServicePref.itemsCount)
             : "";
       }
+      initialPrefs.quantityCountMode = resolveQuantityCountMode(
+        initialPrefs,
+        showBagsInput,
+        showItemsInput
+      );
       setPreferences(initialPrefs);
       setWashInstructionPanelOpen({});
       setWashAccordionOpenId(null);
@@ -650,29 +674,11 @@ export default function Order() {
       return;
     }
 
-    if (showBagsInput) {
-      const bags = String(preferences.bagsCount ?? "").trim();
-      if (!bags || !/^\d+$/.test(bags) || Number(bags) < 1) {
-        addToast({
-          title: "Number of bags required",
-          description: "Please enter how many bags you are sending.",
-          color: "warning",
-        });
-        return;
-      }
-    }
-
-    if (showItemsInput) {
-      const items = String(preferences.itemsCount ?? "").trim();
-      if (!items || !/^\d+$/.test(items) || Number(items) < 1) {
-        addToast({
-          title: "Number of items required",
-          description: "Please enter how many items you are sending.",
-          color: "warning",
-        });
-        return;
-      }
-    }
+    const quantityCountMode = resolveQuantityCountMode(
+      preferences,
+      showBagsInput,
+      showItemsInput
+    );
 
     // Build preferences array with preferenceTypeId and preferenceValueId
     const preferencesArray = [];
@@ -682,7 +688,8 @@ export default function Order() {
           key === "additionalInstructions" ||
           key === "washTypeSettings" ||
           key === "bagsCount" ||
-          key === "itemsCount"
+          key === "itemsCount" ||
+          key === "quantityCountMode"
         ) {
           return;
         }
@@ -750,13 +757,13 @@ export default function Order() {
       (s) => s.id === currentServiceId
     )?.name || "";
 
-    if (showBagsInput && preferences.bagsCount) {
+    if (quantityCountMode === "bags" && showBagsInput && preferences.bagsCount) {
       preferencesDisplay.push({
         preferenceTypeName: "Number of bags",
         value: String(preferences.bagsCount),
       });
     }
-    if (showItemsInput && preferences.itemsCount) {
+    if (quantityCountMode === "items" && showItemsInput && preferences.itemsCount) {
       preferencesDisplay.push({
         preferenceTypeName: "Number of items",
         value: String(preferences.itemsCount),
@@ -769,10 +776,10 @@ export default function Order() {
       preferencesDisplay,
       additionalInstructions: preferences.additionalInstructions || "",
       selectedPreferences: deepClone(preferences),
-      ...(showBagsInput && preferences.bagsCount
+      ...(quantityCountMode === "bags" && showBagsInput && preferences.bagsCount
         ? { bagsCount: Number(preferences.bagsCount) }
         : {}),
-      ...(showItemsInput && preferences.itemsCount
+      ...(quantityCountMode === "items" && showItemsInput && preferences.itemsCount
         ? { itemsCount: Number(preferences.itemsCount) }
         : {}),
     };
@@ -1860,34 +1867,56 @@ export default function Order() {
                 </div>
 
                 {(showBagsInput || showItemsInput) && (
-                  <div className="space-y-4 pt-1">
-                    {showBagsInput && (
-                      <div>
-                        <p className="font-sf font-semibold text-base sm:text-lg text-theme-gray-3 pb-2">
-                          Number of bags
+                  <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:gap-3">
+                    <div className="flex flex-row gap-2 shrink-0">
+                      {showBagsInput && showItemsInput ? (
+                        <>
+                          {[
+                            { mode: "bags", label: "Number of bags" },
+                            { mode: "items", label: "Number of items" },
+                          ].map(({ mode, label }) => {
+                            const active =
+                              resolveQuantityCountMode(
+                                preferences,
+                                showBagsInput,
+                                showItemsInput
+                              ) === mode;
+                            return (
+                              <button
+                                key={mode}
+                                type="button"
+                                onClick={() =>
+                                  setPreferences((prev) => ({
+                                    ...prev,
+                                    quantityCountMode: mode,
+                                  }))
+                                }
+                                className={`h-[42px] flex items-center rounded-lg border-2 px-3 font-sf text-sm font-medium transition-colors whitespace-nowrap ${
+                                  active
+                                    ? "border-theme-blue bg-theme-blue/5 text-theme-blue"
+                                    : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </>
+                      ) : (
+                        <p className="font-sf font-semibold text-base text-theme-gray-3 whitespace-nowrap h-[42px] flex items-center">
+                          {showBagsInput ? "Number of bags" : "Number of items"}
                         </p>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0 w-full">
+                      {resolveQuantityCountMode(
+                        preferences,
+                        showBagsInput,
+                        showItemsInput
+                      ) === "items" ? (
                         <InputField
-                          type="number"
-                          min={1}
-                          step={1}
-                          placeholder="e.g. 2"
-                          value={preferences.bagsCount ?? ""}
-                          onChange={(e) => {
-                            const digitsOnly = e.target.value.replace(/\D/g, "");
-                            setPreferences((prev) => ({
-                              ...prev,
-                              bagsCount: digitsOnly,
-                            }));
-                          }}
-                        />
-                      </div>
-                    )}
-                    {showItemsInput && (
-                      <div>
-                        <p className="font-sf font-semibold text-base sm:text-lg text-theme-gray-3 pb-2">
-                          Number of items
-                        </p>
-                        <InputField
+                          label=""
                           type="number"
                           min={1}
                           step={1}
@@ -1900,9 +1929,37 @@ export default function Order() {
                               itemsCount: digitsOnly,
                             }));
                           }}
+                          classNames={{
+                            label: ["hidden"],
+                            base: ["!mt-0"],
+                            inputWrapper: ["!h-[42px]", "min-h-[42px]"],
+                            input: ["text-sm"],
+                          }}
                         />
-                      </div>
-                    )}
+                      ) : (
+                        <InputField
+                          label=""
+                          type="number"
+                          min={1}
+                          step={1}
+                          placeholder="e.g. 2"
+                          value={preferences.bagsCount ?? ""}
+                          onChange={(e) => {
+                            const digitsOnly = e.target.value.replace(/\D/g, "");
+                            setPreferences((prev) => ({
+                              ...prev,
+                              bagsCount: digitsOnly,
+                            }));
+                          }}
+                          classNames={{
+                            label: ["hidden"],
+                            base: ["!mt-0"],
+                            inputWrapper: ["!h-[42px]", "min-h-[42px]"],
+                            input: ["text-sm"],
+                          }}
+                        />
+                      )}
+                    </div>
                   </div>
                 )}
 

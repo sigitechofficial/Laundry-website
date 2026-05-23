@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import InputHeroUi from "../../../components/InputHeroUi";
 import { ButtonYouth70018 } from "../../../components/Buttons";
 import { PiArrowRight } from "react-icons/pi";
@@ -10,7 +10,6 @@ import ReusableModal from "../../../components/Modal";
 import { Spinner, addToast, useDisclosure } from "@heroui/react";
 import { IoSearchOutline } from "react-icons/io5";
 import { TbLocation } from "react-icons/tb";
-import { Autocomplete } from "@react-google-maps/api";
 import { useRouter } from "next/navigation";
 import { generateCollectionSlots } from "../../../utilities/generateSlots";
 import { useDispatch, useSelector } from "react-redux";
@@ -18,7 +17,6 @@ import { setOrderData, setPage } from "../store/slices/cartItemSlice";
 import {
   useGetAllAddressQuery,
   useGetServicesQuery,
-  useLazyGetAddressesByPostcodeQuery,
 } from "../store/services/api";
 import {
   buildDeliveryUpdateForMinDate,
@@ -30,9 +28,11 @@ import {
 import Link from "next/link";
 import Header from "../../../components/Header";
 import HomeClientWrapper from "../../../utilities/Test";
-import GoogleMapsProvider from "../../../utilities/GoogleMapsProvider";
 import { MiniLoader } from "../../../components/Loader";
 import { BASE_URL } from "../../../utilities/URL";
+import PostcodeAddressLookup from "../../../components/PostcodeAddressLookup";
+import AddressFilterLookup from "../../../components/AddressFilterLookup";
+import { mapPostcodeAddressToFormFields } from "../../../utilities/postcodeLookup";
 
 const collection = [
   { key: "Collect from me in person", label: "Collect from me in person" },
@@ -55,18 +55,13 @@ export default function orderRegistration() {
   const state = history.state?.customData?.step || null;
   const dispatch = useDispatch();
   const { data } = useGetAllAddressQuery();
-  const [getAddressesByPostcode, { data: postcodeAddresses, isLoading: isLoadingAddresses }] = useLazyGetAddressesByPostcodeQuery();
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
-  const autocompleteRef = useRef(null);
-  const postcodeInputRef = useRef(null);
-  const addressDropdownRef = useRef(null);
   const [step, setStep] = useState(state ?? "get-started");
   const [isCheckingZone, setIsCheckingZone] = useState(false);
   const [modal, setModal] = useState({
     modType: "",
   });
   const [modalScroll, setModalScroll] = useState(false);
-  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
   const [turnaroundModal, setTurnaroundModal] = useState({
     open: false,
     minDeliveryDate: "",
@@ -91,7 +86,7 @@ export default function orderRegistration() {
     [serviceList, cartServiceIds]
   );
 
-  const isPostcodeDisabled = true;
+  const isPostcodeDisabled = false;
   const clientTimeZone =
     Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
 
@@ -283,89 +278,66 @@ export default function orderRegistration() {
     !!deliveryData?.deliveryTimeFrom &&
     parseTimeToMinutes(deliveryData.deliveryTimeFrom) < parseTimeToMinutes(collectionData.collectionTimeTo);
 
-  const handlePlaceChanged = (type) => {
-    const place = autocompleteRef.current.getPlace();
+  useEffect(() => {
+    const ensureGuestSession = async () => {
+      if (typeof window === "undefined") return;
+      if (localStorage.getItem("accessToken")) return;
 
-    if (!place || !place.geometry || !place.geometry.location) {
-      // info_toaster("Please search an address");
-      return;
-    }
+      try {
+        const response = await fetch(`${BASE_URL}customer/guest/start`, {
+          method: "POST",
+          credentials: "include",
+        });
+        const json = await response.json();
+        if (json?.data?.accessToken) {
+          localStorage.setItem("accessToken", json.data.accessToken);
+        }
+      } catch {
+        // Guest session optional; logged-in users still work.
+      }
+    };
 
-    if (type === "delivery-location") {
-      setDeliveryData({
-        ...deliveryData,
-        hotelName: null,
-        apartmentNumber: null,
-        floor: null,
-        streetAddress: place?.formatted_address,
-        district:
-          place?.address_components?.find(
-            (c) =>
-              c.types.includes("sublocality") ||
-              c.types.includes("neighborhood")
-          )?.long_name || "",
-        city:
-          place?.address_components?.find(
-            (c) =>
-              c.types.includes("locality") ||
-              c.types.includes("administrative_area_level_2")
-          )?.long_name || "",
-        province:
-          place?.address_components?.find((c) =>
-            c.types.includes("administrative_area_level_1")
-          )?.long_name || "",
-        country:
-          place?.address_components?.find((c) => c.types.includes("country"))
-            ?.long_name || "",
-        postalCode:
-          place?.address_components?.find((c) =>
-            c.types.includes("postal_code")
-          )?.long_name || "",
-        lat: place.geometry.location.lat(),
-        lng: place.geometry.location.lng(),
-        save: true, // Save address when selected from dropdown
-      });
-      // Close modal after selecting address
-      setModal({ ...modal, modType: "" });
-      onClose();
+    void ensureGuestSession();
+  }, []);
+
+  const applyPostcodeAddress = (address, target = "collection") => {
+    const fields = {
+      ...mapPostcodeAddressToFormFields(address),
+      hotelName: null,
+      apartmentNumber: null,
+      floor: null,
+    };
+
+    if (target === "delivery") {
+      setDeliveryData((prev) => ({ ...prev, ...fields }));
     } else {
-      setCollectionData({
-        ...collectionData,
-        hotelName: null,
-        apartmentNumber: null,
-        floor: null,
-        streetAddress: place?.formatted_address,
-        district:
-          place?.address_components?.find(
-            (c) =>
-              c.types.includes("sublocality") ||
-              c.types.includes("neighborhood")
-          )?.long_name || "",
-        city:
-          place?.address_components?.find(
-            (c) =>
-              c.types.includes("locality") ||
-              c.types.includes("administrative_area_level_2")
-          )?.long_name || "",
-        province:
-          place?.address_components?.find((c) =>
-            c.types.includes("administrative_area_level_1")
-          )?.long_name || "",
-        country:
-          place?.address_components?.find((c) => c.types.includes("country"))
-            ?.long_name || "",
-        postalCode:
-          place?.address_components?.find((c) =>
-            c.types.includes("postal_code")
-          )?.long_name || "",
-        lat: place.geometry.location.lat(),
-        lng: place.geometry.location.lng(),
-        save: true, // Save address when selected from dropdown
-      });
-      // Close modal after selecting address
-      setModal({ ...modal, modType: "" });
-      onClose();
+      setCollectionData((prev) => ({ ...prev, ...fields }));
     }
+  };
+
+  const handleModalPostcodeAddressSelect = (address) => {
+    const target =
+      modal?.modType === "delivery-location" ? "delivery" : "collection";
+    applyPostcodeAddress(address, target);
+    setModal({ ...modal, modType: "" });
+    onClose();
+  };
+
+  const renderModalAddressSearch = () => {
+    const isDelivery = modal?.modType === "delivery-location";
+    const postcodeValue = isDelivery
+      ? deliveryData?.postalCode || ""
+      : collectionData?.postalCode || "";
+
+    return (
+      <AddressFilterLookup
+        key={`${modal?.modType}-${postcodeValue}-${isOpen}`}
+        postcode={postcodeValue}
+        disabled={isRescheduleFlow}
+        placeholder="Flat, street or building name"
+        onAddressSelect={handleModalPostcodeAddressSelect}
+      />
+    );
   };
 
   const parseCoordinate = (value) => {
@@ -559,7 +531,6 @@ export default function orderRegistration() {
         addressType: "dropOff",
       });
       setDriverInstruction("");
-      setShowAddressDropdown(false);
       return;
     }
 
@@ -714,42 +685,6 @@ export default function orderRegistration() {
     deliveryData?.deliveryDate,
   ]);
 
-  // Handle postcode submission
-  const handlePostcodeSubmit = async (postcode) => {
-    if (!postcode || postcode.trim().length === 0) return;
-
-    try {
-      const result = await getAddressesByPostcode(postcode.trim().toUpperCase().replace(/\s/g, ''));
-      console.log("Postcode API Response:", result);
-      console.log("Postcode Addresses from hook:", postcodeAddresses);
-      // RTK Query returns { data: <api_response> } or { error: <error> }
-      // The API response has structure: { status: "1", data: { addresses: [...] } }
-      if (result?.data?.status === "1" && result?.data?.data?.addresses?.length > 0) {
-        setShowAddressDropdown(true);
-      } else {
-        setShowAddressDropdown(false);
-      }
-    } catch (error) {
-      console.error("Error fetching addresses:", error);
-      setShowAddressDropdown(false);
-    }
-  };
-
-  // Handle address selection from dropdown
-  const handleAddressSelect = (address) => {
-    setCollectionData({
-      ...collectionData,
-      streetAddress: address.fullAddress || `${address.line1}, ${address.line2 || ''}`.trim(),
-      district: address.locality || "",
-      city: address.town || "",
-      province: address.county || "",
-      postalCode: address.postcode || collectionData.postalCode,
-      lat: address.latitude || null,
-      lng: address.longitude || null,
-    });
-    setShowAddressDropdown(false);
-  };
-
   const finishProceedToCheckout = async () => {
     const lat = collectionData?.lat;
     const lng = collectionData?.lng;
@@ -875,44 +810,8 @@ export default function orderRegistration() {
     onOpen();
   };
 
-  // Show dropdown when addresses are loaded
-  useEffect(() => {
-    console.log("Postcode addresses effect:", postcodeAddresses);
-    // RTK Query returns the API response directly in the data property
-    // API response structure: { status: "1", data: { addresses: [...] } }
-    const addresses = postcodeAddresses?.data?.addresses;
-    if (addresses && Array.isArray(addresses) && addresses.length > 0) {
-      console.log("Setting dropdown to true, addresses count:", addresses.length);
-      setShowAddressDropdown(true);
-    } else {
-      console.log("No addresses found or invalid structure");
-    }
-  }, [postcodeAddresses]);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        addressDropdownRef.current &&
-        postcodeInputRef.current &&
-        !addressDropdownRef.current.contains(event.target) &&
-        !postcodeInputRef.current.contains(event.target)
-      ) {
-        setShowAddressDropdown(false);
-      }
-    };
-
-    if (showAddressDropdown) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
-    }
-  }, [showAddressDropdown]);
-
   return (
     <HomeClientWrapper>
-      <GoogleMapsProvider>
         <div className="w-full grid lg:grid-cols-2">
           <div className="h-[300px] max-sm:hidden sm:h-[600px] lg:h-screen w-full bg-sign-in bg-cover bg-center bg-no-repeat relative">
             <video
@@ -1050,90 +949,16 @@ export default function orderRegistration() {
                       Let's get Started
                     </h4>
                     {!isRescheduleFlow && (
-                      <div className="relative z-50" ref={postcodeInputRef}>
-                        <div className="flex gap-2 items-end">
-                          <div className="flex-1">
-                            <div className="relative">
-                              <InputHeroUi
-                                type="text"
-                                label="Post Code"
-                                value={collectionData?.postalCode || ""}
-                                isDisabled={isPostcodeDisabled}
-                                onChange={(e) =>
-                                  setCollectionData({
-                                    ...collectionData,
-                                    postalCode: e.target.value,
-                                  })
-                                }
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    handlePostcodeSubmit(collectionData?.postalCode);
-                                  }
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handlePostcodeSubmit(collectionData?.postalCode)
-                            }
-                            className="h-[60px] w-[60px] bg-theme-blue rounded-[8px] flex items-center justify-center hover:bg-theme-darkBlue disabled:bg-blue-200 disabled:cursor-not-allowed transition-colors shrink-0"
-                            disabled={
-                              isPostcodeDisabled ||
-                              isLoadingAddresses ||
-                              !collectionData?.postalCode?.trim()
-                            }
-                          >
-                            {isLoadingAddresses ? (
-                              <Spinner size="sm" className="text-white" />
-                            ) : (
-                              <IoSearchOutline className="text-xl text-white" />
-                            )}
-                          </button>
-                        </div>
-                        {/* Address Dropdown */}
-                        {showAddressDropdown &&
-                          postcodeAddresses?.data?.addresses &&
-                          Array.isArray(postcodeAddresses.data.addresses) &&
-                          postcodeAddresses.data.addresses.length > 0 && (
-                            <div
-                              ref={addressDropdownRef}
-                              className="absolute z-[10000] w-full mt-2 bg-white rounded-lg shadow-xl max-h-[250px] overflow-y-auto border border-gray-200"
-                              style={{
-                                backgroundColor: "#ffffff",
-                                position: "absolute",
-                                top: "100%",
-                              }}
-                            >
-                              {postcodeAddresses.data.addresses.map(
-                                (address, index) => (
-                                  <div
-                                    key={address.id || index}
-                                    onClick={() => handleAddressSelect(address)}
-                                    className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0 transition-colors"
-                                  >
-                                    <p className="font-sf font-semibold text-base text-gray-900">
-                                      {address.line1}
-                                    </p>
-                                    {address.line2 && (
-                                      <p className="font-sf text-sm text-gray-600 mt-1">
-                                        {address.line2}
-                                      </p>
-                                    )}
-                                    <p className="font-sf text-sm text-gray-500 mt-1">
-                                      {address.fullAddress ||
-                                        `${address.town || ""}, ${
-                                          address.county || ""
-                                        }`.trim()}
-                                    </p>
-                                  </div>
-                                )
-                              )}
-                            </div>
-                          )}
-                      </div>
+                      <PostcodeAddressLookup
+                        value={collectionData?.postalCode || ""}
+                        disabled={isPostcodeDisabled}
+                        onChange={(next) =>
+                          setCollectionData((prev) => ({
+                            ...prev,
+                            postalCode: next,
+                          }))
+                        }
+                      />
                     )}
                     <div
                       className={`relative z-0 ${
@@ -1357,25 +1182,7 @@ export default function orderRegistration() {
               </div>
 
               <div className="w-full px-6 py-8">
-                <div className="relative border-2 border-theme-gray-2/25 rounded-lg w-full h-14">
-                  <div className="absolute top-1/2 -translate-y-1/2 left-3">
-                    <IoSearchOutline className="text-2xl text-theme-gray-2" />
-                  </div>
-
-                  <Autocomplete
-                    onLoad={(autocomplete) =>
-                      (autocompleteRef.current = autocomplete)
-                    }
-                    onPlaceChanged={handlePlaceChanged}
-                    className="w-full h-full"
-                  >
-                    <input
-                      className="w-full h-full pl-14 pr-2 outline-none bg-transparent"
-                      type="text"
-                      placeholder="Search location"
-                    />
-                  </Autocomplete>
-                </div>
+                {renderModalAddressSearch()}
 
                 <div className="flex items-center gap-5 pt-4">
                   <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
@@ -1531,27 +1338,7 @@ export default function orderRegistration() {
               </div>
 
               <div className="w-full px-6 py-8">
-                <div className="relative border-2 border-theme-gray-2/25 rounded-lg w-full h-14">
-                  <div className="absolute top-1/2 -translate-y-1/2 left-3">
-                    <IoSearchOutline className="text-2xl text-theme-gray-2" />
-                  </div>
-
-                  <Autocomplete
-                    onLoad={(autocomplete) =>
-                      (autocompleteRef.current = autocomplete)
-                    }
-                    onPlaceChanged={() =>
-                      handlePlaceChanged("collection-location")
-                    }
-                    className="w-full h-full"
-                  >
-                    <input
-                      className="w-full h-full pl-14 pr-2 outline-none bg-transparent"
-                      type="text"
-                      placeholder="Search location"
-                    />
-                  </Autocomplete>
-                </div>
+                {renderModalAddressSearch()}
 
                 <div className="flex items-center gap-5 pt-4">
                   <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
@@ -1713,27 +1500,7 @@ export default function orderRegistration() {
               </div>
 
               <div className="w-full px-6 py-8">
-                <div className="relative border-2 border-theme-gray-2/25 rounded-lg w-full h-14">
-                  <div className="absolute top-1/2 -translate-y-1/2 left-3">
-                    <IoSearchOutline className="text-2xl text-theme-gray-2" />
-                  </div>
-
-                  <Autocomplete
-                    onLoad={(autocomplete) =>
-                      (autocompleteRef.current = autocomplete)
-                    }
-                    onPlaceChanged={() =>
-                      handlePlaceChanged("delivery-location")
-                    }
-                    className="w-full h-full"
-                  >
-                    <input
-                      className="w-full h-full pl-14 pr-2 outline-none bg-transparent"
-                      type="text"
-                      placeholder="Search location"
-                    />
-                  </Autocomplete>
-                </div>
+                {renderModalAddressSearch()}
 
                 <div className="flex items-center gap-5 pt-4">
                   <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
@@ -1851,7 +1618,6 @@ export default function orderRegistration() {
             </p>
           </div>
         </ReusableModal>
-      </GoogleMapsProvider>
-    </HomeClientWrapper>
+</HomeClientWrapper>
   );
 }

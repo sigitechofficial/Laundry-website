@@ -342,9 +342,18 @@ export default function Payment() {
         const prefRow = preferencesData?.find(
           (p) => Number(p.serviceId) === Number(svc.serviceId)
         );
+        const instructionParts = [];
+        if (prefRow?.bagsCount != null && prefRow.bagsCount !== "") {
+          instructionParts.push(`Number of bags: ${prefRow.bagsCount}`);
+        }
+        const extra = (prefRow?.additionalInstructions || "").trim();
+        if (extra) instructionParts.push(extra);
         return {
           ...svc,
-          serviceInstruction: (prefRow?.additionalInstructions || "").trim(),
+          serviceInstruction: instructionParts.join("\n"),
+          ...(prefRow?.itemsCount != null && prefRow.itemsCount !== ""
+            ? { items: Number(prefRow.itemsCount) }
+            : {}),
         };
       });
 
@@ -405,11 +414,28 @@ export default function Payment() {
         preferencesArray: flattenedPreferences,
         services: preferencesData
           ?.filter((item) => item?.serviceId)
-          ?.map((item) => ({
-            serviceId: item.serviceId,
-            serviceInstruction: (item.additionalInstructions || "").trim(),
-          })),
-        totalItems: 5,
+          ?.map((item) => {
+            const instructionParts = [];
+            if (item.bagsCount != null && item.bagsCount !== "") {
+              instructionParts.push(`Number of bags: ${item.bagsCount}`);
+            }
+            const extra = (item.additionalInstructions || "").trim();
+            if (extra) instructionParts.push(extra);
+            return {
+              serviceId: item.serviceId,
+              serviceInstruction: instructionParts.join("\n"),
+              ...(item.itemsCount != null && item.itemsCount !== ""
+                ? { items: Number(item.itemsCount) }
+                : {}),
+            };
+          }),
+        totalItems: (() => {
+          const fromPrefs = (preferencesData || []).reduce((sum, item) => {
+            const n = Number(item?.itemsCount);
+            return sum + (Number.isFinite(n) && n > 0 ? n : 0);
+          }, 0);
+          return fromPrefs > 0 ? fromPrefs : 5;
+        })(),
         tipAmount: Number.isFinite(driverTip) ? driverTip : 0,
         timeZone: serviceTimeZone,
         clientTimeZone,

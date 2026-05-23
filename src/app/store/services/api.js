@@ -253,7 +253,14 @@ export const api = createApi({
 
     getAddressesByPostcode: builder.query({
       query: (postcode) => ({
-        url: `customer/postcode/${postcode}`,
+        url: `customer/postcode/${encodeURIComponent(postcode)}`,
+        method: "GET",
+      }),
+    }),
+
+    getPostcodeAutocomplete: builder.query({
+      query: (q) => ({
+        url: `customer/postcode/autocomplete?q=${encodeURIComponent(q)}`,
         method: "GET",
       }),
     }),
@@ -338,6 +345,8 @@ export const {
   useCancelBookingMutation,
   useGetAddressesByPostcodeQuery,
   useLazyGetAddressesByPostcodeQuery,
+  useGetPostcodeAutocompleteQuery,
+  useLazyGetPostcodeAutocompleteQuery,
   useGetFAQsQuery,
   useGetBlogsQuery,
   useGetBlogByIdQuery,

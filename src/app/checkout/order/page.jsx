@@ -40,6 +40,9 @@ import InputField from "../../../../components/InputHeroUi";
 import { MiniLoader } from "../../../../components/Loader";
 import { BASE_URL } from "../../../../utilities/URL";
 
+const parseServiceBooleanFlag = (value) =>
+  value === true || value === "true" || value === 1 || value === "1";
+
 export default function Order() {
   const dispatch = useDispatch();
   const orderData = useSelector((state) => state.cart.orderData);
@@ -101,6 +104,14 @@ export default function Order() {
   }, [preferencesData, isRescheduleFlow, orderData?.rescheduleData?.services]);
 
   const serviceList = data?.data?.serviceData ?? [];
+
+  const currentServiceMeta = useMemo(
+    () => serviceList.find((s) => s?.id === currentServiceId) ?? null,
+    [serviceList, currentServiceId]
+  );
+
+  const showBagsInput = parseServiceBooleanFlag(currentServiceMeta?.numberOfBags);
+  const showItemsInput = parseServiceBooleanFlag(currentServiceMeta?.numberOfItems);
 
   const turnaroundCheck = useMemo(
     () =>
@@ -284,6 +295,22 @@ export default function Order() {
           savedPrefs,
           servicePreferencesData
         );
+        if (showBagsInput) {
+          restoredPrefs.bagsCount =
+            savedPrefs.bagsCount != null
+              ? String(savedPrefs.bagsCount)
+              : existingServicePref?.bagsCount != null
+                ? String(existingServicePref.bagsCount)
+                : "";
+        }
+        if (showItemsInput) {
+          restoredPrefs.itemsCount =
+            savedPrefs.itemsCount != null
+              ? String(savedPrefs.itemsCount)
+              : existingServicePref?.itemsCount != null
+                ? String(existingServicePref.itemsCount)
+                : "";
+        }
         setPreferences(restoredPrefs);
         setWashInstructionPanelOpen(getInstructionPanelState(restoredPrefs));
         setWashAccordionOpenId(null);
@@ -305,6 +332,18 @@ export default function Order() {
       });
       // Add additional instructions field
       initialPrefs.additionalInstructions = "";
+      if (showBagsInput) {
+        initialPrefs.bagsCount =
+          existingServicePref?.bagsCount != null
+            ? String(existingServicePref.bagsCount)
+            : "";
+      }
+      if (showItemsInput) {
+        initialPrefs.itemsCount =
+          existingServicePref?.itemsCount != null
+            ? String(existingServicePref.itemsCount)
+            : "";
+      }
       setPreferences(initialPrefs);
       setWashInstructionPanelOpen({});
       setWashAccordionOpenId(null);
@@ -313,7 +352,13 @@ export default function Order() {
       setWashInstructionPanelOpen({});
       setWashAccordionOpenId(null);
     }
-  }, [servicePreferencesData, currentServiceId, preferencesData]);
+  }, [
+    servicePreferencesData,
+    currentServiceId,
+    preferencesData,
+    showBagsInput,
+    showItemsInput,
+  ]);
 
   // After preferences load: empty list → add service without modal; otherwise open modal
   useEffect(() => {
@@ -345,9 +390,30 @@ export default function Order() {
     if (!Array.isArray(prefs)) return;
 
     if (prefs.length === 0) {
-      const serviceName =
-        data?.data?.serviceData?.find((s) => s.id === currentServiceId)?.name ||
-        "";
+      const svc = data?.data?.serviceData?.find((s) => s.id === currentServiceId);
+      const needsQuantityModal =
+        parseServiceBooleanFlag(svc?.numberOfBags) ||
+        parseServiceBooleanFlag(svc?.numberOfItems);
+
+      if (needsQuantityModal) {
+        const existingServicePref = Array.isArray(preferencesData)
+          ? preferencesData.find((item) => item?.serviceId === currentServiceId)
+          : null;
+        setPreferences({
+          additionalInstructions: existingServicePref?.additionalInstructions || "",
+          bagsCount:
+            existingServicePref?.bagsCount != null
+              ? String(existingServicePref.bagsCount)
+              : "",
+          itemsCount:
+            existingServicePref?.itemsCount != null
+              ? String(existingServicePref.itemsCount)
+              : "",
+        });
+        return;
+      }
+
+      const serviceName = svc?.name || "";
       dispatch(
         updatePreference({
           serviceId: currentServiceId,
@@ -584,11 +650,40 @@ export default function Order() {
       return;
     }
 
+    if (showBagsInput) {
+      const bags = String(preferences.bagsCount ?? "").trim();
+      if (!bags || !/^\d+$/.test(bags) || Number(bags) < 1) {
+        addToast({
+          title: "Number of bags required",
+          description: "Please enter how many bags you are sending.",
+          color: "warning",
+        });
+        return;
+      }
+    }
+
+    if (showItemsInput) {
+      const items = String(preferences.itemsCount ?? "").trim();
+      if (!items || !/^\d+$/.test(items) || Number(items) < 1) {
+        addToast({
+          title: "Number of items required",
+          description: "Please enter how many items you are sending.",
+          color: "warning",
+        });
+        return;
+      }
+    }
+
     // Build preferences array with preferenceTypeId and preferenceValueId
     const preferencesArray = [];
     const preferencesDisplay = [];
     Object.keys(preferences).forEach((key) => {
-        if (key === "additionalInstructions" || key === "washTypeSettings") {
+        if (
+          key === "additionalInstructions" ||
+          key === "washTypeSettings" ||
+          key === "bagsCount" ||
+          key === "itemsCount"
+        ) {
           return;
         }
 
@@ -655,12 +750,31 @@ export default function Order() {
       (s) => s.id === currentServiceId
     )?.name || "";
 
+    if (showBagsInput && preferences.bagsCount) {
+      preferencesDisplay.push({
+        preferenceTypeName: "Number of bags",
+        value: String(preferences.bagsCount),
+      });
+    }
+    if (showItemsInput && preferences.itemsCount) {
+      preferencesDisplay.push({
+        preferenceTypeName: "Number of items",
+        value: String(preferences.itemsCount),
+      });
+    }
+
     const prefsData = {
       serviceName,
       preferencesArray,
       preferencesDisplay,
       additionalInstructions: preferences.additionalInstructions || "",
       selectedPreferences: deepClone(preferences),
+      ...(showBagsInput && preferences.bagsCount
+        ? { bagsCount: Number(preferences.bagsCount) }
+        : {}),
+      ...(showItemsInput && preferences.itemsCount
+        ? { itemsCount: Number(preferences.itemsCount) }
+        : {}),
     };
 
     // Dispatch to redux
@@ -1087,7 +1201,10 @@ export default function Order() {
               <div className="w-full px-6 py-6 font-sf flex justify-center items-center min-h-[200px]">
                 <MiniLoader />
               </div>
-            ) : servicePreferencesData && servicePreferencesData.length > 0 ? (
+            ) : (Array.isArray(servicePreferencesData) &&
+                servicePreferencesData.length > 0) ||
+              showBagsInput ||
+              showItemsInput ? (
               <>
                 <div
                   ref={modalScrollRef}
@@ -1096,7 +1213,7 @@ export default function Order() {
                 >
                   <div className="w-full px-6 py-6 font-sf">
                 <div className="space-y-6">
-                  {servicePreferencesData.map((pref) => {
+                  {(servicePreferencesData || []).map((pref) => {
                     const prefName = getPreferenceKey(pref);
                     const prefKey = prefName;
                     const currentPref = preferences[prefKey];
@@ -1741,6 +1858,53 @@ export default function Order() {
                     );
                   })}
                 </div>
+
+                {(showBagsInput || showItemsInput) && (
+                  <div className="space-y-4 pt-1">
+                    {showBagsInput && (
+                      <div>
+                        <p className="font-sf font-semibold text-base sm:text-lg text-theme-gray-3 pb-2">
+                          Number of bags
+                        </p>
+                        <InputField
+                          type="number"
+                          min={1}
+                          step={1}
+                          placeholder="e.g. 2"
+                          value={preferences.bagsCount ?? ""}
+                          onChange={(e) => {
+                            const digitsOnly = e.target.value.replace(/\D/g, "");
+                            setPreferences((prev) => ({
+                              ...prev,
+                              bagsCount: digitsOnly,
+                            }));
+                          }}
+                        />
+                      </div>
+                    )}
+                    {showItemsInput && (
+                      <div>
+                        <p className="font-sf font-semibold text-base sm:text-lg text-theme-gray-3 pb-2">
+                          Number of items
+                        </p>
+                        <InputField
+                          type="number"
+                          min={1}
+                          step={1}
+                          placeholder="e.g. 10"
+                          value={preferences.itemsCount ?? ""}
+                          onChange={(e) => {
+                            const digitsOnly = e.target.value.replace(/\D/g, "");
+                            setPreferences((prev) => ({
+                              ...prev,
+                              itemsCount: digitsOnly,
+                            }));
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="pt-3">
                   <p className="font-sf text-lg pb-3">

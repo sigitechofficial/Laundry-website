@@ -19,6 +19,8 @@ import { useRouter } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { setOrderData } from "@/app/store/slices/cartItemSlice";
 import { BASE_URL } from "../../utilities/URL";
+import { resolveBookingSchedule } from "../../utilities/bookingScheduleDisplay";
+import BookingSlotTimes from "../BookingSlotTimes";
 
 export default function OrderHistory() {
   const router = useRouter();
@@ -434,6 +436,7 @@ export default function OrderHistory() {
   // Render order details content (reusable for both modal and side panel)
   const renderOrderDetailsContent = () => {
     if (!bookingDtails?.data) return null;
+    const schedule = resolveBookingSchedule(bookingDtails.data);
     const selectedServices = Array.isArray(
       bookingDtails?.data?.customerSelectedServices
     )
@@ -509,6 +512,33 @@ export default function OrderHistory() {
           )}
         </div>
 
+        {schedule?.operational ? (
+          <div className="rounded-xl bg-[#F5F5F5] px-4 py-3 text-sm font-sf space-y-1 mb-2">
+            {schedule.zone?.name ? (
+              <p>
+                <span className="text-theme-psGray">Service zone: </span>
+                <span className="font-medium">{schedule.zone.name}</span>
+              </p>
+            ) : null}
+            {schedule.operational?.displayLabel ? (
+              <p>
+                <span className="text-theme-psGray">Booking times in: </span>
+                <span className="font-medium">
+                  {schedule.operational.displayLabel}
+                </span>
+              </p>
+            ) : null}
+            {schedule.customerLocal?.ianaTimeZone ? (
+              <p>
+                <span className="text-theme-psGray">Your timezone: </span>
+                <span className="font-medium">
+                  {schedule.customerLocal.ianaTimeZone}
+                </span>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="space-y-4">
           <div className="font-sf space-y-3">
             <p className="font-youth font-bold">Collection</p>
@@ -520,13 +550,16 @@ export default function OrderHistory() {
                 {formatDate(bookingDtails?.data?.collectionDate)}
               </p>
             </div>
-            <div className="flex gap-2 items-center">
-              <div className="flex items-center justify-center">
+            <div className="flex gap-2 items-start">
+              <div className="flex items-center justify-center mt-0.5">
                 <IoTimeOutline size="16" />
               </div>
-              <p className="text-sm font-medium">
-                {formatTo24Hour(bookingDtails?.data?.collectionTimeFrom)} - {formatTo24Hour(bookingDtails?.data?.collectionTimeTo)}
-              </p>
+              <BookingSlotTimes
+                timeFrom={bookingDtails?.data?.collectionTimeFrom}
+                timeTo={bookingDtails?.data?.collectionTimeTo}
+                slot={schedule?.collection}
+                operationalShortLabel={schedule?.operational?.shortLabel}
+              />
             </div>
             <div className="flex gap-2 items-center">
               <div className="flex items-center justify-center">
@@ -547,13 +580,16 @@ export default function OrderHistory() {
                 {formatDate(bookingDtails?.data?.deliveryDate)}
               </p>
             </div>
-            <div className="flex gap-2 items-center">
-              <div className="flex items-center justify-center">
+            <div className="flex gap-2 items-start">
+              <div className="flex items-center justify-center mt-0.5">
                 <IoTimeOutline size="16" />
               </div>
-              <p className="text-sm font-medium">
-                {formatTo24Hour(bookingDtails?.data?.deliveryTimeFrom)} - {formatTo24Hour(bookingDtails?.data?.deliveryTimeTo)}
-              </p>
+              <BookingSlotTimes
+                timeFrom={bookingDtails?.data?.deliveryTimeFrom}
+                timeTo={bookingDtails?.data?.deliveryTimeTo}
+                slot={schedule?.delivery}
+                operationalShortLabel={schedule?.operational?.shortLabel}
+              />
             </div>
             <div className="flex gap-2 items-center">
               <div className="flex items-center justify-center">

@@ -41,6 +41,14 @@ import { FaRegEdit } from "react-icons/fa";
 import StripeCheckout from "../../../../utilities/StripeCheckout";
 import { useRouter } from "next/navigation";
 
+const parseServiceBooleanFlag = (value) =>
+  value === true || value === "true" || value === 1 || value === "1";
+
+const parseQuantityCount = (value) => {
+  const parsed = parseInt(String(value ?? "").replace(/\D/g, ""), 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
+
 export default function Payment() {
   const dispatch = useDispatch();
   const router = useRouter();
@@ -58,6 +66,26 @@ export default function Payment() {
   const customerId =
     typeof window !== "undefined" && localStorage.getItem("stripeCustomerId");
   const { data, isLoading } = useGetServicesQuery();
+  const serviceList = data?.data?.serviceData ?? [];
+
+  const useSharedBags = useMemo(() => {
+    const serviceCount = (preferencesData || []).filter((p) => p?.serviceId)
+      .length;
+    return serviceCount >= 2 && orderData?.sameBagForAllServices === true;
+  }, [preferencesData, orderData?.sameBagForAllServices]);
+
+  const sharedBagCount = parseQuantityCount(orderData?.totalBags);
+
+  const resolvedTotalBags = useMemo(() => {
+    if (useSharedBags) {
+      return sharedBagCount > 0 ? sharedBagCount : null;
+    }
+    const sum = (preferencesData || []).reduce((acc, item) => {
+      const n = parseQuantityCount(item?.bagsCount);
+      return acc + (n > 0 ? n : 0);
+    }, 0);
+    return sum > 0 ? sum : null;
+  }, [useSharedBags, sharedBagCount, preferencesData]);
   const { data: addressData, refetch: refetchCharges } = useGetChargesQuery(
     {
       lat: orderData?.collectionData?.lat,
@@ -72,8 +100,9 @@ export default function Payment() {
     skip: zoneId == null,
   });
   const serviceTimeZone =
-    addressData?.data?.zone?.timeZone ||
-    addressData?.data?.zoneTimeZone ||
+    orderData?.collectionData?.operationalTimeZone ||
+    addressData?.data?.operationalTimeZone ||
+    addressData?.data?.ianaTimeZone ||
     orderData?.rescheduleData?.timeZone ||
     orderData?.collectionData?.timeZone ||
     orderData?.timeZone ||
@@ -342,15 +371,14 @@ export default function Payment() {
         const prefRow = preferencesData?.find(
           (p) => Number(p.serviceId) === Number(svc.serviceId)
         );
-        const instructionParts = [];
-        if (prefRow?.bagsCount != null && prefRow.bagsCount !== "") {
-          instructionParts.push(`Number of bags: ${prefRow.bagsCount}`);
-        }
         const extra = (prefRow?.additionalInstructions || "").trim();
-        if (extra) instructionParts.push(extra);
+        const bags = !useSharedBags
+          ? parseQuantityCount(prefRow?.bagsCount)
+          : 0;
         return {
           ...svc,
-          serviceInstruction: instructionParts.join("\n"),
+          ...(extra ? { serviceInstruction: extra } : {}),
+          ...(!useSharedBags && bags > 0 ? { bags } : {}),
           ...(prefRow?.itemsCount != null && prefRow.itemsCount !== ""
             ? { items: Number(prefRow.itemsCount) }
             : {}),
@@ -415,15 +443,14 @@ export default function Payment() {
         services: preferencesData
           ?.filter((item) => item?.serviceId)
           ?.map((item) => {
-            const instructionParts = [];
-            if (item.bagsCount != null && item.bagsCount !== "") {
-              instructionParts.push(`Number of bags: ${item.bagsCount}`);
-            }
             const extra = (item.additionalInstructions || "").trim();
-            if (extra) instructionParts.push(extra);
+            const bags = !useSharedBags
+              ? parseQuantityCount(item.bagsCount)
+              : 0;
             return {
               serviceId: item.serviceId,
-              serviceInstruction: instructionParts.join("\n"),
+              ...(extra ? { serviceInstruction: extra } : {}),
+              ...(!useSharedBags && bags > 0 ? { bags } : {}),
               ...(item.itemsCount != null && item.itemsCount !== ""
                 ? { items: Number(item.itemsCount) }
                 : {}),
@@ -436,6 +463,8 @@ export default function Payment() {
           }, 0);
           return fromPrefs > 0 ? fromPrefs : 5;
         })(),
+        totalBags: resolvedTotalBags,
+        sameBagForAllServices: useSharedBags,
         tipAmount: Number.isFinite(driverTip) ? driverTip : 0,
         timeZone: serviceTimeZone,
         clientTimeZone,
@@ -462,6 +491,15 @@ export default function Payment() {
               "My plans changed",
             services: rescheduleServicesWithInstructions,
             preferencesArray: flattenedPreferences,
+            totalBags: resolvedTotalBags,
+            sameBagForAllServices: useSharedBags,
+            totalItems: (() => {
+              const fromPrefs = (preferencesData || []).reduce((sum, item) => {
+                const n = Number(item?.itemsCount);
+                return sum + (Number.isFinite(n) && n > 0 ? n : 0);
+              }, 0);
+              return fromPrefs > 0 ? fromPrefs : undefined;
+            })(),
           }
         : bookingData;
 

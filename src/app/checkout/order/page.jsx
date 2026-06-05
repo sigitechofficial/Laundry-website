@@ -22,6 +22,7 @@ import {
   setDriverTip,
   setPage,
   updatePreference,
+  setOrderData,
 } from "@/app/store/slices/cartItemSlice";
 import { generateCollectionSlots } from "../../../../utilities/generateSlots";
 import {
@@ -36,23 +37,57 @@ import FAQs from "../../../../components/FAQs";
 import Footer from "../../../../components/Footer";
 import { useRouter } from "next/navigation";
 import HomeClientWrapper from "../../../../utilities/Test";
-import InputField from "../../../../components/InputHeroUi";
 import { MiniLoader } from "../../../../components/Loader";
 import { BASE_URL } from "../../../../utilities/URL";
 
 const parseServiceBooleanFlag = (value) =>
   value === true || value === "true" || value === 1 || value === "1";
 
-const resolveQuantityCountMode = (prefs, showBags, showItems) => {
-  if (!showBags && !showItems) return null;
-  if (showBags && !showItems) return "bags";
-  if (!showBags && showItems) return "items";
-  if (prefs?.quantityCountMode === "items") return "items";
-  if (prefs?.quantityCountMode === "bags") return "bags";
-  if (prefs?.itemsCount) return "items";
-  if (prefs?.bagsCount) return "bags";
-  return "bags";
+const parseQuantityCount = (value) => {
+  const parsed = parseInt(String(value ?? "").replace(/\D/g, ""), 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 };
+
+function EstimatedQuantityStepper({ label, icon, value, onChange, disabled = false }) {
+  const count = parseQuantityCount(value);
+
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 ${disabled ? "opacity-50 pointer-events-none" : ""}`}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className="size-9 shrink-0 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-theme-gray-3">
+          {icon}
+        </div>
+        <span className="font-sf font-medium text-sm text-gray-900">{label}</span>
+      </div>
+
+      <div className="flex items-center h-9 rounded-full border border-gray-200 bg-white shrink-0 overflow-hidden">
+        <button
+          type="button"
+          aria-label={`Decrease ${label}`}
+          onClick={() => onChange(Math.max(0, count - 1))}
+          className="h-full px-3 font-sf text-base text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40"
+          disabled={disabled || count <= 0}
+        >
+          −
+        </button>
+        <span className="min-w-[1.75rem] text-center font-sf text-sm font-medium text-gray-900 tabular-nums">
+          {count}
+        </span>
+        <button
+          type="button"
+          aria-label={`Increase ${label}`}
+          onClick={() => onChange(count + 1)}
+          className="h-full px-3 font-sf text-base text-gray-700 hover:bg-gray-50 transition-colors"
+          disabled={disabled}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function Order() {
   const dispatch = useDispatch();
@@ -124,6 +159,56 @@ export default function Order() {
   const showBagsInput = parseServiceBooleanFlag(currentServiceMeta?.numberOfBags);
   const showItemsInput = parseServiceBooleanFlag(currentServiceMeta?.numberOfItems);
 
+  const selectedServiceCount = useMemo(() => {
+    const ids = new Set(cartServiceIds);
+    if (currentServiceId) ids.add(Number(currentServiceId));
+    return ids.size;
+  }, [cartServiceIds, currentServiceId]);
+
+  const multiServiceInCart = selectedServiceCount >= 2;
+  const canOfferOneBag =
+    serviceList.length >= 2 ||
+    preferencesData.length >= 2 ||
+    multiServiceInCart;
+
+  const packingSourceServiceId = orderData?.sameBagSourceServiceId ?? null;
+  const sourceStillInCart =
+    packingSourceServiceId == null ||
+    cartServiceIds.some(
+      (id) => Number(id) === Number(packingSourceServiceId)
+    ) ||
+    Number(currentServiceId) === Number(packingSourceServiceId);
+
+  /** User chose "All in one bag" (stored on order; applies at checkout when 2+ services). */
+  const isAllInOneBagSelected = orderData?.sameBagForAllServices === true;
+  /** Shared bag counts apply only with 2+ services in cart (matches payment API). */
+  const sharedBagsApply =
+    isAllInOneBagSelected && multiServiceInCart && sourceStillInCart;
+  const isPackingSourceService =
+    packingSourceServiceId == null ||
+    Number(currentServiceId) === Number(packingSourceServiceId);
+
+  const showPackingOptions = canOfferOneBag;
+  const canEditPackingChoice =
+    showPackingOptions && (!sharedBagsApply || isPackingSourceService);
+
+  const packingSourceServiceName = useMemo(() => {
+    if (packingSourceServiceId == null) return null;
+    const fromCart = (preferencesData || []).find(
+      (p) => Number(p?.serviceId) === Number(packingSourceServiceId)
+    );
+    if (fromCart?.serviceName) return fromCart.serviceName;
+    return (
+      serviceList.find((s) => Number(s?.id) === Number(packingSourceServiceId))
+        ?.name ?? null
+    );
+  }, [packingSourceServiceId, preferencesData, serviceList]);
+
+  const bagsStepperDisabled = sharedBagsApply && !isPackingSourceService;
+  const itemsStepperDisabled = false;
+  const useSharedBagStepper =
+    isAllInOneBagSelected && isPackingSourceService;
+
   const turnaroundCheck = useMemo(
     () =>
       getTurnaroundConflict({
@@ -150,6 +235,28 @@ export default function Order() {
   const [washInstructionPanelOpen, setWashInstructionPanelOpen] = useState({});
   /** Wash accordion: `null` = expand first selected row; `"__none__"` = all bodies collapsed; else open that value id */
   const [washAccordionOpenId, setWashAccordionOpenId] = useState(null);
+
+  const handlePackingModeChange = (mode) => {
+    if (mode === "allInOne") {
+      const bagCount = parseQuantityCount(
+        preferences.bagsCount ?? orderData?.totalBags
+      );
+      dispatch(
+        setOrderData({
+          sameBagForAllServices: true,
+          sameBagSourceServiceId: Number(currentServiceId),
+          ...(bagCount > 0 ? { totalBags: bagCount } : {}),
+        })
+      );
+      return;
+    }
+    dispatch(
+      setOrderData({
+        sameBagForAllServices: false,
+        sameBagSourceServiceId: null,
+      })
+    );
+  };
 
   const handleCancelModal = useCallback(() => {
     if (openModalTimeoutRef.current) {
@@ -308,11 +415,13 @@ export default function Order() {
         );
         if (showBagsInput) {
           restoredPrefs.bagsCount =
-            savedPrefs.bagsCount != null
-              ? String(savedPrefs.bagsCount)
-              : existingServicePref?.bagsCount != null
-                ? String(existingServicePref.bagsCount)
-                : "";
+            useSharedBagStepper
+              ? String(orderData?.totalBags ?? "")
+              : savedPrefs.bagsCount != null
+                ? String(savedPrefs.bagsCount)
+                : existingServicePref?.bagsCount != null
+                  ? String(existingServicePref.bagsCount)
+                  : "";
         }
         if (showItemsInput) {
           restoredPrefs.itemsCount =
@@ -322,14 +431,6 @@ export default function Order() {
                 ? String(existingServicePref.itemsCount)
                 : "";
         }
-        restoredPrefs.quantityCountMode = resolveQuantityCountMode(
-          {
-            ...restoredPrefs,
-            quantityCountMode: savedPrefs.quantityCountMode,
-          },
-          showBagsInput,
-          showItemsInput
-        );
         setPreferences(restoredPrefs);
         setWashInstructionPanelOpen(getInstructionPanelState(restoredPrefs));
         setWashAccordionOpenId(null);
@@ -353,9 +454,11 @@ export default function Order() {
       initialPrefs.additionalInstructions = "";
       if (showBagsInput) {
         initialPrefs.bagsCount =
-          existingServicePref?.bagsCount != null
-            ? String(existingServicePref.bagsCount)
-            : "";
+          useSharedBagStepper
+            ? String(orderData?.totalBags ?? "")
+            : existingServicePref?.bagsCount != null
+              ? String(existingServicePref.bagsCount)
+              : "";
       }
       if (showItemsInput) {
         initialPrefs.itemsCount =
@@ -363,11 +466,6 @@ export default function Order() {
             ? String(existingServicePref.itemsCount)
             : "";
       }
-      initialPrefs.quantityCountMode = resolveQuantityCountMode(
-        initialPrefs,
-        showBagsInput,
-        showItemsInput
-      );
       setPreferences(initialPrefs);
       setWashInstructionPanelOpen({});
       setWashAccordionOpenId(null);
@@ -382,6 +480,9 @@ export default function Order() {
     preferencesData,
     showBagsInput,
     showItemsInput,
+    useSharedBagStepper,
+    multiServiceInCart,
+    orderData?.totalBags,
   ]);
 
   // After preferences load: empty list → add service without modal; otherwise open modal
@@ -426,9 +527,11 @@ export default function Order() {
         setPreferences({
           additionalInstructions: existingServicePref?.additionalInstructions || "",
           bagsCount:
-            existingServicePref?.bagsCount != null
-              ? String(existingServicePref.bagsCount)
-              : "",
+            useSharedBagStepper
+              ? String(orderData?.totalBags ?? "")
+              : existingServicePref?.bagsCount != null
+                ? String(existingServicePref.bagsCount)
+                : "",
           itemsCount:
             existingServicePref?.itemsCount != null
               ? String(existingServicePref.itemsCount)
@@ -674,12 +777,6 @@ export default function Order() {
       return;
     }
 
-    const quantityCountMode = resolveQuantityCountMode(
-      preferences,
-      showBagsInput,
-      showItemsInput
-    );
-
     // Build preferences array with preferenceTypeId and preferenceValueId
     const preferencesArray = [];
     const preferencesDisplay = [];
@@ -688,8 +785,7 @@ export default function Order() {
           key === "additionalInstructions" ||
           key === "washTypeSettings" ||
           key === "bagsCount" ||
-          key === "itemsCount" ||
-          key === "quantityCountMode"
+          key === "itemsCount"
         ) {
           return;
         }
@@ -757,16 +853,34 @@ export default function Order() {
       (s) => s.id === currentServiceId
     )?.name || "";
 
-    if (quantityCountMode === "bags" && showBagsInput && preferences.bagsCount) {
-      preferencesDisplay.push({
-        preferenceTypeName: "Number of bags",
-        value: String(preferences.bagsCount),
-      });
+    const resolvedBagCount = useSharedBagStepper
+      ? parseQuantityCount(orderData?.totalBags ?? preferences.bagsCount)
+      : parseQuantityCount(preferences.bagsCount);
+
+    if (showBagsInput && resolvedBagCount > 0 && !bagsStepperDisabled) {
+      if (useSharedBagStepper) {
+        dispatch(setOrderData({ totalBags: resolvedBagCount }));
+        if (isPackingSourceService) {
+          preferencesDisplay.push({
+            preferenceTypeName: "Number of bags (all services)",
+            value: String(resolvedBagCount),
+          });
+        }
+      } else {
+        preferencesDisplay.push({
+          preferenceTypeName: "Number of bags",
+          value: String(resolvedBagCount),
+        });
+      }
     }
-    if (quantityCountMode === "items" && showItemsInput && preferences.itemsCount) {
+    if (
+      showItemsInput &&
+      parseQuantityCount(preferences.itemsCount) > 0 &&
+      !itemsStepperDisabled
+    ) {
       preferencesDisplay.push({
         preferenceTypeName: "Number of items",
-        value: String(preferences.itemsCount),
+        value: String(parseQuantityCount(preferences.itemsCount)),
       });
     }
 
@@ -776,11 +890,16 @@ export default function Order() {
       preferencesDisplay,
       additionalInstructions: preferences.additionalInstructions || "",
       selectedPreferences: deepClone(preferences),
-      ...(quantityCountMode === "bags" && showBagsInput && preferences.bagsCount
-        ? { bagsCount: Number(preferences.bagsCount) }
+      ...(showBagsInput &&
+      resolvedBagCount > 0 &&
+      !bagsStepperDisabled &&
+      (!isAllInOneBagSelected || isPackingSourceService)
+        ? { bagsCount: resolvedBagCount }
         : {}),
-      ...(quantityCountMode === "items" && showItemsInput && preferences.itemsCount
-        ? { itemsCount: Number(preferences.itemsCount) }
+      ...(showItemsInput &&
+      parseQuantityCount(preferences.itemsCount) > 0 &&
+      !itemsStepperDisabled
+        ? { itemsCount: parseQuantityCount(preferences.itemsCount) }
         : {}),
     };
 
@@ -1113,6 +1232,19 @@ export default function Order() {
                             )}
                           </div>
                         ))}
+                        {sharedBagsApply &&
+                          parseQuantityCount(orderData?.totalBags) > 0 && (
+                            <div className="font-sf pt-3 border-b-2 border-theme-gray pb-3">
+                              <div className="mt-1.5 rounded-md border border-theme-gray/70 px-2 py-1.5">
+                                <p className="text-theme-psGray font-sf text-[11px] leading-tight">
+                                  Number of bags (all services)
+                                </p>
+                                <p className="text-xs font-semibold leading-tight">
+                                  {parseQuantityCount(orderData?.totalBags)}
+                                </p>
+                              </div>
+                            </div>
+                          )}
                       </div>
                     ) : (
                       <div className="font-sf pt-3">
@@ -1867,96 +1999,154 @@ export default function Order() {
                 </div>
 
                 {(showBagsInput || showItemsInput) && (
-                  <div className="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:gap-3">
-                    <div className="flex flex-row gap-2 shrink-0">
-                      {showBagsInput && showItemsInput ? (
-                        <>
-                          {[
-                            { mode: "bags", label: "Number of bags" },
-                            { mode: "items", label: "Number of items" },
-                          ].map(({ mode, label }) => {
-                            const active =
-                              resolveQuantityCountMode(
-                                preferences,
-                                showBagsInput,
-                                showItemsInput
-                              ) === mode;
-                            return (
-                              <button
-                                key={mode}
-                                type="button"
-                                onClick={() =>
-                                  setPreferences((prev) => ({
-                                    ...prev,
-                                    quantityCountMode: mode,
-                                  }))
-                                }
-                                className={`h-[42px] flex items-center rounded-lg border-2 px-3 font-sf text-sm font-medium transition-colors whitespace-nowrap ${
-                                  active
-                                    ? "border-theme-blue bg-theme-blue/5 text-theme-blue"
-                                    : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                                }`}
-                              >
-                                {label}
-                              </button>
-                            );
-                          })}
-                        </>
-                      ) : (
-                        <p className="font-sf font-semibold text-base text-theme-gray-3 whitespace-nowrap h-[42px] flex items-center">
-                          {showBagsInput ? "Number of bags" : "Number of items"}
-                        </p>
-                      )}
+                  <div className="mt-2 rounded-2xl border border-[#d9e0ef] bg-[#eef2f9] p-3 sm:p-4 space-y-3">
+                    <div>
+                      <p className="font-sf font-semibold text-base text-theme-gray-3">
+                        Estimated quantity (optional)
+                      </p>
+                      <p className="font-sf text-sm text-theme-psGray mt-1 leading-relaxed">
+                        Help us prepare for collection — you can skip this if unsure.
+                      </p>
                     </div>
 
-                    <div className="flex-1 min-w-0 w-full">
-                      {resolveQuantityCountMode(
-                        preferences,
-                        showBagsInput,
-                        showItemsInput
-                      ) === "items" ? (
-                        <InputField
-                          label=""
-                          type="number"
-                          min={1}
-                          step={1}
-                          placeholder="e.g. 10"
-                          value={preferences.itemsCount ?? ""}
-                          onChange={(e) => {
-                            const digitsOnly = e.target.value.replace(/\D/g, "");
-                            setPreferences((prev) => ({
-                              ...prev,
-                              itemsCount: digitsOnly,
-                            }));
-                          }}
-                          classNames={{
-                            label: ["hidden"],
-                            base: ["!mt-0"],
-                            inputWrapper: ["!h-[42px]", "min-h-[42px]"],
-                            input: ["text-sm"],
+                    {showPackingOptions && canEditPackingChoice && (
+                      <div className="space-y-2 mb-1">
+                        <p className="font-sf font-semibold text-sm text-theme-gray-3">
+                          How are you packing?
+                        </p>
+                        <label
+                          className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${
+                            !isAllInOneBagSelected
+                              ? "border-theme-blue bg-white shadow-sm"
+                              : "border-[#d9e0ef] bg-white/60"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={`packingMode-${currentServiceId}`}
+                            className="mt-1 h-4 w-4 shrink-0 text-theme-blue focus:ring-theme-blue"
+                            checked={!isAllInOneBagSelected}
+                            onChange={() => handlePackingModeChange("perService")}
+                          />
+                          <span className="min-w-0">
+                            <span className="font-sf text-sm font-semibold text-gray-900 block">
+                              One bag per service
+                            </span>
+                            <span className="font-sf text-xs text-theme-psGray leading-snug">
+                              Recommended when mixing wash types
+                            </span>
+                          </span>
+                        </label>
+                        <label
+                          className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${
+                            isAllInOneBagSelected
+                              ? "border-theme-blue bg-white shadow-sm"
+                              : "border-[#d9e0ef] bg-white/60"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name={`packingMode-${currentServiceId}`}
+                            className="mt-1 h-4 w-4 shrink-0 text-theme-blue focus:ring-theme-blue"
+                            checked={isAllInOneBagSelected}
+                            onChange={() => handlePackingModeChange("allInOne")}
+                          />
+                          <span className="min-w-0">
+                            <span className="font-sf text-sm font-semibold text-gray-900 block">
+                              All in one bag
+                            </span>
+                            <span className="font-sf text-xs text-theme-psGray leading-snug">
+                              Everything in a single bag for collection
+                            </span>
+                          </span>
+                        </label>
+                        {isAllInOneBagSelected && !multiServiceInCart && (
+                          <p className="font-sf text-xs text-theme-psGray px-1">
+                            Add another service to your order for this option to apply at checkout.
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {showPackingOptions && !canEditPackingChoice && (
+                      <div className="rounded-xl border border-[#d9e0ef] bg-white/80 px-3 py-2.5 mb-1">
+                        <p className="font-sf text-sm font-semibold text-gray-900">
+                          All in one bag
+                        </p>
+                        <p className="font-sf text-xs text-theme-psGray mt-0.5 leading-snug">
+                          {packingSourceServiceName
+                            ? `Bag count is set on ${packingSourceServiceName}.`
+                            : "Bag count is set on your first service."}
+                          {parseQuantityCount(orderData?.totalBags) > 0
+                            ? ` Total: ${parseQuantityCount(orderData?.totalBags)} bag(s).`
+                            : ""}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      {showBagsInput && !bagsStepperDisabled && (
+                        <EstimatedQuantityStepper
+                          label="Bags"
+                          icon={<IoBagOutline className="text-lg" />}
+                          disabled={false}
+                          value={
+                            useSharedBagStepper
+                              ? orderData?.totalBags
+                              : preferences.bagsCount
+                          }
+                          onChange={(next) => {
+                            if (useSharedBagStepper) {
+                              dispatch(setOrderData({ totalBags: next }));
+                            } else {
+                              setPreferences((prev) => ({
+                                ...prev,
+                                bagsCount: String(next),
+                              }));
+                            }
                           }}
                         />
-                      ) : (
-                        <InputField
-                          label=""
-                          type="number"
-                          min={1}
-                          step={1}
-                          placeholder="e.g. 2"
-                          value={preferences.bagsCount ?? ""}
-                          onChange={(e) => {
-                            const digitsOnly = e.target.value.replace(/\D/g, "");
+                      )}
+
+                      {showItemsInput && (
+                        <EstimatedQuantityStepper
+                          label="Items"
+                          icon={
+                            <svg
+                              className="size-4 text-theme-gray-3"
+                              viewBox="0 0 40 40"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              aria-hidden
+                            >
+                              <path
+                                d="M20 7v4.5"
+                                stroke="currentColor"
+                                strokeWidth="1.35"
+                                strokeLinecap="round"
+                              />
+                              <path
+                                d="M14.5 18.5c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5l7.5 8.5a1 1 0 0 1-.75 1.65H7.75a1 1 0 0 1-.75-1.65l7.5-8.5Z"
+                                stroke="currentColor"
+                                strokeWidth="1.35"
+                                strokeLinejoin="round"
+                              />
+                              <path
+                                d="M11 30.5h18"
+                                stroke="currentColor"
+                                strokeWidth="1.35"
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                          }
+                          value={preferences.itemsCount}
+                          disabled={itemsStepperDisabled}
+                          onChange={(next) =>
                             setPreferences((prev) => ({
                               ...prev,
-                              bagsCount: digitsOnly,
-                            }));
-                          }}
-                          classNames={{
-                            label: ["hidden"],
-                            base: ["!mt-0"],
-                            inputWrapper: ["!h-[42px]", "min-h-[42px]"],
-                            input: ["text-sm"],
-                          }}
+                              itemsCount: String(next),
+                            }))
+                          }
                         />
                       )}
                     </div>

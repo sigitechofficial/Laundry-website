@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import InputHeroUi from "../../../components/InputHeroUi";
 import { ButtonYouth70018 } from "../../../components/Buttons";
 import { PiArrowRight } from "react-icons/pi";
@@ -11,7 +11,11 @@ import { Spinner, addToast, useDisclosure } from "@heroui/react";
 import { IoSearchOutline } from "react-icons/io5";
 import { TbLocation } from "react-icons/tb";
 import { useRouter } from "next/navigation";
-import { generateCollectionSlots } from "../../../utilities/generateSlots";
+import {
+  fetchBookingSlots,
+  fetchZoneForCoordinates,
+} from "../../../utilities/bookingSlotsApi";
+import { useLiveClock } from "../../../utilities/useLiveClock";
 import { useDispatch, useSelector } from "react-redux";
 import { setOrderData, setPage } from "../store/slices/cartItemSlice";
 import {
@@ -45,6 +49,36 @@ const delivery = [
   { key: "Leave at the door", label: "Leave at the door" },
   { key: "Deliver to the Reception/Porter", label: "Deliver to the Reception/Porter" },
 ];
+
+function SlotTimezoneBanner({ operational, clientLocal }) {
+  const { time: liveOperationalTime, abbrev: liveOperationalAbbrev } =
+    useLiveClock(operational?.ianaTimeZone);
+  const { time: liveClientTime } = useLiveClock(clientLocal?.ianaTimeZone);
+
+  if (!operational) return null;
+  const showLocal =
+    clientLocal?.ianaTimeZone &&
+    clientLocal.ianaTimeZone !== operational.ianaTimeZone;
+  const opAbbrev =
+    liveOperationalAbbrev || operational.abbreviationNow || "";
+  const opNow = liveOperationalTime || operational.nowFormatted || "";
+  const clientNow = liveClientTime || clientLocal?.nowFormatted || "";
+
+  return (
+    <div className="rounded-xl bg-theme-gray/80 px-4 py-3 text-sm font-sf space-y-1 mb-4">
+      <p>
+        Times in{" "}
+        <span className="font-semibold">{operational.displayLabel}</span>
+        {opAbbrev ? ` (${opAbbrev}, now ${opNow})` : ` (now ${opNow})`}
+      </p>
+      {showLocal ? (
+        <p className="text-theme-psGray">
+          Your local ({clientLocal.ianaTimeZone}): now {clientNow}
+        </p>
+      ) : null}
+    </div>
+  );
+}
 
 export default function orderRegistration() {
   const router = useRouter();
@@ -90,30 +124,12 @@ export default function orderRegistration() {
   const clientTimeZone =
     Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
 
-  const slots = generateCollectionSlots({
-    daysCount: 7, // next 7 calendar days (includes Sat/Sun)
-    slotDurationInHours: 1,
-    lastHour: 19, // 7 PM
-    startAfterHours: 2, // show slots starting 2 hours ahead
-    includeWeekends: true,
-  });
-
-  /* Longer horizon than collection (7d) so last pickup day still has later delivery days */
-  const slotsDelivery = generateCollectionSlots({
-    daysCount: 21,
-    slotDurationInHours: 1,
-    lastHour: 19, // 7 PM
-    startAfterHours: 24,
-    includeWeekends: true,
-  });
-
-  const getLocalDateString = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
+  const [slots, setSlots] = useState([]);
+  const [slotsDelivery, setSlotsDelivery] = useState([]);
+  const [slotsOperational, setSlotsOperational] = useState(null);
+  const [slotsClientLocal, setSlotsClientLocal] = useState(null);
+  const [zoneInfo, setZoneInfo] = useState(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
   /** ISO yyyy-mm-dd → "April 2026" (avoids hardcoded month/year in modals) */
   const formatSlotMonthYear = (isoDate) => {
@@ -142,13 +158,11 @@ export default function orderRegistration() {
     return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${yy}`;
   };
 
-  const initialCollectionSlot = React.useMemo(() => {
-    const today = getLocalDateString();
-    return slots?.find((slot) => slot.date === today) || slots?.[0] || null;
-  }, [slots]);
+  const initialCollectionSlot = useMemo(() => slots?.[0] || null, [slots]);
 
-  const initialDeliverySlot = React.useMemo(() => {
-    const baseDate = initialCollectionSlot?.date || getLocalDateString();
+  const initialDeliverySlot = useMemo(() => {
+    const baseDate = initialCollectionSlot?.date;
+    if (!baseDate) return slotsDelivery?.[0] || null;
     return (
       slotsDelivery?.find((slot) => slot.date > baseDate) ||
       slotsDelivery?.[0] ||
@@ -207,6 +221,144 @@ export default function orderRegistration() {
     if (!collectionData?.collectionDate) return "";
     return getMinDeliveryDate(collectionData.collectionDate, cartMaxTurnaroundDays);
   }, [collectionData?.collectionDate, cartMaxTurnaroundDays]);
+
+  const loadDeliverySlotsForCountry = async (countryId, fromDate) => {
+    const delData = await fetchBookingSlots({
+      countryId,
+      clientTimeZone,
+      type: "delivery",
+      daysCount: 21,
+      fromDate: fromDate || undefined,
+    });
+    setSlotsDelivery(delData.days || []);
+    return delData;
+  };
+
+  const loadSlotsForPickupAddress = async (lat, lng) => {
+    setSlotsLoading(true);
+    try {
+      const zone = await fetchZoneForCoordinates(lat, lng);
+      setZoneInfo(zone);
+
+      const colData = await fetchBookingSlots({
+        countryId: zone.countryId,
+        clientTimeZone,
+        type: "collection",
+        daysCount: 7,
+      });
+      setSlots(colData.days || []);
+      setSlotsOperational(colData.operational || null);
+      setSlotsClientLocal(colData.clientLocal || null);
+
+      const firstDay = colData.days?.[0];
+      const firstSlot = firstDay?.timeSlots?.[0];
+      if (firstDay && firstSlot) {
+        setCollectionData((prev) => ({
+          ...prev,
+          collectionDate: firstDay.date,
+          collectionTimeFrom: firstSlot.start,
+          collectionTimeTo: firstSlot.end,
+          availableTimeSlots: firstDay.timeSlots,
+          operationalTimeZone: colData.operational?.ianaTimeZone,
+          timeZone: colData.operational?.ianaTimeZone,
+          clientTimeZone,
+        }));
+
+        const minDel =
+          getMinDeliveryDate(firstDay.date, cartMaxTurnaroundDays) ||
+          firstDay.date;
+        const delData = await loadDeliverySlotsForCountry(zone.countryId, minDel);
+        const firstDel =
+          delData.days?.find((d) => d.date >= minDel) || delData.days?.[0];
+        const firstDelSlot = firstDel?.timeSlots?.[0];
+        if (firstDel && firstDelSlot) {
+          setDeliveryData((prev) => ({
+            ...prev,
+            deliveryDate: firstDel.date,
+            deliveryTimeFrom: firstDelSlot.start,
+            deliveryTimeTo: firstDelSlot.end,
+            availableTimeSlots: firstDel.timeSlots,
+            operationalTimeZone: colData.operational?.ianaTimeZone,
+            timeZone: colData.operational?.ianaTimeZone,
+            clientTimeZone,
+          }));
+        }
+      }
+    } catch (err) {
+      addToast({
+        title: err?.message || "Could not load time slots for this address.",
+        color: "danger",
+      });
+      setSlots([]);
+      setSlotsDelivery([]);
+      setSlotsOperational(null);
+      setSlotsClientLocal(null);
+    } finally {
+      setSlotsLoading(false);
+    }
+  };
+
+  const deliverySlotsFetchKeyRef = useRef(null);
+
+  useEffect(() => {
+    if (!collectionData?.lat || !collectionData?.lng || isRescheduleFlow) return;
+    deliverySlotsFetchKeyRef.current = null;
+    loadSlotsForPickupAddress(collectionData.lat, collectionData.lng);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collectionData?.lat, collectionData?.lng, clientTimeZone, isRescheduleFlow]);
+
+  // Delivery slots: fetch once when delivery modal opens (not on every collection date tap)
+  useEffect(() => {
+    if (!isOpen) {
+      deliverySlotsFetchKeyRef.current = null;
+      return;
+    }
+    if (
+      modal?.modType !== "delivery-date" ||
+      !zoneInfo?.countryId ||
+      !collectionData?.collectionDate ||
+      isRescheduleFlow
+    ) {
+      return;
+    }
+    const minStr =
+      minDeliveryForCart ||
+      getMinDeliveryDate(collectionData.collectionDate, 0);
+    const fetchKey = `${zoneInfo.countryId}-${minStr}-${clientTimeZone}`;
+    if (deliverySlotsFetchKeyRef.current === fetchKey) return;
+    deliverySlotsFetchKeyRef.current = fetchKey;
+
+    loadDeliverySlotsForCountry(zoneInfo.countryId, minStr)
+      .then((delData) => {
+        setDeliveryData((prev) => {
+          const day =
+            delData.days?.find((d) => d.date === prev.deliveryDate) ||
+            delData.days?.find((d) => d.date >= minStr) ||
+            delData.days?.[0];
+          if (!day?.timeSlots?.length) return prev;
+          const slot =
+            day.timeSlots.find((s) => s.start === prev.deliveryTimeFrom) ||
+            day.timeSlots[0];
+          return {
+            ...prev,
+            deliveryDate: day.date,
+            deliveryTimeFrom: slot.start,
+            deliveryTimeTo: slot.end,
+            availableTimeSlots: day.timeSlots,
+          };
+        });
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isOpen,
+    modal?.modType,
+    zoneInfo?.countryId,
+    collectionData?.collectionDate,
+    minDeliveryForCart,
+    clientTimeZone,
+    isRescheduleFlow,
+  ]);
 
   // Parse time string to minutes since midnight for comparison (handles "1:00 PM", "10:00 AM", or "13:00:00")
   const parseTimeToMinutes = (timeStr) => {
@@ -698,6 +850,9 @@ export default function orderRegistration() {
     }
 
     const selectedTimeZone =
+      collectionData?.operationalTimeZone ||
+      zoneInfo?.operationalTimeZone ||
+      zoneInfo?.ianaTimeZone ||
       collectionData?.timeZone ||
       orderData?.timeZone ||
       orderData?.rescheduleData?.timeZone ||
@@ -1245,6 +1400,20 @@ export default function orderRegistration() {
               </div>
 
               <div className="w-full px-6 py-6">
+                <SlotTimezoneBanner
+                  operational={slotsOperational}
+                  clientLocal={slotsClientLocal}
+                />
+                {slotsLoading && !slots?.length ? (
+                  <div className="flex justify-center py-8">
+                    <Spinner />
+                  </div>
+                ) : null}
+                {!slotsLoading && !slots?.length ? (
+                  <p className="font-sf text-sm text-theme-psGray pb-4">
+                    Select a pickup address to see available collection times.
+                  </p>
+                ) : null}
                 <div className="space-y-5">
                   <h6 className="font-sf text-xl font-medium">
                     {formatSlotMonthYear(
@@ -1261,10 +1430,15 @@ export default function orderRegistration() {
                         >
                           <div
                             onClick={() => {
+                              const firstSlot = item?.timeSlots?.[0];
                               setCollectionData({
                                 ...collectionData,
                                 collectionDate: item?.date,
                                 availableTimeSlots: item?.timeSlots,
+                                collectionTimeFrom:
+                                  firstSlot?.start || collectionData?.collectionTimeFrom,
+                                collectionTimeTo:
+                                  firstSlot?.end || collectionData?.collectionTimeTo,
                               });
                             }}
                             className={`text-2xl font-semibold size-14 rounded-full shrink-0 flex items-center justify-center ${collectionData?.collectionDate === item?.date
@@ -1305,17 +1479,26 @@ export default function orderRegistration() {
                             collectionTimeTo: item?.end,
                           });
                         }}
-                        className={`w-full h-14 px-5 flex justify-between items-center  rounded-full shrink-0 font-sf font-semibold text-2xl ${collectionData?.collectionTimeFrom === item?.start
+                        className={`w-full min-h-14 px-5 py-2 flex flex-col justify-center rounded-full shrink-0 font-sf font-semibold text-2xl ${collectionData?.collectionTimeFrom === item?.start
                           ? "bg-theme-blue text-white"
                           : "bg-theme-gray"
                           }`}
                       >
-                        <div className="flex items-center">
-                          {formatTo24HourDisplay(item?.start)}
+                        <div className="flex justify-between items-center w-full">
+                          <span>{formatTo24HourDisplay(item?.start)}</span>
+                          <span>{formatTo24HourDisplay(item?.end)}</span>
                         </div>
-                        <div className="flex items-center">
-                          {formatTo24HourDisplay(item?.end)}
-                        </div>
+                        {item?.local ? (
+                          <p
+                            className={`text-xs font-normal mt-0.5 ${collectionData?.collectionTimeFrom === item?.start
+                              ? "text-white/90"
+                              : "text-theme-psGray"
+                              }`}
+                          >
+                            Your time: {formatTo24HourDisplay(item.local.start12h)}{" "}
+                            – {formatTo24HourDisplay(item.local.end12h)}
+                          </p>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -1378,6 +1561,15 @@ export default function orderRegistration() {
               </div>
 
               <div className="w-full px-6 py-6">
+                <SlotTimezoneBanner
+                  operational={slotsOperational}
+                  clientLocal={slotsClientLocal}
+                />
+                {slotsLoading && !slotsDelivery?.length ? (
+                  <div className="flex justify-center py-8">
+                    <Spinner />
+                  </div>
+                ) : null}
                 <div className="space-y-5">
                   <h6 className="font-sf text-xl font-medium">
                     {formatSlotMonthYear(
@@ -1410,10 +1602,26 @@ export default function orderRegistration() {
                           >
                             <div
                               onClick={() => {
+                                const rawSlots = item?.timeSlots || [];
+                                const candidateSlots =
+                                  item?.date === collectionData?.collectionDate &&
+                                  collectionData?.collectionTimeTo
+                                    ? rawSlots.filter(
+                                        (slot) =>
+                                          parseTimeToMinutes(slot?.start) >=
+                                          parseTimeToMinutes(collectionData.collectionTimeTo)
+                                      )
+                                    : rawSlots;
+                                const firstSlot =
+                                  candidateSlots?.[0] || rawSlots?.[0];
                                 setDeliveryData({
                                   ...deliveryData,
                                   deliveryDate: item?.date,
                                   availableTimeSlots: item?.timeSlots,
+                                  deliveryTimeFrom:
+                                    firstSlot?.start || deliveryData?.deliveryTimeFrom,
+                                  deliveryTimeTo:
+                                    firstSlot?.end || deliveryData?.deliveryTimeTo,
                                 });
                               }}
                               className={`text-2xl font-semibold size-14 rounded-full shrink-0 flex items-center justify-center ${deliveryData?.deliveryDate === item?.date
@@ -1467,17 +1675,26 @@ export default function orderRegistration() {
                             deliveryTimeTo: item?.end,
                           });
                         }}
-                        className={`w-full h-14 px-5 flex justify-between items-center  rounded-full shrink-0 font-sf font-semibold text-2xl ${deliveryData?.deliveryTimeFrom === item?.start
+                        className={`w-full min-h-14 px-5 py-2 flex flex-col justify-center rounded-full shrink-0 font-sf font-semibold text-2xl ${deliveryData?.deliveryTimeFrom === item?.start
                           ? "bg-theme-blue text-white"
                           : "bg-theme-gray"
                           }`}
                       >
-                        <div className="flex items-center">
-                          {formatTo24HourDisplay(item?.start)}
+                        <div className="flex justify-between items-center w-full">
+                          <span>{formatTo24HourDisplay(item?.start)}</span>
+                          <span>{formatTo24HourDisplay(item?.end)}</span>
                         </div>
-                        <div className="flex items-center">
-                          {formatTo24HourDisplay(item?.end)}
-                        </div>
+                        {item?.local ? (
+                          <p
+                            className={`text-xs font-normal mt-0.5 ${deliveryData?.deliveryTimeFrom === item?.start
+                              ? "text-white/90"
+                              : "text-theme-psGray"
+                              }`}
+                          >
+                            Your time: {formatTo24HourDisplay(item.local.start12h)}{" "}
+                            – {formatTo24HourDisplay(item.local.end12h)}
+                          </p>
+                        ) : null}
                       </div>
                     ));
                   })()}

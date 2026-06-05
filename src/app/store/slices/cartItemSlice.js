@@ -21,6 +21,16 @@ const getInitialState = () => {
     if (storedOrderData) orderData = JSON.parse(storedOrderData);
     if (storedPreferences) preferences = JSON.parse(storedPreferences);
     if (storedPage) page = storedPage;
+
+    // Drop stale one-bag flag (e.g. old default true without a source service)
+    if (
+      orderData?.sameBagForAllServices === true &&
+      (orderData?.sameBagSourceServiceId == null ||
+        orderData?.sameBagSourceServiceId === "")
+    ) {
+      orderData.sameBagForAllServices = false;
+      orderData.sameBagSourceServiceId = null;
+    }
   }
 
   return {
@@ -74,6 +84,9 @@ const getInitialState = () => {
       driverInstruction: orderData?.driverInstruction || "",
       frequency: orderData?.frequency || "Just once",
       driverTip: orderData?.driverTip || 0,
+      sameBagForAllServices: orderData?.sameBagForAllServices === true,
+      sameBagSourceServiceId: orderData?.sameBagSourceServiceId ?? null,
+      totalBags: orderData?.totalBags ?? "",
     },
     preferences,
     page,
@@ -211,6 +224,9 @@ const cartItemSlice = createSlice({
         driverInstruction: "",
         frequency: "Just once",
         driverTip: 0,
+        sameBagForAllServices: false,
+        sameBagSourceServiceId: null,
+        totalBags: "",
       };
       state.preferences = [];
       state.page = "";

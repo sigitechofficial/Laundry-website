@@ -129,7 +129,11 @@ const CheckoutForm = ({ setModal, modal, booking, onOpen, intentMode = "payment"
           setMessage(error?.message || "Failed to load payment form. Please check your Stripe keys match.");
         }}
         options={{
-          layout: "tabs"
+          layout: "tabs",
+          wallets: {
+            applePay: "auto",
+            googlePay: "auto",
+          },
         }}
       />
       <button

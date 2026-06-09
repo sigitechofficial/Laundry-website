@@ -483,10 +483,37 @@ export default function OrderHistory() {
       acc[serviceName].push(item);
       return acc;
     }, {});
-    const displayedItemsCount = Object.values(groupedSelectedServices).reduce(
-      (sum, serviceItems) => sum + serviceItems.length,
-      0
-    );
+
+    const servicesSubtotal = (() => {
+      const fromApi = Number.parseFloat(bookingDtails?.data?.servicesSubtotal);
+      if (Number.isFinite(fromApi) && fromApi >= 0) {
+        return fromApi;
+      }
+      const fromBilling = Number.parseFloat(
+        bookingDtails?.data?.billingDetail?.categoryCharge
+      );
+      if (Number.isFinite(fromBilling) && fromBilling >= 0) {
+        return fromBilling;
+      }
+      return 0;
+    })();
+
+    const formatBillingLine = (amount, { signed = false } = {}) => {
+      const numeric = Number(amount);
+      if (!Number.isFinite(numeric)) return `${bookingCurrencySymbol}0.00`;
+      const base = `${bookingCurrencySymbol}${Math.abs(numeric).toFixed(2)}`;
+      if (!signed) return base;
+      if (numeric > 0) return `+${base}`;
+      if (numeric < 0) return `-${base}`;
+      return base;
+    };
+    const totalBagsCount = (() => {
+      const fromTotal = Number(bookingDtails?.data?.totalBags);
+      if (Number.isFinite(fromTotal) && fromTotal > 0) return fromTotal;
+      const fromPickup = Number(bookingDtails?.data?.noOfBags);
+      if (Number.isFinite(fromPickup) && fromPickup > 0) return fromPickup;
+      return null;
+    })();
 
     return (
       <>
@@ -600,6 +627,19 @@ export default function OrderHistory() {
               </p>
             </div>
           </div>
+          {totalBagsCount != null ? (
+            <div className="font-sf space-y-3">
+              <p className="font-youth font-bold">Bags</p>
+              <div className="flex gap-2 items-center">
+                <div className="flex items-center justify-center">
+                  <IoBagCheck size="16" />
+                </div>
+                <p className="text-sm font-medium">
+                  Total bags: {totalBagsCount}
+                </p>
+              </div>
+            </div>
+          ) : null}
           <div className="font-sf space-y-3">
             <p className="font-youth font-bold">Address</p>
             <div className="flex gap-2 items-center">
@@ -738,7 +778,9 @@ export default function OrderHistory() {
             <div className="font-sf text-left">
               <h6 className="font-semibold text-xl">Order details</h6>
               <p className="text-theme-psGray">
-                {displayedItemsCount} items
+                {totalBagsCount != null
+                  ? `${totalBagsCount} bag${totalBagsCount === 1 ? "" : "s"}`
+                  : null}
               </p>
             </div>
             <MdKeyboardArrowRight
@@ -835,47 +877,54 @@ export default function OrderHistory() {
               </div>
             </div>
           </div>
-          <div className="space-y-1 font-sf border-b pb-3">
-            <div className="flex justify-between items-center ">
-              <h4 className="font-semibold">Subtotal</h4>
-              <p className="font-semibold">
-                {bookingCurrencySymbol}
-                {displaySubTotal.toFixed(2)}
+          <div className="font-sf border-t border-gray-200 pt-4 pb-3 space-y-2">
+            <div className="flex justify-between items-center gap-4">
+              <p className="text-sm font-semibold">Services subtotal</p>
+              <p className="text-sm font-semibold shrink-0">
+                {formatBillingLine(servicesSubtotal)}
               </p>
             </div>
-            <div className="flex justify-between items-center">
-              <h4 className="text-sm text-theme-psGray">Discount</h4>
-              <p className="text-sm text-theme-psGray">
-                -{bookingCurrencySymbol}
-                {displayDiscount.toFixed(2)}
+            <div className="flex justify-between items-center gap-4">
+              <p className="text-sm text-theme-psGray">Service charge</p>
+              <p className="text-sm text-theme-psGray shrink-0">
+                {formatBillingLine(displayServiceFee, { signed: true })}
               </p>
             </div>
-            <div className="flex justify-between items-center">
-              <h4 className="text-sm text-theme-psGray">Service fee</h4>
-              <p className="text-sm text-theme-psGray">
-                +{bookingCurrencySymbol}
-                {displayServiceFee.toFixed(2)}
+            <div className="flex justify-between items-center gap-4">
+              <p className="text-sm text-theme-psGray">Delivery fee</p>
+              <p className="text-sm text-theme-psGray shrink-0">
+                {formatBillingLine(0)}
               </p>
             </div>
-            <div className="flex justify-between items-center">
-              <h4 className="text-sm text-theme-psGray">Upfront amount</h4>
-              <p className="text-sm text-theme-psGray">
-                -{bookingCurrencySymbol}
-                {displayUpfrontAmount.toFixed(2)}
+            <div className="flex justify-between items-center gap-4">
+              <p className="text-sm text-theme-psGray">Driver tip</p>
+              <p className="text-sm text-theme-psGray shrink-0">
+                {formatBillingLine(displayTip, { signed: true })}
               </p>
             </div>
-            <div className="flex justify-between items-center">
-              <h4 className="text-sm text-theme-psGray">Tip</h4>
-              <p className="text-sm text-theme-psGray">
-                +{bookingCurrencySymbol}
-                {displayTip.toFixed(2)}
-              </p>
-            </div>
-            <div className="flex justify-between items-center pt-1">
-              <h4 className="font-semibold">Total</h4>
-              <p className="font-semibold">
-                {bookingCurrencySymbol}
-                {displayTotal.toFixed(2)}
+          </div>
+
+          <div className="font-sf rounded-xl bg-[#F5F5F5] px-4 py-3 space-y-2 mt-3 border-b pb-3">
+            {displayUpfrontAmount > 0 ? (
+              <div className="flex justify-between items-center gap-4">
+                <p className="text-sm text-theme-psGray">Upfront amount paid</p>
+                <p className="text-sm font-medium shrink-0">
+                  {formatBillingLine(-displayUpfrontAmount, { signed: true })}
+                </p>
+              </div>
+            ) : null}
+            {displayDiscount > 0 ? (
+              <div className="flex justify-between items-center gap-4">
+                <p className="text-sm text-theme-psGray">Discount</p>
+                <p className="text-sm text-theme-psGray shrink-0">
+                  {formatBillingLine(-displayDiscount, { signed: true })}
+                </p>
+              </div>
+            ) : null}
+            <div className="flex justify-between items-center gap-4 pt-1 border-t border-gray-200">
+              <p className="text-sm font-semibold">Total</p>
+              <p className="text-sm font-semibold shrink-0">
+                {formatBillingLine(displayTotal)}
               </p>
             </div>
           </div>

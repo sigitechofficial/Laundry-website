@@ -905,28 +905,32 @@ export default function OrderHistory() {
           </div>
 
           <div className="font-sf rounded-xl bg-[#F5F5F5] px-4 py-3 space-y-2 mt-3 border-b pb-3">
-            {displayUpfrontAmount > 0 ? (
-              <div className="flex justify-between items-center gap-4">
-                <p className="text-sm text-theme-psGray">Upfront amount paid</p>
-                <p className="text-sm font-medium shrink-0">
-                  {formatBillingLine(-displayUpfrontAmount, { signed: true })}
-                </p>
-              </div>
-            ) : null}
+            <div className="flex justify-between items-center gap-4">
+              <p className="text-sm font-semibold">Total</p>
+              <p className="text-sm font-semibold shrink-0">
+                {formatBillingLine(displayTotal)}
+              </p>
+            </div>
             {displayDiscount > 0 ? (
-              <div className="flex justify-between items-center gap-4">
+              <div className="flex justify-between items-center gap-4 pt-1 border-t border-gray-200">
                 <p className="text-sm text-theme-psGray">Discount</p>
                 <p className="text-sm text-theme-psGray shrink-0">
                   {formatBillingLine(-displayDiscount, { signed: true })}
                 </p>
               </div>
             ) : null}
-            <div className="flex justify-between items-center gap-4 pt-1 border-t border-gray-200">
-              <p className="text-sm font-semibold">Total</p>
-              <p className="text-sm font-semibold shrink-0">
-                {formatBillingLine(displayTotal)}
-              </p>
-            </div>
+            {displayUpfrontAmount > 0 ? (
+              <div
+                className={`flex justify-between items-center gap-4 ${
+                  displayDiscount > 0 ? "" : "pt-1 border-t border-gray-200"
+                }`}
+              >
+                <p className="text-sm text-theme-psGray">Upfront amount paid</p>
+                <p className="text-sm font-medium shrink-0">
+                  {formatBillingLine(-displayUpfrontAmount, { signed: true })}
+                </p>
+              </div>
+            ) : null}
           </div>
           {(bookingDtails?.data?.paymentMethodId || bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId) && (
             <div className="space-y-1 font-sf border-b pb-3">

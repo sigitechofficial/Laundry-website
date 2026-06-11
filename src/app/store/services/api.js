@@ -263,6 +263,7 @@ export const api = createApi({
         url: `customer/postcode/autocomplete?q=${encodeURIComponent(q)}`,
         method: "GET",
       }),
+      keepUnusedDataFor: 0,
     }),
 
     getFAQs: builder.query({

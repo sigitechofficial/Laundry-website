@@ -29,6 +29,8 @@ export default function PostcodeAddressLookup({
 }) {
   const containerRef = useRef(null);
   const debounceRef = useRef(null);
+  const autocompleteSeqRef = useRef(0);
+  const skipNextAutocompleteRef = useRef(false);
   const suggestionTypeRef = useRef("postcode");
 
   const [postcodeSuggestions, setPostcodeSuggestions] = useState([]);
@@ -62,40 +64,69 @@ export default function PostcodeAddressLookup({
   const runAutocomplete = useCallback(
     (query, { immediate = false } = {}) => {
       const trimmed = (query || "").trim();
-      if (trimmed.length < 2 || isFullUkPostcode(trimmed)) {
+      const normalizedQuery = normalizePostcode(trimmed) || trimmed;
+
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+
+      if (normalizedQuery.length < 2) {
+        autocompleteSeqRef.current += 1;
         setPostcodeSuggestions([]);
         setShowPostcodeSuggestions(false);
         return;
       }
 
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
+      const fetchSuggestions = async (queryForFetch) => {
+        const requestSeq = ++autocompleteSeqRef.current;
+        const apiQuery = normalizePostcode(queryForFetch) || queryForFetch.trim();
 
-      const fetchSuggestions = async () => {
         try {
-          const result = await fetchAutocomplete(trimmed).unwrap();
+          const result = await fetchAutocomplete(apiQuery, {
+            forceRefetch: true,
+            subscribe: false,
+          }).unwrap();
+
+          if (requestSeq !== autocompleteSeqRef.current) {
+            return;
+          }
+
           const suggestions = result?.data?.suggestions || [];
           suggestionTypeRef.current = result?.data?.suggestionType || "postcode";
           setPostcodeSuggestions(suggestions);
           setShowPostcodeSuggestions(suggestions.length > 0);
         } catch {
+          if (requestSeq !== autocompleteSeqRef.current) {
+            return;
+          }
           setPostcodeSuggestions([]);
           setShowPostcodeSuggestions(false);
         }
       };
 
-      if (immediate) {
-        void fetchSuggestions();
+      const fetchImmediately =
+        immediate || isFullUkPostcode(normalizedQuery);
+
+      if (fetchImmediately) {
+        void fetchSuggestions(normalizedQuery);
         return;
       }
 
       debounceRef.current = setTimeout(() => {
-        void fetchSuggestions();
+        void fetchSuggestions(normalizedQuery);
       }, 400);
     },
     [fetchAutocomplete]
   );
+
+  useEffect(() => {
+    if (skipNextAutocompleteRef.current) {
+      skipNextAutocompleteRef.current = false;
+      return;
+    }
+    runAutocomplete(value);
+  }, [value, runAutocomplete]);
 
   const loadAddressesForPostcode = useCallback(
     async (rawPostcode, { silent = false } = {}) => {
@@ -188,10 +219,10 @@ export default function PostcodeAddressLookup({
 
   const handlePostcodeChange = (nextValue) => {
     onChange?.(nextValue);
-    runAutocomplete(nextValue);
   };
 
   const handlePostcodeSuggestionSelect = (suggestion) => {
+    skipNextAutocompleteRef.current = true;
     onChange?.(suggestion);
 
     if (suggestionTypeRef.current === "outcode") {

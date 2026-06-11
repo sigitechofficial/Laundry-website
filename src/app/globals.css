@@ -200,7 +200,7 @@ body::-webkit-scrollbar-thumb {
 }
 
 .modal-scroll::-webkit-scrollbar-thumb {
-  background: rgba(17, 0, 255, 0.781);
+  background: gray;
   border-radius: 10px;
 }
 

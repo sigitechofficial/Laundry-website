@@ -1336,10 +1336,11 @@ export default function orderRegistration() {
                 </p>
               </div>
 
-              <div className="w-full px-6 py-8">
+              <div className="w-full px-6 py-6 flex flex-col gap-4 max-h-[75vh] overflow-y-auto modal-scroll">
                 {renderModalAddressSearch()}
 
-                <div className="flex items-center gap-5 pt-4">
+                <div className="border-t border-gray-100 pt-4 space-y-4">
+                <div className="flex items-center gap-5">
                   <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
                     <TbLocation size={20} />
                   </div>
@@ -1360,7 +1361,7 @@ export default function orderRegistration() {
                 {data?.data &&
                   data?.data?.map((add) => {
                     return (
-                      <div className="flex items-center gap-5 pt-4">
+                      <div key={add?.id} className="flex items-center gap-5">
                         <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
                           <TbLocation size={20} />
                         </div>
@@ -1379,6 +1380,7 @@ export default function orderRegistration() {
                       </div>
                     );
                   })}
+                </div>
               </div>
             </div>
           ) : modal?.modType === "collection-date" ? (
@@ -1520,10 +1522,11 @@ export default function orderRegistration() {
                 </p>
               </div>
 
-              <div className="w-full px-6 py-8">
+              <div className="w-full px-6 py-6 flex flex-col gap-4 max-h-[75vh] overflow-y-auto modal-scroll">
                 {renderModalAddressSearch()}
 
-                <div className="flex items-center gap-5 pt-4">
+                <div className="border-t border-gray-100 pt-4">
+                <div className="flex items-center gap-5">
                   <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
                     <TbLocation size={20} />
                   </div>
@@ -1539,6 +1542,7 @@ export default function orderRegistration() {
                       Fomino will use your location
                     </p>
                   </div>
+                </div>
                 </div>
               </div>
             </div>
@@ -1716,10 +1720,11 @@ export default function orderRegistration() {
                 </p>
               </div>
 
-              <div className="w-full px-6 py-8">
+              <div className="w-full px-6 py-6 flex flex-col gap-4 max-h-[75vh] overflow-y-auto modal-scroll">
                 {renderModalAddressSearch()}
 
-                <div className="flex items-center gap-5 pt-4">
+                <div className="border-t border-gray-100 pt-4">
+                <div className="flex items-center gap-5">
                   <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
                     <TbLocation size={20} />
                   </div>
@@ -1735,6 +1740,7 @@ export default function orderRegistration() {
                       Fomino will use your location
                     </p>
                   </div>
+                </div>
                 </div>
               </div>
             </div>

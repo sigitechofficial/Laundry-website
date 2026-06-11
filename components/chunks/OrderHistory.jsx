@@ -66,25 +66,76 @@ export default function OrderHistory() {
   const [shouldRenderManageDetails, setShouldRenderManageDetails] = useState(false);
   const [isOrderItemsExpanded, setIsOrderItemsExpanded] = useState(true);
 
-  const { data: bookingDtails, isLoading: bookingDetailsLoading } =
-    useBookingDetailByIdQuery(manageOrder?.orderId, {
-      skip: !manageOrder?.orderId,
+  const {
+    data: bookingDtails,
+    isLoading: bookingDetailsLoading,
+    isFetching: bookingDetailsFetching,
+    isError: bookingDetailsError,
+  } = useBookingDetailByIdQuery(manageOrder?.orderId, {
+    skip: !manageOrder?.orderId,
+  });
+
+  const isBookingDetailsLoading = bookingDetailsLoading || bookingDetailsFetching;
+
+  const handleSelectBooking = (order) => {
+    const orderId = order?.id;
+    if (!orderId) return;
+
+    setManageOrder({
+      manage: false,
+      modType: "track",
+      orderId,
     });
+
+    const isMobileViewport =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isMobileViewport) {
+      onOrderDetailsModalOpen();
+    }
+  };
+
+  const renderOrderDetailsPanel = () => {
+    if (isBookingDetailsLoading) {
+      return (
+        <div className="w-full flex items-center justify-center py-16">
+          <Spinner
+            size="lg"
+            label="Loading order details..."
+            classNames={{
+              label: "text-foreground mt-4 font-youth font-semibold text-theme-blue",
+            }}
+            variant="wave"
+          />
+        </div>
+      );
+    }
+
+    if (bookingDetailsError || !bookingDtails?.data) {
+      return (
+        <p className="font-sf text-theme-psGray text-center py-16">
+          Unable to load order details. Please try again.
+        </p>
+      );
+    }
+
+    return renderOrderDetailsContent();
+  };
 
   // Handle smooth transition when order details are loaded
   React.useEffect(() => {
-    if (bookingDtails?.data && !bookingDetailsLoading) {
-      // Reset animation state first
+    if (manageOrder?.orderId && isBookingDetailsLoading) {
+      setShowOrderDetails(true);
+    } else if (bookingDtails?.data && !isBookingDetailsLoading) {
       setShowOrderDetails(false);
       setIsOrderItemsExpanded(true);
-      // Small delay to trigger animation
       setTimeout(() => {
         setShowOrderDetails(true);
       }, 50);
     } else if (!manageOrder?.orderId) {
       setShowOrderDetails(false);
     }
-  }, [bookingDtails, bookingDetailsLoading, manageOrder?.orderId]);
+  }, [bookingDtails, isBookingDetailsLoading, manageOrder?.orderId]);
 
   // Handle smooth transition for manage order details section
   React.useEffect(() => {
@@ -137,6 +188,41 @@ export default function OrderHistory() {
       return prev;
     });
   }
+
+  const formatCardBrand = (brand) => {
+    if (!brand) return "Card";
+    const normalized = String(brand).trim();
+    if (!normalized) return "Card";
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+  };
+
+  const getCardPaymentLabel = (cardDetails, paymentMethodId) => {
+    if (cardDetails?.last4) {
+      return `${formatCardBrand(cardDetails.brand)} ending in ${cardDetails.last4}`;
+    }
+    if (paymentMethodId?.startsWith("pm_")) return "Card on file";
+    return paymentMethodId || "Payment Method";
+  };
+
+  const getCardPaymentSubtext = (cardDetails) => {
+    if (!cardDetails) return null;
+    const parts = [];
+    if (cardDetails.cardholderName) {
+      parts.push(cardDetails.cardholderName);
+    }
+    if (cardDetails.expMonth && cardDetails.expYear) {
+      const month = String(cardDetails.expMonth).padStart(2, "0");
+      const year = String(cardDetails.expYear).slice(-2);
+      parts.push(`Expires ${month}/${year}`);
+    }
+    if (cardDetails.funding) {
+      parts.push(
+        String(cardDetails.funding).charAt(0).toUpperCase() +
+          String(cardDetails.funding).slice(1).toLowerCase()
+      );
+    }
+    return parts.length > 0 ? parts.join(" · ") : null;
+  };
 
   // Check if an order is cancelled
   const isOrderCancelled = (order) => {
@@ -474,6 +560,13 @@ export default function OrderHistory() {
         : Number.isFinite(orderAmountValue) && orderAmountValue > 0
         ? orderAmountValue
         : displaySubTotal;
+
+    const cardDetails = bookingDtails?.data?.cardDetails;
+    const cardPaymentLabel = getCardPaymentLabel(
+      cardDetails,
+      bookingDtails?.data?.paymentMethodId
+    );
+    const cardPaymentSubtext = getCardPaymentSubtext(cardDetails);
 
     const groupedSelectedServices = selectedServices.reduce((acc, item) => {
       const serviceName = item?.service?.name || "Service";
@@ -932,16 +1025,18 @@ export default function OrderHistory() {
               </div>
             ) : null}
           </div>
-          {(bookingDtails?.data?.paymentMethodId || bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId) && (
+          {(bookingDtails?.data?.paymentMethodId ||
+            bookingDtails?.data?.paymentId ||
+            bookingDtails?.data?.bookingPaymentId ||
+            cardDetails) && (
             <div className="space-y-1 font-sf border-b pb-3">
               <h4 className="font-semibold text-2xl">Payment</h4>
               <div className="flex justify-between items-center">
                 <div>
-                  <h6>
-                    {bookingDtails?.data?.paymentMethodId?.startsWith("pm_")
-                      ? "Card on file"
-                      : bookingDtails?.data?.paymentMethodId || "Payment Method"}
-                  </h6>
+                  <h6>{cardPaymentLabel}</h6>
+                  {cardPaymentSubtext && (
+                    <p className="text-sm text-theme-psGray">{cardPaymentSubtext}</p>
+                  )}
                   {(bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId) && (
                     <p className="text-sm text-theme-psGray">
                       Payment ID: {bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId}
@@ -1246,11 +1341,13 @@ export default function OrderHistory() {
                     return (
                       <div
                         key={order.id}
-                        onClick={() => {
-                          setManageOrder({ ...manageOrder, orderId: order?.id });
-                          // Open modal on mobile screens
-                          if (typeof window !== "undefined" && window.innerWidth < 768) {
-                            onOrderDetailsModalOpen();
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleSelectBooking(order)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleSelectBooking(order);
                           }
                         }}
                         className="w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
@@ -1260,9 +1357,9 @@ export default function OrderHistory() {
                         </h6>
 
                         <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-                          <button className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
+                          <span className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
                             {order?.bookingStatus?.title}
-                          </button>
+                          </span>
                         </div>
 
                         <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
@@ -1320,11 +1417,13 @@ export default function OrderHistory() {
                     return (
                       <div
                         key={order.id}
-                        onClick={() => {
-                          setManageOrder({ ...manageOrder, orderId: order?.id });
-                          // Open modal on mobile screens
-                          if (typeof window !== "undefined" && window.innerWidth < 768) {
-                            onOrderDetailsModalOpen();
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleSelectBooking(order)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleSelectBooking(order);
                           }
                         }}
                         className="w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
@@ -1334,9 +1433,9 @@ export default function OrderHistory() {
                         </h6>
 
                         <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-                          <button className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
+                          <span className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
                             {order?.bookingStatus?.title}
-                          </button>
+                          </span>
                         </div>
 
                         <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
@@ -1390,18 +1489,17 @@ export default function OrderHistory() {
         </div>
 
         {/* Desktop/Tablet Side Panel - Hidden on mobile */}
-        {bookingDtails && !bookingDetailsLoading ? (
+        {manageOrder?.orderId ? (
           <div
-            className={`hidden md:block w-full max-w-[600px] h-max px-4 sm:px-6 py-4 shadow-theme-shadow-light rounded-[20px] transition-all duration-500 ease-in-out ${showOrderDetails
-              ? 'opacity-100 translate-x-0'
-              : 'opacity-0 translate-x-4'
-              }`}
+            className={`hidden md:block w-full max-w-[600px] h-max px-4 sm:px-6 py-4 shadow-theme-shadow-light rounded-[20px] transition-all duration-500 ease-in-out ${
+              showOrderDetails || isBookingDetailsLoading
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 translate-x-4"
+            }`}
           >
-            {renderOrderDetailsContent()}
+            {renderOrderDetailsPanel()}
           </div>
-        ) : (
-          ""
-        )}
+        ) : null}
       </div>
 
       {/* Mobile Order Details Modal - Bottom Sheet */}
@@ -1411,7 +1509,7 @@ export default function OrderHistory() {
         onOpenChange={(open) => {
           onOrderDetailsModalOpenChange(open);
           if (!open) {
-            setManageOrder({ ...manageOrder, orderId: "" });
+            setManageOrder({ manage: false, modType: "track", orderId: "" });
           }
         }}
         onClose={onOrderDetailsModalClose}
@@ -1436,7 +1534,7 @@ export default function OrderHistory() {
         }}
       >
         <div className="w-full h-full px-4 sm:px-6 py-4 overflow-y-auto">
-          {renderOrderDetailsContent()}
+          {renderOrderDetailsPanel()}
         </div>
       </ReusableModal>
 

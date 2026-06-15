@@ -461,7 +461,7 @@ export default function Payment() {
             const n = Number(item?.itemsCount);
             return sum + (Number.isFinite(n) && n > 0 ? n : 0);
           }, 0);
-          return fromPrefs > 0 ? fromPrefs : 5;
+          return fromPrefs > 0 ? fromPrefs : undefined;
         })(),
         totalBags: resolvedTotalBags,
         sameBagForAllServices: useSharedBags,

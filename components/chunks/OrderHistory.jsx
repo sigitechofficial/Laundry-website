@@ -1039,7 +1039,7 @@ export default function OrderHistory() {
                                           <p className="text-xs text-theme-psGray">
                                             Add-on: {addOnName}
                                           </p>
-                                          {addOnQty > 1 && (
+                                          {Number.isFinite(addOnQty) && addOnQty > 0 && (
                                             <p className="text-xs text-theme-psGray">
                                               Qty: {addOnQty}
                                             </p>

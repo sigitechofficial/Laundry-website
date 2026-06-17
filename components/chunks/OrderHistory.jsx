@@ -957,12 +957,14 @@ export default function OrderHistory() {
                           const hasPrice = Number.isFinite(unitPrice);
                           const lineTotal =
                             hasQty && hasPrice ? unitPrice * quantity : unitPrice;
+                          const addOns = Array.isArray(item?.addOns) ? item.addOns : [];
 
                           return (
                             <div
                               key={`${item?.serviceId || "service"}-${item?.categoryId || "cat"}-${item?.subCategoryId || "sub"}-${index}`}
-                              className="flex items-start justify-between gap-3 border-t border-gray-200 pt-2 first:border-t-0 first:pt-0"
+                              className="space-y-1.5 border-t border-gray-200 pt-2 first:border-t-0 first:pt-0"
                             >
+                              <div className="flex items-start justify-between gap-3">
                               <div className="space-y-0.5">
                                 {categoryName && (
                                   <p className="text-xs text-theme-psGray">
@@ -1003,6 +1005,62 @@ export default function OrderHistory() {
                                   </p>
                                 )}
                               </div>
+                              </div>
+
+                              {addOns.length > 0 && (
+                                <div className="ml-2 space-y-1.5 border-l-2 border-theme-blue/20 pl-3">
+                                  {addOns.map((addOn, addOnIndex) => {
+                                    const addOnName =
+                                      addOn?.addOnService?.name || "Add-on";
+                                    const addOnQty =
+                                      Number.parseInt(addOn?.items, 10) > 0
+                                        ? Number.parseInt(addOn.items, 10)
+                                        : 1;
+                                    const addOnUnitPrice = Number.parseFloat(
+                                      addOn?.price ?? addOn?.addOnService?.price
+                                    );
+                                    const parsedLineTotal = Number.parseFloat(
+                                      addOn?.lineTotal
+                                    );
+                                    const addOnLineTotal = Number.isFinite(
+                                      parsedLineTotal
+                                    )
+                                      ? parsedLineTotal
+                                      : Number.isFinite(addOnUnitPrice)
+                                        ? addOnUnitPrice * addOnQty
+                                        : null;
+
+                                    return (
+                                      <div
+                                        key={`${addOn?.id || addOn?.addOnServiceId || addOnIndex}`}
+                                        className="flex items-start justify-between gap-3"
+                                      >
+                                        <div className="space-y-0.5">
+                                          <p className="text-xs text-theme-psGray">
+                                            Add-on: {addOnName}
+                                          </p>
+                                          {addOnQty > 1 && (
+                                            <p className="text-xs text-theme-psGray">
+                                              Qty: {addOnQty}
+                                            </p>
+                                          )}
+                                        </div>
+                                        {formatItemAmount(
+                                          addOnLineTotal,
+                                          bookingCurrencySymbol
+                                        ) && (
+                                          <p className="text-xs font-semibold shrink-0">
+                                            {formatItemAmount(
+                                              addOnLineTotal,
+                                              bookingCurrencySymbol
+                                            )}
+                                          </p>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           );
                         })}

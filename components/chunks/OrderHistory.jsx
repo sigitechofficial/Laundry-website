@@ -529,55 +529,21 @@ export default function OrderHistory() {
       ? bookingDtails.data.customerSelectedServices
       : [];
     const bookingCurrencySymbol =
-      bookingDtails?.data?.zone?.currencyUnitZ?.symbol || "$";
-    const subTotalValue = Number.parseFloat(bookingDtails?.data?.subTotal);
-    const serviceFeeValue = Number.parseFloat(
-      bookingDtails?.data?.billingDetail?.serviceCharge ??
-        bookingDtails?.data?.zone?.serviceCharge
-    );
-    const upfrontAmountValue = Number.parseFloat(
-      bookingDtails?.data?.billingDetail?.upfrontAmount
-    );
+      bookingDtails?.data?.paymentSummary?.currencySymbol ||
+      bookingDtails?.data?.zone?.currencyUnitZ?.symbol ||
+      "$";
+    const paymentSummary = bookingDtails?.data?.paymentSummary;
+    const hasPaymentSummary = Boolean(paymentSummary?.orderSummary);
+
     const tipValue = Number.parseFloat(bookingDtails?.data?.tips?.[0]?.amount);
-    const orderAmountValue = Number.parseFloat(bookingDtails?.data?.orderAmount);
-    const billingTotalValue = Number.parseFloat(
-      bookingDtails?.data?.billingDetail?.total
-    );
     const discountValue = Number.parseFloat(
       bookingDtails?.data?.billingDetail?.discount
     );
 
-    const displaySubTotal = Number.isFinite(subTotalValue) ? subTotalValue : 0;
-    const displayServiceFee = Number.isFinite(serviceFeeValue) ? serviceFeeValue : 0;
-    const displayUpfrontAmount = Number.isFinite(upfrontAmountValue)
-      ? upfrontAmountValue
-      : 0;
-    const displayTip = Number.isFinite(tipValue) ? tipValue : 0;
-    const displayDiscount = Number.isFinite(discountValue) ? discountValue : 0;
-    const displayTotal =
-      Number.isFinite(billingTotalValue) && billingTotalValue > 0
-        ? billingTotalValue
-        : Number.isFinite(orderAmountValue) && orderAmountValue > 0
-        ? orderAmountValue
-        : displaySubTotal;
-
-    const cardDetails = bookingDtails?.data?.cardDetails;
-    const cardPaymentLabel = getCardPaymentLabel(
-      cardDetails,
-      bookingDtails?.data?.paymentMethodId
-    );
-    const cardPaymentSubtext = getCardPaymentSubtext(cardDetails);
-
-    const groupedSelectedServices = selectedServices.reduce((acc, item) => {
-      const serviceName = item?.service?.name || "Service";
-      if (!acc[serviceName]) {
-        acc[serviceName] = [];
-      }
-      acc[serviceName].push(item);
-      return acc;
-    }, {});
-
     const servicesSubtotal = (() => {
+      if (hasPaymentSummary) {
+        return Number(paymentSummary.laundrySubtotal) || 0;
+      }
       const fromApi = Number.parseFloat(bookingDtails?.data?.servicesSubtotal);
       if (Number.isFinite(fromApi) && fromApi >= 0) {
         return fromApi;
@@ -600,6 +566,86 @@ export default function OrderHistory() {
       if (numeric < 0) return `-${base}`;
       return base;
     };
+
+    const legacyServiceFeeValue = Number.parseFloat(
+      bookingDtails?.data?.billingDetail?.serviceCharge ??
+        bookingDtails?.data?.zone?.serviceCharge
+    );
+    const legacyUpfrontAmountValue = Number.parseFloat(
+      bookingDtails?.data?.billingDetail?.upfrontAmount
+    );
+    const legacyOrderAmountValue = Number.parseFloat(
+      bookingDtails?.data?.orderAmount
+    );
+    const legacyBillingTotalValue = Number.parseFloat(
+      bookingDtails?.data?.billingDetail?.total
+    );
+
+    const displayServiceFee = hasPaymentSummary
+      ? Number(paymentSummary.orderSummary.serviceFee) || 0
+      : Number.isFinite(legacyServiceFeeValue)
+      ? legacyServiceFeeValue
+      : 0;
+    const displayTip = hasPaymentSummary
+      ? Number(paymentSummary.orderSummary.driverTip) || 0
+      : Number.isFinite(tipValue)
+      ? tipValue
+      : 0;
+    const displayDiscount = hasPaymentSummary
+      ? Number(paymentSummary.orderSummary.discount) || 0
+      : Number.isFinite(discountValue)
+      ? discountValue
+      : 0;
+    const displayTotalOrderAmount = hasPaymentSummary
+      ? Number(paymentSummary.orderSummary.totalOrderAmount) || 0
+      : servicesSubtotal + displayServiceFee + displayTip;
+    const displayPaidAtBooking = hasPaymentSummary
+      ? paymentSummary.paidAtBooking
+      : {
+          minimumOrderPayment: Number.isFinite(legacyUpfrontAmountValue)
+            ? legacyUpfrontAmountValue
+            : 0,
+          serviceFee: displayServiceFee,
+          driverTip: displayTip,
+          totalPaid:
+            (Number.isFinite(legacyUpfrontAmountValue)
+              ? legacyUpfrontAmountValue
+              : 0) + displayServiceFee + displayTip,
+        };
+    const displayAmountDueNow = hasPaymentSummary
+      ? Number(paymentSummary.amountDueNow) || 0
+      : Number.isFinite(legacyBillingTotalValue) && legacyBillingTotalValue > 0
+      ? legacyBillingTotalValue
+      : Number.isFinite(legacyOrderAmountValue) && legacyOrderAmountValue > 0
+      ? legacyOrderAmountValue
+      : 0;
+
+    const showInvoiceBreakdown =
+      hasPaymentSummary &&
+      (servicesSubtotal > 0 ||
+        bookingDtails?.data?.invoiceStatus === "finalized" ||
+        bookingDtails?.data?.invoiceStatus === "draft");
+    const paymentStatus =
+      bookingDtails?.data?.billingDetail?.paymentStatus || "Pending";
+    const isOutstanding =
+      displayAmountDueNow > 0 && paymentStatus !== "Paid";
+
+    const cardDetails = bookingDtails?.data?.cardDetails;
+    const cardPaymentLabel = getCardPaymentLabel(
+      cardDetails,
+      bookingDtails?.data?.paymentMethodId
+    );
+    const cardPaymentSubtext = getCardPaymentSubtext(cardDetails);
+
+    const groupedSelectedServices = selectedServices.reduce((acc, item) => {
+      const serviceName = item?.service?.name || "Service";
+      if (!acc[serviceName]) {
+        acc[serviceName] = [];
+      }
+      acc[serviceName].push(item);
+      return acc;
+    }, {});
+
     const totalBagsCount = (() => {
       const fromTotal = Number(bookingDtails?.data?.totalBags);
       if (Number.isFinite(fromTotal) && fromTotal > 0) return fromTotal;
@@ -970,58 +1016,122 @@ export default function OrderHistory() {
               </div>
             </div>
           </div>
-          <div className="font-sf border-t border-gray-200 pt-4 pb-3 space-y-2">
-            <div className="flex justify-between items-center gap-4">
-              <p className="text-sm font-semibold">Services subtotal</p>
-              <p className="text-sm font-semibold shrink-0">
-                {formatBillingLine(servicesSubtotal)}
-              </p>
-            </div>
-            <div className="flex justify-between items-center gap-4">
-              <p className="text-sm text-theme-psGray">Service charge</p>
-              <p className="text-sm text-theme-psGray shrink-0">
-                {formatBillingLine(displayServiceFee, { signed: true })}
-              </p>
-            </div>
-            <div className="flex justify-between items-center gap-4">
-              <p className="text-sm text-theme-psGray">Delivery fee</p>
-              <p className="text-sm text-theme-psGray shrink-0">
-                {formatBillingLine(0)}
-              </p>
-            </div>
-            <div className="flex justify-between items-center gap-4">
-              <p className="text-sm text-theme-psGray">Driver tip</p>
-              <p className="text-sm text-theme-psGray shrink-0">
-                {formatBillingLine(displayTip, { signed: true })}
-              </p>
-            </div>
-          </div>
-
-          <div className="font-sf rounded-xl bg-[#F5F5F5] px-4 py-3 space-y-2 mt-3 border-b pb-3">
-            <div className="flex justify-between items-center gap-4">
-              <p className="text-sm font-semibold">Total</p>
-              <p className="text-sm font-semibold shrink-0">
-                {formatBillingLine(displayTotal)}
-              </p>
-            </div>
-            {displayDiscount > 0 ? (
-              <div className="flex justify-between items-center gap-4 pt-1 border-t border-gray-200">
-                <p className="text-sm text-theme-psGray">Discount</p>
-                <p className="text-sm text-theme-psGray shrink-0">
-                  {formatBillingLine(-displayDiscount, { signed: true })}
+          <div className="font-sf space-y-3 pt-4 pb-3">
+            <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+              <div className="flex justify-between items-center gap-4">
+                <p className="text-sm font-semibold">Laundry subtotal</p>
+                <p className="text-sm font-semibold shrink-0">
+                  {formatBillingLine(servicesSubtotal)}
                 </p>
               </div>
-            ) : null}
-            {displayUpfrontAmount > 0 ? (
-              <div
-                className={`flex justify-between items-center gap-4 ${
-                  displayDiscount > 0 ? "" : "pt-1 border-t border-gray-200"
-                }`}
-              >
-                <p className="text-sm text-theme-psGray">Upfront amount paid</p>
-                <p className="text-sm font-medium shrink-0">
-                  {formatBillingLine(-displayUpfrontAmount, { signed: true })}
+            </div>
+
+            {showInvoiceBreakdown ? (
+              <div className="rounded-xl border border-gray-200 bg-[#FAFAFA] px-4 py-3 space-y-2">
+                <p className="text-xs text-theme-psGray">
+                  The minimum order payment is not added again as a separate
+                  charge.
                 </p>
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-theme-psGray">Laundry subtotal</p>
+                  <p className="text-sm shrink-0">
+                    {formatBillingLine(servicesSubtotal)}
+                  </p>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-theme-psGray">Service fee</p>
+                  <p className="text-sm shrink-0">
+                    {formatBillingLine(displayServiceFee)}
+                  </p>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-theme-psGray">Driver tip</p>
+                  <p className="text-sm shrink-0">
+                    {formatBillingLine(displayTip)}
+                  </p>
+                </div>
+                {displayDiscount > 0 ? (
+                  <div className="flex justify-between items-center gap-4">
+                    <p className="text-sm text-theme-psGray">Discount</p>
+                    <p className="text-sm shrink-0">
+                      {formatBillingLine(-displayDiscount, { signed: true })}
+                    </p>
+                  </div>
+                ) : null}
+                <div className="flex justify-between items-center gap-4 pt-2 border-t border-gray-200">
+                  <p className="text-sm font-semibold">Total order amount</p>
+                  <p className="text-sm font-semibold shrink-0">
+                    {formatBillingLine(displayTotalOrderAmount)}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 space-y-2">
+              <p className="text-sm font-semibold text-emerald-900">
+                Paid at booking
+              </p>
+              <div className="flex justify-between items-center gap-4">
+                <p className="text-sm text-emerald-800">
+                  Minimum order payment
+                  <span className="block text-xs text-emerald-700">
+                    Applied to laundry subtotal
+                  </span>
+                </p>
+                <p className="text-sm shrink-0 text-emerald-900">
+                  {formatBillingLine(displayPaidAtBooking.minimumOrderPayment)}
+                </p>
+              </div>
+              <div className="flex justify-between items-center gap-4">
+                <p className="text-sm text-emerald-800">Service fee</p>
+                <p className="text-sm shrink-0 text-emerald-900">
+                  {formatBillingLine(displayPaidAtBooking.serviceFee)}
+                </p>
+              </div>
+              <div className="flex justify-between items-center gap-4">
+                <p className="text-sm text-emerald-800">Driver tip</p>
+                <p className="text-sm shrink-0 text-emerald-900">
+                  {formatBillingLine(displayPaidAtBooking.driverTip)}
+                </p>
+              </div>
+              <div className="flex justify-between items-center gap-4 pt-2 border-t border-emerald-200">
+                <p className="text-sm font-semibold text-emerald-900">
+                  Total paid
+                </p>
+                <p className="text-sm font-semibold shrink-0 text-emerald-900">
+                  {formatBillingLine(displayPaidAtBooking.totalPaid)}
+                </p>
+              </div>
+            </div>
+
+            {showInvoiceBreakdown ? (
+              <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 space-y-2">
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-sky-900">
+                      Amount due now
+                    </p>
+                    <p className="text-xs text-sky-800 mt-1">
+                      {formatBillingLine(displayTotalOrderAmount)} actual total
+                      − {formatBillingLine(displayPaidAtBooking.totalPaid)}{" "}
+                      already paid
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-lg font-bold text-sky-900">
+                      {formatBillingLine(displayAmountDueNow)}
+                    </p>
+                    {isOutstanding ? (
+                      <span className="inline-block mt-1 rounded-full bg-sky-200 px-2 py-0.5 text-xs font-semibold text-sky-900">
+                        Outstanding
+                      </span>
+                    ) : (
+                      <span className="inline-block mt-1 rounded-full bg-emerald-200 px-2 py-0.5 text-xs font-semibold text-emerald-900">
+                        Paid
+                      </span>
+                    )}
+                  </div>
+                </div>
               </div>
             ) : null}
           </div>
@@ -1049,8 +1159,7 @@ export default function OrderHistory() {
                   )}
                 </div>
                 <p className="font-semibold">
-                  {bookingCurrencySymbol}
-                  {displayTotal.toFixed(2)}
+                  {formatBillingLine(displayAmountDueNow)}
                 </p>
               </div>
               <div className="py-2">

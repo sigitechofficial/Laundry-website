@@ -637,6 +637,9 @@ export default function OrderHistory() {
       bookingDtails?.data?.billingDetail?.paymentStatus || "Pending";
     const isOutstanding =
       displayAmountDueNow > 0 && paymentStatus !== "Paid";
+    const cashTotalPaid = Number(displayPaidAtBooking?.totalPaid) || 0;
+    const showCashPaymentMethodOnly =
+      isCashBooking && cashTotalPaid <= 0;
 
     const cardDetails = bookingDtails?.data?.cardDetails;
     const cardPaymentLabel = getCardPaymentLabel(
@@ -1141,58 +1144,49 @@ export default function OrderHistory() {
               </div>
             ) : null}
 
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 space-y-2">
-              <p className="text-sm font-semibold text-emerald-900">
-                {isCashBooking ? "Paid so far" : "Paid at booking"}
-              </p>
-              {isCashBooking ? (
-                <>
-                  <p className="text-sm text-emerald-800">
-                    Cash booking — nothing charged at booking or pickup.
-                  </p>
-                  <div className="flex justify-between items-center gap-4 pt-2 border-t border-emerald-200">
-                    <p className="text-sm font-semibold text-emerald-900">Total paid</p>
-                    <p className="text-sm font-semibold shrink-0 text-emerald-900">
-                      {formatBillingLine(0)}
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-              <div className="flex justify-between items-center gap-4">
-                <p className="text-sm text-emerald-800">
-                  Minimum order payment
-                  <span className="block text-xs text-emerald-700">
-                    Applied to laundry subtotal
-                  </span>
-                </p>
-                <p className="text-sm shrink-0 text-emerald-900">
-                  {formatBillingLine(displayPaidAtBooking.minimumOrderPayment)}
-                </p>
+            {showCashPaymentMethodOnly ? (
+              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+                <p className="text-sm font-semibold text-black">Payment method</p>
+                <p className="text-sm text-theme-psGray mt-1">Cash</p>
               </div>
-              <div className="flex justify-between items-center gap-4">
-                <p className="text-sm text-emerald-800">Service fee</p>
-                <p className="text-sm shrink-0 text-emerald-900">
-                  {formatBillingLine(displayPaidAtBooking.serviceFee)}
-                </p>
-              </div>
-              <div className="flex justify-between items-center gap-4">
-                <p className="text-sm text-emerald-800">Driver tip</p>
-                <p className="text-sm shrink-0 text-emerald-900">
-                  {formatBillingLine(displayPaidAtBooking.driverTip)}
-                </p>
-              </div>
-              <div className="flex justify-between items-center gap-4 pt-2 border-t border-emerald-200">
+            ) : !isCashBooking ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 space-y-2">
                 <p className="text-sm font-semibold text-emerald-900">
-                  Total paid
+                  Paid at booking
                 </p>
-                <p className="text-sm font-semibold shrink-0 text-emerald-900">
-                  {formatBillingLine(displayPaidAtBooking.totalPaid)}
-                </p>
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-emerald-800">
+                    Minimum order payment
+                    <span className="block text-xs text-emerald-700">
+                      Applied to laundry subtotal
+                    </span>
+                  </p>
+                  <p className="text-sm shrink-0 text-emerald-900">
+                    {formatBillingLine(displayPaidAtBooking.minimumOrderPayment)}
+                  </p>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-emerald-800">Service fee</p>
+                  <p className="text-sm shrink-0 text-emerald-900">
+                    {formatBillingLine(displayPaidAtBooking.serviceFee)}
+                  </p>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-emerald-800">Driver tip</p>
+                  <p className="text-sm shrink-0 text-emerald-900">
+                    {formatBillingLine(displayPaidAtBooking.driverTip)}
+                  </p>
+                </div>
+                <div className="flex justify-between items-center gap-4 pt-2 border-t border-emerald-200">
+                  <p className="text-sm font-semibold text-emerald-900">
+                    Total paid
+                  </p>
+                  <p className="text-sm font-semibold shrink-0 text-emerald-900">
+                    {formatBillingLine(displayPaidAtBooking.totalPaid)}
+                  </p>
+                </div>
               </div>
-                </>
-              )}
-            </div>
+            ) : null}
 
             {showInvoiceBreakdown ? (
               <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 space-y-2">

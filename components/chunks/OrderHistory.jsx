@@ -534,6 +534,14 @@ export default function OrderHistory() {
       "$";
     const paymentSummary = bookingDtails?.data?.paymentSummary;
     const hasPaymentSummary = Boolean(paymentSummary?.orderSummary);
+    const isCashBooking =
+      paymentSummary?.paymentType === "cash" ||
+      bookingDtails?.data?.paymentType === "cash";
+    const minimumAdjustment = hasPaymentSummary
+      ? Number(paymentSummary.minimumAdjustment) ||
+        Number(paymentSummary.orderSummary?.minimumAdjustment) ||
+        0
+      : 0;
 
     const tipValue = Number.parseFloat(bookingDtails?.data?.tips?.[0]?.amount);
     const discountValue = Number.parseFloat(
@@ -1096,6 +1104,14 @@ export default function OrderHistory() {
                     {formatBillingLine(servicesSubtotal)}
                   </p>
                 </div>
+                {minimumAdjustment > 0 ? (
+                  <div className="flex justify-between items-center gap-4">
+                    <p className="text-sm text-theme-psGray">Minimum order adjustment</p>
+                    <p className="text-sm shrink-0">
+                      {formatBillingLine(minimumAdjustment)}
+                    </p>
+                  </div>
+                ) : null}
                 <div className="flex justify-between items-center gap-4">
                   <p className="text-sm text-theme-psGray">Service fee</p>
                   <p className="text-sm shrink-0">
@@ -1127,8 +1143,22 @@ export default function OrderHistory() {
 
             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 space-y-2">
               <p className="text-sm font-semibold text-emerald-900">
-                Paid at booking
+                {isCashBooking ? "Paid so far" : "Paid at booking"}
               </p>
+              {isCashBooking ? (
+                <>
+                  <p className="text-sm text-emerald-800">
+                    Cash booking — nothing charged at booking or pickup.
+                  </p>
+                  <div className="flex justify-between items-center gap-4 pt-2 border-t border-emerald-200">
+                    <p className="text-sm font-semibold text-emerald-900">Total paid</p>
+                    <p className="text-sm font-semibold shrink-0 text-emerald-900">
+                      {formatBillingLine(0)}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
               <div className="flex justify-between items-center gap-4">
                 <p className="text-sm text-emerald-800">
                   Minimum order payment
@@ -1160,6 +1190,8 @@ export default function OrderHistory() {
                   {formatBillingLine(displayPaidAtBooking.totalPaid)}
                 </p>
               </div>
+                </>
+              )}
             </div>
 
             {showInvoiceBreakdown ? (
@@ -1167,12 +1199,12 @@ export default function OrderHistory() {
                 <div className="flex justify-between items-start gap-4">
                   <div>
                     <p className="text-sm font-semibold text-sky-900">
-                      Amount due now
+                      {isCashBooking ? "Pay cash on delivery" : "Amount due now"}
                     </p>
                     <p className="text-xs text-sky-800 mt-1">
-                      {formatBillingLine(displayTotalOrderAmount)} actual total
-                      − {formatBillingLine(displayPaidAtBooking.totalPaid)}{" "}
-                      already paid
+                      {isCashBooking
+                        ? `${formatBillingLine(displayTotalOrderAmount)} total due in cash`
+                        : `${formatBillingLine(displayTotalOrderAmount)} actual total − ${formatBillingLine(displayPaidAtBooking.totalPaid)} already paid`}
                     </p>
                   </div>
                   <div className="text-right shrink-0">

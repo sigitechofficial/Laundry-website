@@ -341,8 +341,29 @@ export default function Payment() {
     modType: "wash",
     page: "stripe",
   });
+  const [paymentType, setPaymentType] = useState("card");
+  const [isCashBooking, setIsCashBooking] = useState(false);
+
+  const cashEstimateDue = useMemo(() => {
+    const effectiveMin = Math.max(minimumOrderCharge, 0);
+    return Math.max(
+      0,
+      effectiveMin + serviceFee + driverTip - couponDiscount
+    );
+  }, [minimumOrderCharge, serviceFee, driverTip, couponDiscount]);
+
+  const payNowAmount = paymentType === "cash" ? 0 : payableTotal;
 
   const handleModalScroll = (e) => { };
+
+  const handleCashBooking = async () => {
+    setIsCashBooking(true);
+    try {
+      await handleCreateBooking({});
+    } finally {
+      setIsCashBooking(false);
+    }
+  };
 
   const handleCreateBooking = async (payData) => {
     try {
@@ -470,9 +491,14 @@ export default function Payment() {
         clientTimeZone,
         paymentIntentId: payData?.paymentIntentId ?? null,
         setupIntentId: payData?.setupIntentId ?? null,
-        paymentMethodId: payData?.paymentMethodId,
-        stripeCustomerId: localStorage.getItem("stripeCustomerId"),
+        paymentMethodId:
+          paymentType === "card" ? payData?.paymentMethodId : undefined,
+        stripeCustomerId:
+          paymentType === "card"
+            ? localStorage.getItem("stripeCustomerId")
+            : undefined,
         couponCode: appliedCoupon?.code || undefined,
+        paymentType,
       };
 
       const finalPayload = isRescheduleFlow
@@ -570,11 +596,10 @@ export default function Payment() {
         <div className="w-full px-5 sm:px-[45px]">
           <div className="w-full max-w-[1290px] mx-auto pt-32 lg:pb-[50px] 2xl:py-[70px]">
             <h4 className="font-bold font-youth text-3xl 2xl:text-6xl">
-              Add a payment method
+              {paymentType === "cash" ? "Confirm your order" : "Add a payment method"}
             </h4>
 
             <div className="flex flex-col lg:flex-row gap-10 2xl:gap-20 pt-10">
-              {/* PAYMENT - Stripe sheet only */}
               {isRescheduleFlow ? (
                 <div className="w-full rounded-2xl border border-theme-gray overflow-hidden bg-white shadow-theme-shadow-light p-6 space-y-4">
                   <h4 className="font-sf font-bold text-base sm:text-lg text-black">
@@ -587,7 +612,43 @@ export default function Payment() {
                     </p>
                   </div>
                 </div>
-              ) : modal?.page === "stripe" ? (
+              ) : (
+                <div className="w-full space-y-6">
+                  <div className="rounded-2xl border border-theme-gray bg-white p-4 shadow-theme-shadow-light space-y-3">
+                    <p className="font-sf font-semibold text-base">Payment method</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentType("card")}
+                        className={`rounded-xl border-2 px-4 py-3 text-left transition-colors ${
+                          paymentType === "card"
+                            ? "border-theme-blue bg-theme-blue/5"
+                            : "border-theme-gray"
+                        }`}
+                      >
+                        <p className="font-sf font-semibold text-sm">Card</p>
+                        <p className="font-sf text-xs text-theme-psGray mt-1">
+                          Pay minimum + fees at pickup
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentType("cash")}
+                        className={`rounded-xl border-2 px-4 py-3 text-left transition-colors ${
+                          paymentType === "cash"
+                            ? "border-theme-blue bg-theme-blue/5"
+                            : "border-theme-gray"
+                        }`}
+                      >
+                        <p className="font-sf font-semibold text-sm">Cash</p>
+                        <p className="font-sf text-xs text-theme-psGray mt-1">
+                          Pay nothing now — cash on delivery
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {paymentType === "card" && modal?.page === "stripe" ? (
                 <div className="w-full space-y-6">
                   <StripeCheckout
                     paymentMethod={modal?.paymentMethod}
@@ -631,10 +692,71 @@ export default function Payment() {
                     </div>
                   </div>
                 </div>
+                  ) : paymentType === "cash" ? (
+                <div className="w-full space-y-6">
+                  <div className="w-full rounded-2xl border border-theme-gray overflow-hidden bg-white shadow-theme-shadow-light p-6 space-y-4">
+                    <h4 className="font-sf font-bold text-base sm:text-lg text-black">
+                      Pay with cash on delivery
+                    </h4>
+                    <p className="font-sf text-sm text-theme-psGray">
+                      No card required. You will pay the full bill in cash when your
+                      order is delivered. Minimum order, service fee, and tip are
+                      all collected at delivery.
+                    </p>
+                    <div className="rounded-xl bg-theme-gray/40 px-4 py-3 space-y-2 font-sf text-sm">
+                      <div className="flex justify-between">
+                        <span>Pay now</span>
+                        <span className="font-semibold">{currencySymbol}0.00</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Estimated on delivery</span>
+                        <span className="font-semibold">
+                          {currencySymbol}{cashEstimateDue.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    <PurpleButton
+                      text={isCashBooking ? "Booking..." : "Confirm cash booking"}
+                      bg="bg-theme-blue"
+                      color="text-white"
+                      onClick={handleCashBooking}
+                      disabled={isCashBooking}
+                    />
+                  </div>
+                  <div className="w-full rounded-2xl border border-theme-gray overflow-hidden bg-white shadow-theme-shadow-light">
+                    <div className="bg-theme-gray px-4 py-3">
+                      <h4 className="font-sf font-bold text-base sm:text-lg text-black">
+                        How much do I pay?
+                      </h4>
+                    </div>
+                    <div className="px-4 py-4 space-y-4 font-sf text-sm sm:text-base text-black">
+                      <div className="flex items-start gap-3">
+                        <span className="shrink-0 mt-0.5 text-theme-gray-3">
+                          <IoHandLeftOutline className="size-5" />
+                        </span>
+                        <p>You pay nothing when placing the order.</p>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="shrink-0 mt-0.5 text-theme-gray-3">
+                          <IoWalletOutline className="size-5" />
+                        </span>
+                        <p>
+                          After cleaning, you pay cash for laundry (minimum{" "}
+                          {currencySymbol}
+                          {minimumOrderCharge.toFixed(2)} if items are below minimum),
+                          service fee {currencySymbol}
+                          {serviceFee.toFixed(2)}, and tip {currencySymbol}
+                          {driverTip.toFixed(2)}.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="w-full">Thanks for payement</div>
               )}
-              {/* Order */}
+              </div>
+              )}
 
               <div className="lg:w-[600px] space-y-8">
                 {/* ///////////////Order summary///////////// */}
@@ -778,12 +900,20 @@ export default function Payment() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <h4 className="font-youth font-bold">
-                        Pay now (incl. tax)
+                        {paymentType === "cash" ? "Pay now" : "Pay now (incl. tax)"}
                       </h4>
                       <h4 className="font-youth font-bold">
-                        {currencySymbol}{payableTotal?.toFixed(2)}
+                        {currencySymbol}{payNowAmount.toFixed(2)}
                       </h4>
                     </div>
+                    {paymentType === "cash" ? (
+                      <div className="flex justify-between font-sf">
+                        <h4 className="">Estimated on delivery</h4>
+                        <p className="font-semibold">
+                          {currencySymbol}{cashEstimateDue.toFixed(2)}
+                        </p>
+                      </div>
+                    ) : null}
                     <div className="flex justify-between font-sf">
                       <h4 className="">Minimum order charge</h4>
                       <p className="">

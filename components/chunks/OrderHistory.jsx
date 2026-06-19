@@ -640,6 +640,10 @@ export default function OrderHistory() {
     const cashTotalPaid = Number(displayPaidAtBooking?.totalPaid) || 0;
     const showCashPaymentMethodOnly =
       isCashBooking && cashTotalPaid <= 0;
+    const paymentStateLabel = paymentSummary?.paymentStateLabel || "";
+    const balancePaymentMethod = paymentSummary?.balancePaymentMethod;
+    const cashRemaining = paymentSummary?.cashRemaining;
+    const balanceCollectionLabel = paymentSummary?.balanceCollectionLabel;
 
     const cardDetails = bookingDtails?.data?.cardDetails;
     const cardPaymentLabel = getCardPaymentLabel(
@@ -1145,9 +1149,12 @@ export default function OrderHistory() {
             ) : null}
 
             {showCashPaymentMethodOnly ? (
-              <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
-                <p className="text-sm font-semibold text-black">Payment method</p>
-                <p className="text-sm text-theme-psGray mt-1">Cash</p>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-sm font-semibold text-amber-900">Payment method</p>
+                <p className="text-sm text-amber-800 mt-1">Cash</p>
+                {paymentStateLabel ? (
+                  <p className="text-xs text-amber-700 mt-1">{paymentStateLabel}</p>
+                ) : null}
               </div>
             ) : !isCashBooking ? (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 space-y-2">
@@ -1198,8 +1205,16 @@ export default function OrderHistory() {
                     <p className="text-xs text-sky-800 mt-1">
                       {isCashBooking
                         ? `${formatBillingLine(displayTotalOrderAmount)} total due in cash`
-                        : `${formatBillingLine(displayTotalOrderAmount)} actual total − ${formatBillingLine(displayPaidAtBooking.totalPaid)} already paid`}
+                        : balancePaymentMethod === "cash" && isOutstanding
+                          ? `${formatBillingLine(displayAmountDueNow)} balance to pay in cash`
+                          : `${formatBillingLine(displayTotalOrderAmount)} actual total − ${formatBillingLine(displayPaidAtBooking.totalPaid)} already paid`}
                     </p>
+                    {balanceCollectionLabel && isOutstanding ? (
+                      <p className="text-xs text-sky-700 mt-1">{balanceCollectionLabel}</p>
+                    ) : null}
+                    {paymentStateLabel && isOutstanding ? (
+                      <p className="text-xs text-sky-700 mt-1">{paymentStateLabel}</p>
+                    ) : null}
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-lg font-bold text-sky-900">
@@ -1207,7 +1222,7 @@ export default function OrderHistory() {
                     </p>
                     {isOutstanding ? (
                       <span className="inline-block mt-1 rounded-full bg-sky-200 px-2 py-0.5 text-xs font-semibold text-sky-900">
-                        Outstanding
+                        {cashRemaining ? "Cash due" : "Outstanding"}
                       </span>
                     ) : (
                       <span className="inline-block mt-1 rounded-full bg-emerald-200 px-2 py-0.5 text-xs font-semibold text-emerald-900">

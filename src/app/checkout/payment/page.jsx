@@ -343,6 +343,7 @@ export default function Payment() {
   });
   const [paymentType, setPaymentType] = useState("card");
   const [isCashBooking, setIsCashBooking] = useState(false);
+  const [mobileStep, setMobileStep] = useState("summary");
 
   const cashEstimateDue = useMemo(() => {
     const effectiveMin = Math.max(minimumOrderCharge, 0);
@@ -596,7 +597,18 @@ export default function Payment() {
         <div className="w-full px-5 sm:px-[45px]">
           <div className="w-full max-w-[1290px] mx-auto pt-32 lg:pb-[50px] 2xl:py-[70px]">
             <h4 className="font-bold font-youth text-3xl 2xl:text-6xl">
-              {paymentType === "cash" ? "Confirm your order" : "Add a payment method"}
+              <span className="lg:hidden">
+                {mobileStep === "summary"
+                  ? "Order summary"
+                  : paymentType === "cash"
+                  ? "Confirm your order"
+                  : "Add a payment method"}
+              </span>
+              <span className="hidden lg:inline">
+                {paymentType === "cash"
+                  ? "Confirm your order"
+                  : "Add a payment method"}
+              </span>
             </h4>
 
             <div className="flex flex-col lg:flex-row gap-10 2xl:gap-20 pt-10">
@@ -613,7 +625,18 @@ export default function Payment() {
                   </div>
                 </div>
               ) : (
-                <div className="w-full space-y-6">
+                <div
+                  className={`w-full space-y-6 ${
+                    mobileStep === "summary" ? "hidden lg:block" : ""
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setMobileStep("summary")}
+                    className="lg:hidden font-sf text-sm text-theme-blue font-semibold"
+                  >
+                    ← Back to order summary
+                  </button>
                   <div className="rounded-2xl border border-theme-gray bg-white p-4 shadow-theme-shadow-light space-y-3">
                     <p className="font-sf font-semibold text-base">Payment method</p>
                     <div className="grid grid-cols-2 gap-3">
@@ -758,7 +781,11 @@ export default function Payment() {
               </div>
               )}
 
-              <div className="lg:w-[600px] space-y-8">
+              <div
+                className={`lg:w-[600px] space-y-8 ${
+                  mobileStep === "payment" ? "hidden lg:block" : ""
+                }`}
+              >
                 {/* ///////////////Order summary///////////// */}
 
                 <div className="px-4 py-4 shadow-theme-shadow-light rounded-[20px] space-y-5">
@@ -1125,6 +1152,15 @@ export default function Payment() {
                       </p>
                     </div>
                   </div>
+                </div>
+
+                <div className="lg:hidden pt-2">
+                  <PurpleButton
+                    text="Proceed"
+                    bg="bg-theme-blue"
+                    color="text-white"
+                    onClick={() => setMobileStep("payment")}
+                  />
                 </div>
               </div>
             </div>

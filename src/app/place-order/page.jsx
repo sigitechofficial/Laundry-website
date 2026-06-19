@@ -1113,6 +1113,10 @@ export default function orderRegistration() {
                             postalCode: next,
                           }))
                         }
+                        onPostcodeSelected={() => {
+                          setModal((prev) => ({ ...prev, modType: "address" }));
+                          onOpen();
+                        }}
                       />
                     )}
                     <div

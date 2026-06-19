@@ -26,6 +26,7 @@ export default function PostcodeAddressLookup({
   className = "",
   compact = false,
   onAddressesLoaded,
+  onPostcodeSelected,
 }) {
   const containerRef = useRef(null);
   const debounceRef = useRef(null);
@@ -212,9 +213,17 @@ export default function PostcodeAddressLookup({
 
   const handleAddressSearch = useCallback(
     async (rawPostcode = value) => {
-      await loadAddressesForPostcode(rawPostcode, { silent: false });
+      const normalized = normalizePostcode(rawPostcode);
+      const willOpenModal =
+        onPostcodeSelected && isFullUkPostcode(normalized);
+
+      if (willOpenModal) {
+        onPostcodeSelected(rawPostcode);
+      }
+
+      await loadAddressesForPostcode(rawPostcode, { silent: willOpenModal });
     },
-    [loadAddressesForPostcode, value]
+    [loadAddressesForPostcode, onPostcodeSelected, value]
   );
 
   const handlePostcodeChange = (nextValue) => {
@@ -233,6 +242,8 @@ export default function PostcodeAddressLookup({
 
     setShowPostcodeSuggestions(false);
     setPostcodeSuggestions([]);
+    void loadAddressesForPostcode(suggestion, { silent: true });
+    onPostcodeSelected?.(suggestion);
   };
 
   const searchDisabled =

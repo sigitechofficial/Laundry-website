@@ -635,8 +635,11 @@ export default function OrderHistory() {
         bookingDtails?.data?.invoiceStatus === "draft");
     const paymentStatus =
       bookingDtails?.data?.billingDetail?.paymentStatus || "Pending";
-    const isOutstanding =
-      displayAmountDueNow > 0 && paymentStatus !== "Paid";
+    const isFullyPaid =
+      paymentSummary?.paymentState === "fully_paid" || paymentStatus === "Paid";
+    const isOutstanding = !isFullyPaid && displayAmountDueNow > 0;
+    const displayPaidLater = paymentSummary?.paidLater;
+    const paidLaterAmount = Number(displayPaidLater?.totalPaid) || 0;
     const cashTotalPaid = Number(displayPaidAtBooking?.totalPaid) || 0;
     const showCashPaymentMethodOnly =
       isCashBooking && cashTotalPaid <= 0;
@@ -1192,6 +1195,24 @@ export default function OrderHistory() {
                     {formatBillingLine(displayPaidAtBooking.totalPaid)}
                   </p>
                 </div>
+                {displayPaidAtBooking?.label ? (
+                  <p className="text-xs text-emerald-700">{displayPaidAtBooking.label}</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {paidLaterAmount > 0 ? (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 space-y-2">
+                <p className="text-sm font-semibold text-blue-900">Paid later</p>
+                {displayPaidLater?.label ? (
+                  <p className="text-xs text-blue-800">{displayPaidLater.label}</p>
+                ) : null}
+                <div className="flex justify-between items-center gap-4 pt-1">
+                  <p className="text-sm font-semibold text-blue-900">Total paid</p>
+                  <p className="text-sm font-semibold shrink-0 text-blue-900">
+                    {formatBillingLine(paidLaterAmount)}
+                  </p>
+                </div>
               </div>
             ) : null}
 
@@ -1237,30 +1258,53 @@ export default function OrderHistory() {
           {(bookingDtails?.data?.paymentMethodId ||
             bookingDtails?.data?.paymentId ||
             bookingDtails?.data?.bookingPaymentId ||
-            cardDetails) && (
+            cardDetails ||
+            paidLaterAmount > 0) && (
             <div className="space-y-1 font-sf border-b pb-3">
               <h4 className="font-semibold text-2xl">Payment</h4>
-              <div className="flex justify-between items-center">
-                <div>
-                  <h6>{cardPaymentLabel}</h6>
-                  {cardPaymentSubtext && (
-                    <p className="text-sm text-theme-psGray">{cardPaymentSubtext}</p>
-                  )}
-                  {(bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId) && (
+              {Number(displayPaidAtBooking?.totalPaid) > 0 ? (
+                <div className="flex justify-between items-center py-2">
+                  <div>
+                    <h6>{cardPaymentLabel}</h6>
                     <p className="text-sm text-theme-psGray">
-                      Payment ID: {bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId}
+                      {displayPaidAtBooking?.label || "Paid by card"} — upfront
                     </p>
-                  )}
-                  {bookingDtails?.data?.createdAt && (
-                    <p className="text-sm text-theme-psGray">
-                      {formatDate(bookingDtails.data.createdAt)}
-                    </p>
-                  )}
+                    {bookingDtails?.data?.createdAt && (
+                      <p className="text-sm text-theme-psGray">
+                        {formatDate(bookingDtails.data.createdAt)}
+                      </p>
+                    )}
+                  </div>
+                  <p className="font-semibold">
+                    {formatBillingLine(displayPaidAtBooking.totalPaid)}
+                  </p>
                 </div>
-                <p className="font-semibold">
-                  {formatBillingLine(displayAmountDueNow)}
+              ) : null}
+              {paidLaterAmount > 0 ? (
+                <div className="flex justify-between items-center py-2">
+                  <div>
+                    <h6>
+                      {displayPaidLater?.method === "cash"
+                        ? "Cash"
+                        : displayPaidLater?.label || "Balance payment"}
+                    </h6>
+                    <p className="text-sm text-theme-psGray">
+                      {displayPaidLater?.label || "Paid at delivery"}
+                    </p>
+                  </div>
+                  <p className="font-semibold">
+                    {formatBillingLine(paidLaterAmount)}
+                  </p>
+                </div>
+              ) : null}
+              {(bookingDtails?.data?.paymentId ||
+                bookingDtails?.data?.bookingPaymentId) && (
+                <p className="text-sm text-theme-psGray pb-2">
+                  Payment ID:{" "}
+                  {bookingDtails?.data?.paymentId ||
+                    bookingDtails?.data?.bookingPaymentId}
                 </p>
-              </div>
+              )}
               <div className="py-2">
                 <PurpleButton text="Send receipt to email" />
               </div>

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Header from "../../../../components/Header";
 import CategoryCard from "../../../../components/CategoryCard";
 import { MdKeyboardArrowRight, MdOutlineDryCleaning } from "react-icons/md";
@@ -40,6 +40,8 @@ import InputField from "../../../../components/InputHeroUi";
 import { FaRegEdit } from "react-icons/fa";
 import StripeCheckout from "../../../../utilities/StripeCheckout";
 import { useRouter } from "next/navigation";
+import BagsItemsWarningModal from "../../../../components/BagsItemsWarningModal";
+import { getServicesMissingBagsOrItems } from "../../../../utilities/checkoutBagsItems";
 
 const parseServiceBooleanFlag = (value) =>
   value === true || value === "true" || value === 1 || value === "1";
@@ -336,6 +338,16 @@ export default function Payment() {
     };
   }, [activePoliciesData]);
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
+  const {
+    isOpen: isBagsWarningOpen,
+    onOpen: onBagsWarningOpen,
+    onClose: onBagsWarningClose,
+    onOpenChange: onBagsWarningOpenChange,
+  } = useDisclosure();
+  const skipBagsCheckRef = useRef(false);
+  const proceedAfterWarningRef = useRef(null);
+  const stripeSubmitRef = useRef(null);
+  const [missingQuantityServices, setMissingQuantityServices] = useState([]);
   const [modalScroll, setModalScroll] = useState(false);
   const [modal, setModal] = useState({
     modType: "wash",
@@ -355,15 +367,80 @@ export default function Payment() {
 
   const payNowAmount = paymentType === "cash" ? 0 : payableTotal;
 
+  const getMissingQuantityServices = useCallback(
+    () =>
+      getServicesMissingBagsOrItems({
+        preferencesData,
+        serviceList,
+        orderData,
+        useSharedBags,
+      }),
+    [preferencesData, serviceList, orderData, useSharedBags]
+  );
+
+  const runWithBagsCheck = useCallback(
+    (action) => {
+      if (skipBagsCheckRef.current) {
+        skipBagsCheckRef.current = false;
+        return action();
+      }
+
+      const missing = getMissingQuantityServices();
+      if (missing.length === 0) {
+        return action();
+      }
+
+      setMissingQuantityServices(missing);
+      proceedAfterWarningRef.current = action;
+      onBagsWarningOpen();
+    },
+    [getMissingQuantityServices, onBagsWarningOpen]
+  );
+
+  const handleBeforePay = useCallback(() => {
+    if (skipBagsCheckRef.current) {
+      skipBagsCheckRef.current = false;
+      return true;
+    }
+
+    const missing = getMissingQuantityServices();
+    if (missing.length === 0) {
+      return true;
+    }
+
+    setMissingQuantityServices(missing);
+    proceedAfterWarningRef.current = () => {
+      stripeSubmitRef.current?.requestSubmit();
+    };
+    onBagsWarningOpen();
+    return false;
+  }, [getMissingQuantityServices, onBagsWarningOpen]);
+
+  const handleBagsWarningGoBack = () => {
+    proceedAfterWarningRef.current = null;
+    onBagsWarningClose();
+    router.push("/checkout/order");
+  };
+
+  const handleBagsWarningProceed = () => {
+    skipBagsCheckRef.current = true;
+    const action = proceedAfterWarningRef.current;
+    proceedAfterWarningRef.current = null;
+    onBagsWarningClose();
+    action?.();
+  };
+
   const handleModalScroll = (e) => { };
 
-  const handleCashBooking = async () => {
-    setIsCashBooking(true);
-    try {
-      await handleCreateBooking({});
-    } finally {
-      setIsCashBooking(false);
-    }
+  const handleCashBooking = () => {
+    runWithBagsCheck(async () => {
+      setIsCashBooking(true);
+      try {
+        await handleCreateBooking({});
+      } finally {
+        setIsCashBooking(false);
+      }
+    });
   };
 
   const handleCreateBooking = async (payData) => {
@@ -556,7 +633,7 @@ export default function Payment() {
           color: "success",
         });
 
-        router.replace("/");
+        router.replace("/profile?tab=order-history");
       } else {
         const errorMsg = response?.error ?? response?.message ?? "Booking failed. Please try again.";
         addToast({
@@ -681,6 +758,8 @@ export default function Payment() {
                     totalAmount={payableTotal}
                     onOpen={onOpen}
                     customerId={customerId}
+                    beforePay={handleBeforePay}
+                    stripeSubmitRef={stripeSubmitRef}
                   />
                   {/* How much do I pay? - policy box */}
                   <div className="w-full rounded-2xl border border-theme-gray overflow-hidden bg-white shadow-theme-shadow-light">
@@ -1178,6 +1257,15 @@ export default function Payment() {
       </div>
 
       {/* =======================Modal======================== */}
+
+      <BagsItemsWarningModal
+        isOpen={isBagsWarningOpen}
+        onOpenChange={onBagsWarningOpenChange}
+        onClose={onBagsWarningClose}
+        missingServices={missingQuantityServices}
+        onGoBack={handleBagsWarningGoBack}
+        onProceedAnyway={handleBagsWarningProceed}
+      />
 
       <ReusableModal
         isDismissable={true}

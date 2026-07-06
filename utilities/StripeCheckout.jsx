@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
@@ -25,12 +25,29 @@ if (typeof window !== "undefined") {
 
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
 
-const CheckoutForm = ({ setModal, modal, booking, onOpen, intentMode = "payment", intentId = "", displayAmount = "" }) => {
+const CheckoutForm = forwardRef(function CheckoutForm(
+  {
+    setModal,
+    modal,
+    booking,
+    onOpen,
+    intentMode = "payment",
+    intentId = "",
+    displayAmount = "",
+    beforePay,
+  },
+  ref
+) {
   const stripe = useStripe();
   const elements = useElements();
+  const formRef = useRef(null);
   const [isProcessing, setProcessing] = useState(false);
   const [message, setMessage] = useState("");
   const [isPaymentElementReady, setIsPaymentElementReady] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    requestSubmit: () => formRef.current?.requestSubmit(),
+  }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -42,6 +59,10 @@ const CheckoutForm = ({ setModal, modal, booking, onOpen, intentMode = "payment"
 
     if (!isPaymentElementReady) {
       setMessage("Payment form is not ready. Please wait...");
+      return;
+    }
+
+    if (typeof beforePay === "function" && beforePay() === false) {
       return;
     }
 
@@ -118,7 +139,7 @@ const CheckoutForm = ({ setModal, modal, booking, onOpen, intentMode = "payment"
   };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form ref={formRef} onSubmit={handleSubmit}>
       <PaymentElement
         onReady={() => {
           setIsPaymentElementReady(true);
@@ -158,7 +179,7 @@ const CheckoutForm = ({ setModal, modal, booking, onOpen, intentMode = "payment"
       {message && <div className="text-red-500 mt-2">{message}</div>}
     </form>
   );
-};
+});
 
 const StripeCheckout = ({
   paymentMethod,
@@ -168,6 +189,8 @@ const StripeCheckout = ({
   totalAmount,
   onOpen,
   customerId,
+  beforePay,
+  stripeSubmitRef,
 }) => {
   const [clientSecret, setClientSecret] = useState("");
   const [intentMode, setIntentMode] = useState("payment"); // "payment" | "setup"
@@ -292,6 +315,7 @@ const StripeCheckout = ({
       {clientSecret && stripePromise && (
         <Elements options={options} stripe={stripePromise}>
           <CheckoutForm
+            ref={stripeSubmitRef}
             setModal={setModal}
             modal={modal}
             booking={booking}
@@ -299,6 +323,7 @@ const StripeCheckout = ({
             intentMode={intentMode}
             intentId={intentId}
             displayAmount={displayAmount}
+            beforePay={beforePay}
           />
         </Elements>
       )}

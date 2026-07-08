@@ -403,6 +403,22 @@ export default function OrderHistory() {
     );
   };
 
+  const getProofSectionNote = (deliveryType) => {
+    const fromApi =
+      deliveryType === "pickUp"
+        ? bookingDtails?.data?.pickupProofNote
+        : bookingDtails?.data?.deliveryProofNote;
+    if (fromApi && String(fromApi).trim()) {
+      return String(fromApi).trim();
+    }
+    const proofs =
+      deliveryType === "pickUp" ? getProofOfCollection() : getProofOfDelivery();
+    const match = proofs.find(
+      (proof) => proof?.note && String(proof.note).trim() !== ""
+    );
+    return match ? String(match.note).trim() : null;
+  };
+
   // Helper function to get image URL from proof object
   const getImageUrl = (imgUpload) => {
     if (!imgUpload) return null;
@@ -1314,6 +1330,16 @@ export default function OrderHistory() {
           {getProofOfCollection().length > 0 && (
             <div className="space-y-1 font-sf pb-3 border-b">
               <h4 className="font-semibold text-2xl">Proof of Collection</h4>
+              {getProofSectionNote("pickUp") ? (
+                <div className="rounded-xl bg-[#F5F5F5] px-4 py-3 mt-2">
+                  <p className="text-xs font-semibold text-theme-psGray uppercase tracking-wide">
+                    Agent note
+                  </p>
+                  <p className="text-sm text-black mt-1 whitespace-pre-wrap">
+                    {getProofSectionNote("pickUp")}
+                  </p>
+                </div>
+              ) : null}
               <div className="py-3">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
                   {getProofOfCollection().map((proof, index) => {
@@ -1337,9 +1363,9 @@ export default function OrderHistory() {
                             Items: {proof.noOfItems}
                           </p>
                         )}
-                        {proof.note && (
-                          <p className="text-xs text-theme-psGray text-center line-clamp-2">
-                            {proof.note}
+                        {proof.noOfBags !== undefined && proof.noOfBags !== null && (
+                          <p className="text-xs text-theme-psGray text-center">
+                            Bags: {proof.noOfBags}
                           </p>
                         )}
                         {proof.createdAt && (
@@ -1359,6 +1385,16 @@ export default function OrderHistory() {
           {getProofOfDelivery().length > 0 && (
             <div className="space-y-1 font-sf pb-3 border-b">
               <h4 className="font-semibold text-2xl">Proof of Delivery</h4>
+              {getProofSectionNote("dropOff") ? (
+                <div className="rounded-xl bg-[#F5F5F5] px-4 py-3 mt-2">
+                  <p className="text-xs font-semibold text-theme-psGray uppercase tracking-wide">
+                    Agent note
+                  </p>
+                  <p className="text-sm text-black mt-1 whitespace-pre-wrap">
+                    {getProofSectionNote("dropOff")}
+                  </p>
+                </div>
+              ) : null}
               <div className="py-3">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
                   {getProofOfDelivery().map((proof, index) => {
@@ -1382,9 +1418,9 @@ export default function OrderHistory() {
                             Items: {proof.noOfItems}
                           </p>
                         )}
-                        {proof.note && (
-                          <p className="text-xs text-theme-psGray text-center line-clamp-2">
-                            {proof.note}
+                        {proof.noOfBags !== undefined && proof.noOfBags !== null && (
+                          <p className="text-xs text-theme-psGray text-center">
+                            Bags: {proof.noOfBags}
                           </p>
                         )}
                         {proof.createdAt && (

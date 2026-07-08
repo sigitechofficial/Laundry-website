@@ -1649,6 +1649,7 @@ export default function OrderHistory() {
         cfg.unprocessedAbsoluteCurrency,
         cfg.unprocessedAbsoluteAmount
       ) ||
+      formatPercent(cfg.unprocessedOrderValuePercentage) ||
       formatPercent(cfg.unprocessedPercentage) ||
       "policy-based";
 

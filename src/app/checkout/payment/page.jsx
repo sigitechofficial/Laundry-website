@@ -474,13 +474,12 @@ export default function Payment() {
         const bags = !useSharedBags
           ? parseQuantityCount(prefRow?.bagsCount)
           : 0;
+        const items = parseQuantityCount(prefRow?.itemsCount);
         return {
           ...svc,
           ...(extra ? { serviceInstruction: extra } : {}),
           ...(!useSharedBags && bags > 0 ? { bags } : {}),
-          ...(prefRow?.itemsCount != null && prefRow.itemsCount !== ""
-            ? { items: Number(prefRow.itemsCount) }
-            : {}),
+          ...(items > 0 ? { items } : {}),
         };
       });
 
@@ -546,13 +545,12 @@ export default function Payment() {
             const bags = !useSharedBags
               ? parseQuantityCount(item.bagsCount)
               : 0;
+            const items = parseQuantityCount(item.itemsCount);
             return {
               serviceId: item.serviceId,
               ...(extra ? { serviceInstruction: extra } : {}),
               ...(!useSharedBags && bags > 0 ? { bags } : {}),
-              ...(item.itemsCount != null && item.itemsCount !== ""
-                ? { items: Number(item.itemsCount) }
-                : {}),
+              ...(items > 0 ? { items } : {}),
             };
           }),
         totalItems: (() => {

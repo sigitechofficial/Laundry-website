@@ -857,16 +857,20 @@ export default function Order() {
       ? parseQuantityCount(orderData?.totalBags ?? preferences.bagsCount)
       : parseQuantityCount(preferences.bagsCount);
 
-    if (showBagsInput && resolvedBagCount > 0 && !bagsStepperDisabled) {
+    if (showBagsInput && !bagsStepperDisabled) {
       if (useSharedBagStepper) {
-        dispatch(setOrderData({ totalBags: resolvedBagCount }));
-        if (isPackingSourceService) {
+        dispatch(
+          setOrderData({
+            totalBags: resolvedBagCount > 0 ? resolvedBagCount : "",
+          })
+        );
+        if (isPackingSourceService && resolvedBagCount > 0) {
           preferencesDisplay.push({
             preferenceTypeName: "Number of bags (all services)",
             value: String(resolvedBagCount),
           });
         }
-      } else {
+      } else if (resolvedBagCount > 0) {
         preferencesDisplay.push({
           preferenceTypeName: "Number of bags",
           value: String(resolvedBagCount),
@@ -891,14 +895,11 @@ export default function Order() {
       additionalInstructions: preferences.additionalInstructions || "",
       selectedPreferences: deepClone(preferences),
       ...(showBagsInput &&
-      resolvedBagCount > 0 &&
       !bagsStepperDisabled &&
       (!isAllInOneBagSelected || isPackingSourceService)
         ? { bagsCount: resolvedBagCount }
         : {}),
-      ...(showItemsInput &&
-      parseQuantityCount(preferences.itemsCount) > 0 &&
-      !itemsStepperDisabled
+      ...(showItemsInput && !itemsStepperDisabled
         ? { itemsCount: parseQuantityCount(preferences.itemsCount) }
         : {}),
     };

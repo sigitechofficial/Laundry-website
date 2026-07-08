@@ -34,6 +34,7 @@ export default function OrderHistory() {
   );
   const [order, setOrder] = useState("");
   const [modalScroll, setModalScroll] = useState(false);
+  const [panelScroll, setPanelScroll] = useState(false);
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const {
     isOpen: isCancelModalOpen,
@@ -65,6 +66,7 @@ export default function OrderHistory() {
   const [showManageDetails, setShowManageDetails] = useState(false);
   const [shouldRenderManageDetails, setShouldRenderManageDetails] = useState(false);
   const [isOrderItemsExpanded, setIsOrderItemsExpanded] = useState(true);
+  const [bookingTab, setBookingTab] = useState("active");
 
   const {
     data: bookingDtails,
@@ -95,7 +97,7 @@ export default function OrderHistory() {
     }
   };
 
-  const renderOrderDetailsPanel = () => {
+  const renderOrderDetailsPanel = ({ panelLayout = false } = {}) => {
     if (isBookingDetailsLoading) {
       return (
         <div className="w-full flex items-center justify-center py-16">
@@ -119,7 +121,7 @@ export default function OrderHistory() {
       );
     }
 
-    return renderOrderDetailsContent();
+    return renderOrderDetailsContent({ panelLayout });
   };
 
   // Handle smooth transition when order details are loaded
@@ -188,6 +190,18 @@ export default function OrderHistory() {
       return prev;
     });
   }
+
+  function handlePanelScroll(e) {
+    const isScrolled = e.target.scrollTop > 50;
+    setPanelScroll((prev) => {
+      if (prev !== isScrolled) return isScrolled;
+      return prev;
+    });
+  }
+
+  React.useEffect(() => {
+    setPanelScroll(false);
+  }, [manageOrder?.orderId]);
 
   const formatCardBrand = (brand) => {
     if (!brand) return "Card";
@@ -535,8 +549,84 @@ export default function OrderHistory() {
     return past.length === 0 ? null : past;
   }, [data?.data]);
 
+  const activeList = activeBookings ?? [];
+  const pastList = pastBookings ?? [];
+  const visibleBookings = bookingTab === "active" ? activeList : pastList;
+
+  const renderBookingCard = (order) => (
+    <div
+      key={order.id}
+      role="button"
+      tabIndex={0}
+      onClick={() => handleSelectBooking(order)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleSelectBooking(order);
+        }
+      }}
+      className="w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
+    >
+      <h6 className="font-youth font-bold text-base sm:text-lg">
+        Order ID: {order?.orderTrackId}
+      </h6>
+
+      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+        <span
+          className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}
+        >
+          {order?.bookingStatus?.title}
+        </span>
+      </div>
+
+      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
+        <div className="flex gap-2 items-center py-2">
+          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+          <div>
+            <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+              Pick up
+            </p>
+            <p className="font-sf text-base sm:text-xl">
+              {formatDate(order?.collectionDate)}
+            </p>
+          </div>
+        </div>
+
+        <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+          <GoClock size={18} className="sm:w-5 sm:h-5" />
+          {formatTo24Hour(order?.collectionTimeFrom)} -{" "}
+          {formatTo24Hour(order?.collectionTimeTo)}
+        </p>
+      </div>
+
+      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+        <div className="flex gap-2 items-center py-2">
+          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+          <div>
+            <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+              Drop off
+            </p>
+            <p className="font-sf text-base sm:text-xl">
+              {formatDate(order?.deliveryDate)}
+            </p>
+          </div>
+        </div>
+
+        <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+          <GoClock size={18} className="sm:w-5 sm:h-5" />
+          {formatTo24Hour(order?.deliveryTimeFrom)} -{" "}
+          {formatTo24Hour(order?.deliveryTimeTo)}
+        </p>
+      </div>
+
+      <p className="font-sf text-base text-theme-psGray">
+        {order?.driverInstruction}
+      </p>
+    </div>
+  );
+
   // Render order details content (reusable for both modal and side panel)
-  const renderOrderDetailsContent = () => {
+  const renderOrderDetailsContent = ({ panelLayout = false } = {}) => {
     if (!bookingDtails?.data) return null;
     const schedule = resolveBookingSchedule(bookingDtails.data);
     const selectedServices = Array.isArray(
@@ -690,11 +780,13 @@ export default function OrderHistory() {
 
     return (
       <>
-        <h6 className="font-youth font-bold text-2xl sm:text-3xl md:text-[32px]">
-          Order ID: {bookingDtails?.data?.orderTrackId}
-        </h6>
+        {!panelLayout ? (
+          <h6 className="font-youth font-bold text-2xl sm:text-3xl md:text-[32px]">
+            Order ID: {bookingDtails?.data?.orderTrackId}
+          </h6>
+        ) : null}
 
-        <div className="flex justify-between items-center font-sf pt-3 pb-6">
+        <div className={`flex justify-between items-center font-sf ${panelLayout ? "pt-1 pb-6" : "pt-3 pb-6"}`}>
           <button
             title={bookingDtails?.data?.bookingStatus?.description}
             className={`rounded-full shrink-0 font-youth font-bold text-sm p-3 ${getStatusColorClasses(bookingDtails?.data?.bookingStatus?.title)}`}
@@ -1605,7 +1697,7 @@ export default function OrderHistory() {
         Here's What You've Ordered
       </h2>
 
-      <div className="w-full flex flex-col md:flex-row gap-5">
+      <div className="w-full flex flex-col md:flex-row md:items-start gap-5 min-h-0">
         <div className="w-full font-sf space-y-5">
           {/* Loading Spinner */}
           {isLoading ? (
@@ -1621,156 +1713,66 @@ export default function OrderHistory() {
             </div>
           ) : (
             <>
-              {/* Active Bookings Section */}
-              {activeBookings && (
-                <>
-                  <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4">Active Bookings</h3>
-                  {activeBookings.map((order) => {
-                    return (
-                      <div
-                        key={order.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => handleSelectBooking(order)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleSelectBooking(order);
-                          }
-                        }}
-                        className="w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
-                      >
-                        <h6 className="font-youth font-bold text-base sm:text-lg">
-                          Order ID: {order?.orderTrackId}
-                        </h6>
+              <div className="inline-flex w-full sm:w-auto p-1 rounded-full bg-[#F0F2F7] border border-[#E4E8F0] mb-5">
+                <button
+                  type="button"
+                  onClick={() => setBookingTab("active")}
+                  className={`flex-1 sm:flex-none px-5 sm:px-8 py-2.5 rounded-full font-youth font-bold text-sm sm:text-base transition-all duration-200 ${
+                    bookingTab === "active"
+                      ? "bg-theme-blue text-white shadow-sm"
+                      : "text-theme-psGray hover:text-gray-900"
+                  }`}
+                >
+                  Active
+                  {activeList.length > 0 ? (
+                    <span
+                      className={`ml-2 text-xs font-sf font-semibold ${
+                        bookingTab === "active" ? "text-white/80" : "text-theme-psGray"
+                      }`}
+                    >
+                      ({activeList.length})
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBookingTab("past")}
+                  className={`flex-1 sm:flex-none px-5 sm:px-8 py-2.5 rounded-full font-youth font-bold text-sm sm:text-base transition-all duration-200 ${
+                    bookingTab === "past"
+                      ? "bg-theme-blue text-white shadow-sm"
+                      : "text-theme-psGray hover:text-gray-900"
+                  }`}
+                >
+                  Past
+                  {pastList.length > 0 ? (
+                    <span
+                      className={`ml-2 text-xs font-sf font-semibold ${
+                        bookingTab === "past" ? "text-white/80" : "text-theme-psGray"
+                      }`}
+                    >
+                      ({pastList.length})
+                    </span>
+                  ) : null}
+                </button>
+              </div>
 
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-                          <span className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
-                            {order?.bookingStatus?.title}
-                          </span>
-                        </div>
-
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
-                          <div className="flex gap-2 items-center py-2">
-                            <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                            <div>
-                              <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                                Pick up
-                              </p>
-                              <p className="font-sf text-base sm:text-xl">
-                                {formatDate(order?.collectionDate)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                            <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {formatTo24Hour(order?.collectionTimeFrom)} - {formatTo24Hour(order?.collectionTimeTo)}
-                          </p>
-                        </div>
-
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-                          <div className="flex gap-2 items-center py-2">
-                            <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                            <div>
-                              <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                                Drop off
-                              </p>
-                              <p className="font-sf text-base sm:text-xl">
-                                {formatDate(order?.deliveryDate)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                            <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {formatTo24Hour(order?.deliveryTimeFrom)} - {formatTo24Hour(order?.deliveryTimeTo)}
-                          </p>
-                        </div>
-
-                        <p className="font-sf text-base text-theme-psGray">
-                          {order?.driverInstruction}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-
-              {/* Past Bookings Section */}
-              {pastBookings && (
-                <>
-                  <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4 mt-6 sm:mt-8">Past Bookings</h3>
-                  {pastBookings.map((order) => {
-                    return (
-                      <div
-                        key={order.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => handleSelectBooking(order)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleSelectBooking(order);
-                          }
-                        }}
-                        className="w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
-                      >
-                        <h6 className="font-youth font-bold text-base sm:text-lg">
-                          Order ID: {order?.orderTrackId}
-                        </h6>
-
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-                          <span className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
-                            {order?.bookingStatus?.title}
-                          </span>
-                        </div>
-
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
-                          <div className="flex gap-2 items-center py-2">
-                            <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                            <div>
-                              <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                                Pick up
-                              </p>
-                              <p className="font-sf text-base sm:text-xl">
-                                {formatDate(order?.collectionDate)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                            <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {formatTo24Hour(order?.collectionTimeFrom)} - {formatTo24Hour(order?.collectionTimeTo)}
-                          </p>
-                        </div>
-
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-                          <div className="flex gap-2 items-center py-2">
-                            <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                            <div>
-                              <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                                Drop off
-                              </p>
-                              <p className="font-sf text-base sm:text-xl">
-                                {formatDate(order?.deliveryDate)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                            <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {formatTo24Hour(order?.deliveryTimeFrom)} - {formatTo24Hour(order?.deliveryTimeTo)}
-                          </p>
-                        </div>
-
-                        <p className="font-sf text-base text-theme-psGray">
-                          {order?.driverInstruction}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </>
+              {visibleBookings.length > 0 ? (
+                <div className="space-y-5">
+                  {visibleBookings.map((order) => renderBookingCard(order))}
+                </div>
+              ) : (
+                <div className="w-full xl:max-w-[859px] rounded-2xl border border-dashed border-[#D9DEE8] bg-[#FBFBFB] px-6 py-12 text-center">
+                  <p className="font-youth font-bold text-lg text-theme-blue">
+                    {bookingTab === "active"
+                      ? "No active bookings"
+                      : "No past bookings"}
+                  </p>
+                  <p className="font-sf text-sm text-theme-psGray mt-2">
+                    {bookingTab === "active"
+                      ? "Your current orders will appear here."
+                      : "Completed and cancelled orders will appear here."}
+                  </p>
+                </div>
               )}
             </>
           )}
@@ -1779,13 +1781,47 @@ export default function OrderHistory() {
         {/* Desktop/Tablet Side Panel - Hidden on mobile */}
         {manageOrder?.orderId ? (
           <div
-            className={`hidden md:block w-full max-w-[600px] h-max px-4 sm:px-6 py-4 shadow-theme-shadow-light rounded-[20px] transition-all duration-500 ease-in-out ${
+            className={`hidden md:flex md:flex-col w-full max-w-[600px] shrink-0 min-h-0 sticky top-4 self-start h-[calc(100vh-6rem)] overflow-hidden shadow-theme-shadow-light rounded-[20px] transition-all duration-500 ease-in-out ${
               showOrderDetails || isBookingDetailsLoading
                 ? "opacity-100 translate-x-0"
                 : "opacity-0 translate-x-4"
             }`}
           >
-            {renderOrderDetailsPanel()}
+            {bookingDtails?.data?.orderTrackId ? (
+              <div
+                className={`pointer-events-none absolute transition-all duration-300 ease-in-out font-sf ${
+                  panelScroll
+                    ? "translate-y-0 opacity-100"
+                    : "-translate-y-full opacity-0"
+                } top-0 left-0 z-20 bg-white w-full shadow-md rounded-t-[20px]`}
+              >
+                <div className="flex justify-center items-center w-full h-[58px] px-4">
+                  <h2
+                    className={`font-youth font-bold sm:text-[22px] text-center transition-all duration-500 ease-in-out ${
+                      panelScroll
+                        ? "translate-y-0 opacity-100 delay-500"
+                        : "-translate-y-4 opacity-0 delay-0"
+                    }`}
+                  >
+                    Order ID: {bookingDtails.data.orderTrackId}
+                  </h2>
+                </div>
+              </div>
+            ) : null}
+
+            <div
+              onScroll={handlePanelScroll}
+              className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain hideScrollbar modal-scroll px-4 sm:px-6 pt-4 pb-8"
+            >
+              {bookingDtails?.data?.orderTrackId && !isBookingDetailsLoading ? (
+                <div className="h-[58px] shrink-0 flex items-center justify-center relative border-b border-theme-gray-2 -mx-4 sm:-mx-6 px-4 sm:px-6 mb-2">
+                  <h4 className="font-youth font-bold sm:text-[22px] text-center">
+                    Order ID: {bookingDtails.data.orderTrackId}
+                  </h4>
+                </div>
+              ) : null}
+              {renderOrderDetailsPanel({ panelLayout: true })}
+            </div>
           </div>
         ) : null}
       </div>

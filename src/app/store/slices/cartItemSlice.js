@@ -145,13 +145,28 @@ const cartItemSlice = createSlice({
         (item) => item.serviceId === serviceId
       );
 
+      const merged =
+        existingIndex !== -1
+          ? { ...state.preferences[existingIndex], ...data }
+          : { serviceId, ...data };
+
+      if (Object.prototype.hasOwnProperty.call(data, "bagsCount")) {
+        const bags = Number(data.bagsCount);
+        if (!Number.isFinite(bags) || bags <= 0) {
+          delete merged.bagsCount;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(data, "itemsCount")) {
+        const items = Number(data.itemsCount);
+        if (!Number.isFinite(items) || items <= 0) {
+          delete merged.itemsCount;
+        }
+      }
+
       if (existingIndex !== -1) {
-        state.preferences[existingIndex] = {
-          ...state.preferences[existingIndex],
-          ...data,
-        };
+        state.preferences[existingIndex] = merged;
       } else {
-        state.preferences.push({ serviceId, ...data });
+        state.preferences.push(merged);
       }
 
       if (typeof window !== "undefined") {

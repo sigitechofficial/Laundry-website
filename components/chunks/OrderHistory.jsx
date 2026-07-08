@@ -21,6 +21,10 @@ import { setOrderData } from "@/app/store/slices/cartItemSlice";
 import { BASE_URL } from "../../utilities/URL";
 import { resolveBookingSchedule } from "../../utilities/bookingScheduleDisplay";
 import BookingSlotTimes from "../BookingSlotTimes";
+import {
+  isActiveBookingStatus,
+  isPastBookingStatus,
+} from "../../utilities/bookingOrderTabs";
 
 export default function OrderHistory() {
   const router = useRouter();
@@ -484,26 +488,9 @@ export default function OrderHistory() {
   const activeBookings = React.useMemo(() => {
     if (!data?.data || !Array.isArray(data.data)) return null;
 
-    const active = data.data.filter((order) => {
-      const status = order?.bookingStatus?.title?.toLowerCase() || "";
-
-      // Include orders with active statuses (created, order created, pending, etc.)
-      // Exclude cancelled, completed, delivered, processed, etc.
-      if (
-        status.includes("cancel") ||
-        status.includes("cancelled") ||
-        status.includes("completed") ||
-        status.includes("delivered") ||
-        status.includes("processed") ||
-        status.includes("finished") ||
-        status.includes("done")
-      ) {
-        return false;
-      }
-
-      // Include all other statuses (created, order created, pending, in progress, etc.)
-      return true;
-    }).sort((a, b) => {
+    const active = data.data.filter((order) =>
+      isActiveBookingStatus(order?.bookingStatus?.title)
+    ).sort((a, b) => {
       const dateA = a.createdAt || a.created_at || a.orderDate || a.bookingDate;
       const dateB = b.createdAt || b.created_at || b.orderDate || b.bookingDate;
       if (dateA && dateB) return new Date(dateB) - new Date(dateA);
@@ -519,25 +506,9 @@ export default function OrderHistory() {
   const pastBookings = React.useMemo(() => {
     if (!data?.data || !Array.isArray(data.data)) return null;
 
-    const past = data.data.filter((order) => {
-      const status = order?.bookingStatus?.title?.toLowerCase() || "";
-
-      // Include orders with past/final statuses
-      if (
-        status.includes("cancel") ||
-        status.includes("cancelled") ||
-        status.includes("completed") ||
-        status.includes("delivered") ||
-        status.includes("processed") ||
-        status.includes("finished") ||
-        status.includes("done")
-      ) {
-        return true;
-      }
-
-      // Exclude active statuses (created, order created, pending, etc.)
-      return false;
-    }).sort((a, b) => {
+    const past = data.data.filter((order) =>
+      isPastBookingStatus(order?.bookingStatus?.title)
+    ).sort((a, b) => {
       const dateA = a.createdAt || a.created_at || a.orderDate || a.bookingDate;
       const dateB = b.createdAt || b.created_at || b.orderDate || b.bookingDate;
       if (dateA && dateB) return new Date(dateB) - new Date(dateA);

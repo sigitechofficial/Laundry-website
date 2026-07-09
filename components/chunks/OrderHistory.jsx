@@ -27,11 +27,13 @@ import {
 } from "../../utilities/bookingOrderTabs";
 
 /** Mirrors backend cancelBookingService status gates. */
+const MAX_CANCELLABLE_STATUS_ID = 9;
+const BOOKING_STATUS_INVOICE_GENERATED = 10;
 const BOOKING_STATUS_PROCESSING = 11;
 const BOOKING_STATUS_DELIVERED = 16;
 const BOOKING_STATUS_COMPLETED = 17;
 const BOOKING_STATUS_CANCELLED = 19;
-const UNPROCESSED_BOOKING_STATUS_IDS = new Set([4, 5, 6, 7, 8, 9, 10]);
+const UNPROCESSED_BOOKING_STATUS_IDS = new Set([4, 5, 6, 7, 8, 9]);
 
 function resolveBookingStatusId(order) {
   const raw = order?.bookingStatusId ?? order?.bookingStatus?.id;
@@ -304,6 +306,17 @@ export default function OrderHistory() {
       statusId === BOOKING_STATUS_COMPLETED
     ) {
       return { canCancel: false, reason: "Cannot cancel completed bookings" };
+    }
+
+    if (statusId === BOOKING_STATUS_INVOICE_GENERATED) {
+      return {
+        canCancel: false,
+        reason: "Invoice has already been generated for this order",
+      };
+    }
+
+    if (statusId != null && statusId > MAX_CANCELLABLE_STATUS_ID) {
+      return { canCancel: false, reason: "Cannot cancel booking at this stage" };
     }
 
     if (statusId != null && UNPROCESSED_BOOKING_STATUS_IDS.has(statusId)) {

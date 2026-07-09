@@ -26,6 +26,19 @@ import {
   isPastBookingStatus,
 } from "../../utilities/bookingOrderTabs";
 
+/** Mirrors backend cancelBookingService status gates. */
+const BOOKING_STATUS_PROCESSING = 11;
+const BOOKING_STATUS_DELIVERED = 16;
+const BOOKING_STATUS_COMPLETED = 17;
+const BOOKING_STATUS_CANCELLED = 19;
+const UNPROCESSED_BOOKING_STATUS_IDS = new Set([4, 5, 6, 7, 8, 9, 10]);
+
+function resolveBookingStatusId(order) {
+  const raw = order?.bookingStatusId ?? order?.bookingStatus?.id;
+  const statusId = Number(raw);
+  return Number.isFinite(statusId) ? statusId : null;
+}
+
 export default function OrderHistory() {
   const router = useRouter();
   const dispatch = useDispatch();
@@ -269,21 +282,36 @@ export default function OrderHistory() {
     return "bg-theme-skyBlue text-[#0391C4]";
   };
 
-  // Check if order can be cancelled based on cancellation policy
+  // Check if order can be cancelled based on cancellation policy (status IDs match backend).
   const canCancelOrder = (order, config) => {
     if (!order) return { canCancel: true, reason: null };
-    if (!config) return { canCancel: true, reason: null };
 
-    // Check order status - if processed, cannot cancel
-    const orderStatus = order?.bookingStatus?.title?.toLowerCase() || "";
-    if (orderStatus.includes("processed") || orderStatus.includes("completed") || orderStatus.includes("delivered")) {
-      return { canCancel: false, reason: 'Order already processed or completed' };
+    const statusId = resolveBookingStatusId(order);
+
+    if (statusId === BOOKING_STATUS_CANCELLED) {
+      return { canCancel: false, reason: "This order has already been cancelled" };
     }
 
-    // Check if unprocessed cancellation is allowed
-    if (orderStatus.includes("picked") || orderStatus.includes("unprocessed")) {
-      if (!config.allowCancelUnprocessed) {
-        return { canCancel: false, reason: 'Unprocessed orders cannot be cancelled' };
+    if (statusId === BOOKING_STATUS_PROCESSING) {
+      return {
+        canCancel: false,
+        reason: "Items are currently being processed at the facility",
+      };
+    }
+
+    if (
+      statusId === BOOKING_STATUS_DELIVERED ||
+      statusId === BOOKING_STATUS_COMPLETED
+    ) {
+      return { canCancel: false, reason: "Cannot cancel completed bookings" };
+    }
+
+    if (statusId != null && UNPROCESSED_BOOKING_STATUS_IDS.has(statusId)) {
+      if (config && config.allowCancelUnprocessed === false) {
+        return {
+          canCancel: false,
+          reason: "Unprocessed orders cannot be cancelled according to the policy",
+        };
       }
     }
 
@@ -303,8 +331,9 @@ export default function OrderHistory() {
 
     setIsCheckingCancellation(true);
 
-    // Check cancellation eligibility
+    // Prefer snapshotted booking policy; fall back to zone active policy.
     const cancellationConfig =
+      bookingDtails.data?.cancellationPolicy ||
       activePoliciesData?.data?.activeCancellationPolicy?.cancellationConfig;
     const eligibility = canCancelOrder(bookingDtails.data, cancellationConfig);
 

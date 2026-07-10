@@ -234,7 +234,11 @@ export default function orderRegistration() {
     return delData;
   };
 
-  const loadSlotsForPickupAddress = async (lat, lng) => {
+  const loadSlotsForPickupAddress = async (
+    lat,
+    lng,
+    { preserveSchedule = false } = {}
+  ) => {
     setSlotsLoading(true);
     try {
       const zone = await fetchZoneForCoordinates(lat, lng);
@@ -253,36 +257,79 @@ export default function orderRegistration() {
       const firstDay = colData.days?.[0];
       const firstSlot = firstDay?.timeSlots?.[0];
       if (firstDay && firstSlot) {
-        setCollectionData((prev) => ({
-          ...prev,
-          collectionDate: firstDay.date,
-          collectionTimeFrom: firstSlot.start,
-          collectionTimeTo: firstSlot.end,
-          availableTimeSlots: firstDay.timeSlots,
-          operationalTimeZone: colData.operational?.ianaTimeZone,
-          timeZone: colData.operational?.ianaTimeZone,
-          clientTimeZone,
-        }));
+        let resolvedCollectionDate = firstDay.date;
+        if (preserveSchedule && collectionData?.collectionDate) {
+          const matchedCollectionDay = colData.days?.find(
+            (d) => d.date === collectionData.collectionDate
+          );
+          if (matchedCollectionDay) {
+            resolvedCollectionDate = matchedCollectionDay.date;
+          }
+        }
 
-        const minDel =
-          getMinDeliveryDate(firstDay.date, cartMaxTurnaroundDays) ||
-          firstDay.date;
-        const delData = await loadDeliverySlotsForCountry(zone.countryId, minDel);
-        const firstDel =
-          delData.days?.find((d) => d.date >= minDel) || delData.days?.[0];
-        const firstDelSlot = firstDel?.timeSlots?.[0];
-        if (firstDel && firstDelSlot) {
-          setDeliveryData((prev) => ({
+        setCollectionData((prev) => {
+          let day = firstDay;
+          let slot = firstSlot;
+          if (preserveSchedule && prev.collectionDate) {
+            const matchedDay = colData.days?.find(
+              (d) => d.date === prev.collectionDate
+            );
+            if (matchedDay?.timeSlots?.length) {
+              day = matchedDay;
+              slot =
+                matchedDay.timeSlots.find(
+                  (s) => s.start === prev.collectionTimeFrom
+                ) || matchedDay.timeSlots[0];
+            }
+          }
+          return {
             ...prev,
-            deliveryDate: firstDel.date,
-            deliveryTimeFrom: firstDelSlot.start,
-            deliveryTimeTo: firstDelSlot.end,
-            availableTimeSlots: firstDel.timeSlots,
+            collectionDate: day.date,
+            collectionTimeFrom: slot.start,
+            collectionTimeTo: slot.end,
+            availableTimeSlots: day.timeSlots,
             operationalTimeZone: colData.operational?.ianaTimeZone,
             timeZone: colData.operational?.ianaTimeZone,
             clientTimeZone,
-          }));
-        }
+          };
+        });
+
+        const minDel =
+          getMinDeliveryDate(resolvedCollectionDate, cartMaxTurnaroundDays) ||
+          resolvedCollectionDate;
+        const delData = await loadDeliverySlotsForCountry(zone.countryId, minDel);
+        setDeliveryData((prev) => {
+          const firstDel =
+            delData.days?.find((d) => d.date >= minDel) || delData.days?.[0];
+          const firstDelSlot = firstDel?.timeSlots?.[0];
+          if (!firstDel || !firstDelSlot) return prev;
+
+          let day = firstDel;
+          let slot = firstDelSlot;
+          if (preserveSchedule && prev.deliveryDate) {
+            const matchedDay = delData.days?.find(
+              (d) => d.date === prev.deliveryDate
+            );
+            if (matchedDay?.timeSlots?.length) {
+              day = matchedDay;
+              slot =
+                matchedDay.timeSlots.find(
+                  (s) => s.start === prev.deliveryTimeFrom
+                ) || matchedDay.timeSlots[0];
+            }
+          }
+
+          return {
+            ...prev,
+            deliveryDate: day.date,
+            deliveryTimeFrom: slot.start,
+            deliveryTimeTo: slot.end,
+            availableTimeSlots: day.timeSlots,
+            operationalTimeZone: colData.operational?.ianaTimeZone,
+            timeZone: colData.operational?.ianaTimeZone,
+            clientTimeZone,
+          };
+        });
       }
     } catch (err) {
       addToast({
@@ -301,9 +348,11 @@ export default function orderRegistration() {
   const deliverySlotsFetchKeyRef = useRef(null);
 
   useEffect(() => {
-    if (!collectionData?.lat || !collectionData?.lng || isRescheduleFlow) return;
+    if (!collectionData?.lat || !collectionData?.lng) return;
     deliverySlotsFetchKeyRef.current = null;
-    loadSlotsForPickupAddress(collectionData.lat, collectionData.lng);
+    loadSlotsForPickupAddress(collectionData.lat, collectionData.lng, {
+      preserveSchedule: isRescheduleFlow,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collectionData?.lat, collectionData?.lng, clientTimeZone, isRescheduleFlow]);
 
@@ -316,8 +365,7 @@ export default function orderRegistration() {
     if (
       modal?.modType !== "delivery-date" ||
       !zoneInfo?.countryId ||
-      !collectionData?.collectionDate ||
-      isRescheduleFlow
+      !collectionData?.collectionDate
     ) {
       return;
     }
@@ -357,7 +405,6 @@ export default function orderRegistration() {
     collectionData?.collectionDate,
     minDeliveryForCart,
     clientTimeZone,
-    isRescheduleFlow,
   ]);
 
   // Parse time string to minutes since midnight for comparison (handles "1:00 PM", "10:00 AM", or "13:00:00")

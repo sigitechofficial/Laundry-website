@@ -177,10 +177,25 @@ export const api = createApi({
     }),
 
     bookingDetailById: builder.query({
-      query: (id) => ({
-        url: `customer/bookingDetailsById?bookingId=${id}`,
-        method: "GET",
-      }),
+      query: (arg) => {
+        const bookingId =
+          typeof arg === "object" && arg !== null
+            ? arg.bookingId ?? arg.id
+            : arg;
+        const timeZone =
+          (typeof arg === "object" && arg !== null && arg.timeZone) ||
+          (typeof Intl !== "undefined"
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone
+            : "UTC");
+        const params = new URLSearchParams({
+          bookingId: String(bookingId),
+          timeZone: String(timeZone),
+        });
+        return {
+          url: `customer/bookingDetailsById?${params.toString()}`,
+          method: "GET",
+        };
+      },
     }),
     getOnHoldBookings: builder.query({
       query: () => ({

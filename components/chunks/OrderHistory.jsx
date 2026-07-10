@@ -25,6 +25,9 @@ import {
   isActiveBookingStatus,
   isPastBookingStatus,
 } from "../../utilities/bookingOrderTabs";
+import BookingPolicySummary, {
+  CancellationSummaryCard,
+} from "../BookingPolicySummary";
 
 /** Mirrors backend cancelBookingService status gates. */
 const MAX_CANCELLABLE_STATUS_ID = 9;
@@ -86,15 +89,24 @@ export default function OrderHistory() {
   const [shouldRenderManageDetails, setShouldRenderManageDetails] = useState(false);
   const [isOrderItemsExpanded, setIsOrderItemsExpanded] = useState(true);
   const [bookingTab, setBookingTab] = useState("active");
+  const clientTimeZone = React.useMemo(
+    () => Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC",
+    []
+  );
 
   const {
     data: bookingDtails,
     isLoading: bookingDetailsLoading,
     isFetching: bookingDetailsFetching,
     isError: bookingDetailsError,
-  } = useBookingDetailByIdQuery(manageOrder?.orderId, {
-    skip: !manageOrder?.orderId,
-  });
+  } = useBookingDetailByIdQuery(
+    manageOrder?.orderId
+      ? { bookingId: manageOrder.orderId, timeZone: clientTimeZone }
+      : undefined,
+    {
+      skip: !manageOrder?.orderId,
+    }
+  );
 
   const isBookingDetailsLoading = bookingDetailsLoading || bookingDetailsFetching;
 
@@ -344,8 +356,22 @@ export default function OrderHistory() {
 
     setIsCheckingCancellation(true);
 
+    const cancellationSummary = bookingDtails.data?.cancellationSummary;
+    if (cancellationSummary?.canCancel === false) {
+      addToast({
+        title: "Cannot Cancel Order",
+        description:
+          cancellationSummary.cancelBlockedReason ||
+          "This order cannot be cancelled",
+        color: "warning",
+      });
+      setIsCheckingCancellation(false);
+      return;
+    }
+
     // Prefer snapshotted booking policy; fall back to zone active policy.
     const cancellationConfig =
+      cancellationSummary?.policy ||
       bookingDtails.data?.cancellationPolicy ||
       activePoliciesData?.data?.activeCancellationPolicy?.cancellationConfig;
     const eligibility = canCancelOrder(bookingDtails.data, cancellationConfig);
@@ -942,100 +968,14 @@ export default function OrderHistory() {
             </p>
           </div>
 
-          {/* Cancellation policy attached to this booking */}
-          {bookingDtails?.data?.cancellationPolicy && (
-            <div className="font-sf space-y-3 border-t pt-4">
-              <p className="font-youth font-bold">Cancellation Policy (Attached)</p>
-              <div className="space-y-2 text-sm">
-                <p>
-                  <span className="text-theme-psGray">Policy: </span>
-                  <span className="font-medium">
-                    {bookingDtails.data.cancellationPolicy.name || "N/A"}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-theme-psGray">Description: </span>
-                  <span className="font-medium">
-                    {bookingDtails.data.cancellationPolicy.description || "N/A"}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-theme-psGray">Free cancellation window: </span>
-                  <span className="font-medium">
-                    {formatMinutesWindow(
-                      bookingDtails.data.cancellationPolicy
-                        .freeCancellationWindowMinutes
-                    )}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-theme-psGray">Late cancellation charge: </span>
-                  <span className="font-medium">
-                    {formatChargeWithFallback(
-                      bookingDtails.data.cancellationPolicy.prePickupChargeAmount,
-                      bookingDtails.data.cancellationPolicy.prePickupChargeCurrency,
-                      bookingDtails.data.cancellationPolicy.prePickupChargePercentage
-                    )}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-theme-psGray">First cancellation free: </span>
-                  <span className="font-medium">
-                    {bookingDtails.data.cancellationPolicy.firstCancellationFree
-                      ? "Yes"
-                      : "No"}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-theme-psGray">Unprocessed cancellation: </span>
-                  <span className="font-medium">
-                    {bookingDtails.data.cancellationPolicy.allowCancelUnprocessed
-                      ? "Allowed"
-                      : "Not allowed"}
-                  </span>
-                </p>
-                {bookingDtails.data.cancellationPolicy.allowCancelUnprocessed && (
-                  <p>
-                    <span className="text-theme-psGray">Unprocessed charge: </span>
-                    <span className="font-medium">
-                      {formatChargeWithFallback(
-                        bookingDtails.data.cancellationPolicy
-                          .unprocessedChargeAmount,
-                        bookingDtails.data.cancellationPolicy
-                          .unprocessedChargeCurrency,
-                        bookingDtails.data.cancellationPolicy
-                          .unprocessedChargePercentage
-                      )}
-                      {Number(bookingDtails.data.cancellationPolicy.unprocessedAfterPickupMinutes) >
-                      0
-                        ? ` after ${bookingDtails.data.cancellationPolicy.unprocessedAfterPickupMinutes} minute(s) from pickup`
-                        : ""}
-                    </span>
-                  </p>
-                )}
-                <p>
-                  <span className="text-theme-psGray">Courtesy rules: </span>
-                  <span className="font-medium">
-                    {bookingDtails.data.cancellationPolicy.courtesyCount || 0} time(s) in{" "}
-                    {bookingDtails.data.cancellationPolicy.courtesyWindowDays || 0} day(s), cap{" "}
-                    {formatChargeWithFallback(
-                      bookingDtails.data.cancellationPolicy.courtesyCapAmount,
-                      bookingDtails.data.cancellationPolicy.prePickupChargeCurrency,
-                      null
-                    )}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-theme-psGray">Customer leniency: </span>
-                  <span className="font-medium">
-                    {bookingDtails.data.cancellationPolicy.customerLeniencyEnabled
-                      ? "Enabled"
-                      : "Disabled"}
-                  </span>
-                </p>
-              </div>
-            </div>
-          )}
+          <BookingPolicySummary
+            orderStatusContext={bookingDtails?.data?.orderStatusContext}
+            cancellationPolicy={bookingDtails?.data?.cancellationPolicy}
+            cancellationSummary={bookingDtails?.data?.cancellationSummary}
+            noShowPolicy={bookingDtails?.data?.noShowPolicy}
+            noShowSummary={bookingDtails?.data?.noShowSummary}
+          />
+
           {!isOrderCancelled(bookingDtails?.data) && (
             <PurpleButton
               text="Manage Order"
@@ -2178,16 +2118,14 @@ export default function OrderHistory() {
               )}
             </div>
 
-            {/* Warning Message */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="font-sf text-sm text-yellow-800">
-                <strong>Note:</strong> Cancellation charges may apply based on
-                your order status and cancellation policy.
-              </p>
-            </div>
-
-            {/* Active Cancellation Policy */}
-            {cancellationPolicySummary && (
+            {/* Cancellation fee preview for this order */}
+            {bookingDtails?.data?.cancellationSummary ? (
+              <CancellationSummaryCard
+                cancellationPolicy={bookingDtails.data.cancellationPolicy}
+                cancellationSummary={bookingDtails.data.cancellationSummary}
+                compact
+              />
+            ) : cancellationPolicySummary ? (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
                 <p className="font-sf text-sm font-semibold text-gray-800">
                   Active Cancellation Policy ({cancellationPolicySummary.name})
@@ -2210,7 +2148,7 @@ export default function OrderHistory() {
                     : ""}
                 </p>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </ReusableModal>

@@ -160,9 +160,6 @@ export default function Order() {
     [serviceList, currentServiceId]
   );
 
-  const showBagsInput = parseServiceBooleanFlag(currentServiceMeta?.numberOfBags);
-  const showItemsInput = parseServiceBooleanFlag(currentServiceMeta?.numberOfItems);
-
   const selectedServiceCount = useMemo(() => {
     const ids = new Set(cartServiceIds);
     if (currentServiceId) ids.add(Number(currentServiceId));
@@ -283,9 +280,18 @@ export default function Order() {
     isError: isPreferencesQueryError,
   } = useGetServiceWithPreferenceDetailsQuery(currentServiceId, {
     skip: !currentServiceId,
+    refetchOnMountOrArgChange: true,
   });
 
   const servicePreferencesData = preferencesResponse?.data?.preferencesData;
+  const preferenceServiceMeta = preferencesResponse?.data;
+
+  const showBagsInput = parseServiceBooleanFlag(
+    preferenceServiceMeta?.numberOfBags ?? currentServiceMeta?.numberOfBags
+  );
+  const showItemsInput = parseServiceBooleanFlag(
+    preferenceServiceMeta?.numberOfItems ?? currentServiceMeta?.numberOfItems
+  );
 
   const isDryCleanService = useMemo(() => {
     const name = (
@@ -1557,7 +1563,7 @@ export default function Order() {
                                     {isSelected && isExpanded && (
                                       <div className="space-y-4 border-t border-gray-100 px-3 pb-4 pt-3">
                                         {shouldShowWashBleedDisclaimer(
-                                          currentServiceMeta,
+                                          preferenceServiceMeta,
                                           value?.value
                                         ) && (
                                         <div

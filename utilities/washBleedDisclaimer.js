@@ -9,7 +9,10 @@ export function parseServiceBooleanFlag(value) {
 }
 
 export function isMixedWashPreferenceValue(value) {
-  return String(value ?? "").trim().toLowerCase() === "mixed wash";
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (!normalized) return false;
+  // e.g. "Mixed Wash (£19.50 / 6kg)" — not exact "mixed wash" only
+  return /^mixed\s+wash\b/.test(normalized);
 }
 
 export function isWashBleedDisclaimerEnabledForService(serviceMeta) {

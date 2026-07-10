@@ -110,6 +110,7 @@ export const api = createApi({
         url: "customer/allServices",
         method: "GET",
       }),
+      keepUnusedDataFor: 30,
     }),
     getServiceById: builder.query({
       query: (id) => ({

@@ -105,7 +105,9 @@ export default function Order() {
     clientTimeZone;
   const router = useRouter();
   const [rescheduleBooking, { isLoading: isRescheduling }] = useRescheduleBookingMutation();
-  const { data, isLoading } = useGetServicesQuery();
+  const { data, isLoading } = useGetServicesQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const [modalScroll, setModalScroll] = useState(false);
   const [currentServiceId, setCurrentServiceId] = useState(null);

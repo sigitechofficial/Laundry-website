@@ -2,6 +2,9 @@ export const WASH_BLEED_DISCLAIMER_TEXT =
   "You are responsible if clothes colour bleeds due to the selected wash settings.";
 
 export function parseServiceBooleanFlag(value) {
+  if (value === false || value === "false" || value === 0 || value === "0") {
+    return false;
+  }
   return value === true || value === "true" || value === 1 || value === "1";
 }
 

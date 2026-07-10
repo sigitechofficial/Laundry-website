@@ -84,7 +84,9 @@ export default function orderRegistration() {
   const router = useRouter();
   const orderData = useSelector((state) => state.cart.orderData);
   const preferencesData = useSelector((state) => state.cart.preferences) || [];
-  const { data: servicesApiData } = useGetServicesQuery();
+  const { data: servicesApiData } = useGetServicesQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
   const isRescheduleFlow = Boolean(orderData?.rescheduleData?.isReschedule);
   const state = history.state?.customData?.step || null;
   const dispatch = useDispatch();

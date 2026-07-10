@@ -42,6 +42,10 @@ import StripeCheckout from "../../../../utilities/StripeCheckout";
 import { useRouter } from "next/navigation";
 import BagsItemsWarningModal from "../../../../components/BagsItemsWarningModal";
 import { getServicesMissingBagsOrItems } from "../../../../utilities/checkoutBagsItems";
+import {
+  cartHasMixedWashDisclaimer,
+  WASH_BLEED_DISCLAIMER_TEXT,
+} from "../../../../utilities/washBleedDisclaimer";
 
 const parseServiceBooleanFlag = (value) =>
   value === true || value === "true" || value === 1 || value === "1";
@@ -69,6 +73,11 @@ export default function Payment() {
     typeof window !== "undefined" && localStorage.getItem("stripeCustomerId");
   const { data, isLoading } = useGetServicesQuery();
   const serviceList = data?.data?.serviceData ?? [];
+
+  const showWashBleedDisclaimerInCart = useMemo(
+    () => cartHasMixedWashDisclaimer(preferencesData, serviceList),
+    [preferencesData, serviceList]
+  );
 
   const useSharedBags = useMemo(() => {
     const serviceCount = (preferencesData || []).filter((p) => p?.serviceId)
@@ -1339,10 +1348,11 @@ export default function Payment() {
                   placeholder="Enter your instructions"
                 />
 
-                <p className="font-sf pb-5 text-sm text-theme-psGray">
-                  The user is responsible if the clothes color bleeds due to the
-                  selected wash settings and temperature.
-                </p>
+                {showWashBleedDisclaimerInCart && (
+                  <p className="font-sf pb-5 text-sm text-theme-psGray">
+                    {WASH_BLEED_DISCLAIMER_TEXT}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1431,10 +1441,6 @@ export default function Payment() {
                   }
                 />
 
-                <p className="font-sf pb-5 text-sm text-theme-psGray">
-                  The user is responsible if the clothes color bleeds due to the
-                  selected wash settings and temperature.
-                </p>
               </div>
             </div>
           </div>

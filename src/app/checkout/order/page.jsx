@@ -39,9 +39,11 @@ import { useRouter } from "next/navigation";
 import HomeClientWrapper from "../../../../utilities/Test";
 import { MiniLoader } from "../../../../components/Loader";
 import { BASE_URL } from "../../../../utilities/URL";
-
-const parseServiceBooleanFlag = (value) =>
-  value === true || value === "true" || value === 1 || value === "1";
+import {
+  parseServiceBooleanFlag,
+  shouldShowWashBleedDisclaimer,
+  WASH_BLEED_DISCLAIMER_TEXT,
+} from "../../../../utilities/washBleedDisclaimer";
 
 const parseQuantityCount = (value) => {
   const parsed = parseInt(String(value ?? "").replace(/\D/g, ""), 10);
@@ -1414,11 +1416,6 @@ export default function Order() {
                                 const hasWashSubPickOptions =
                                   Boolean(temperaturePref) || Boolean(detergentPref);
 
-                                const isMixedWashOption =
-                                  String(value?.value ?? "")
-                                    .trim()
-                                    .toLowerCase() === "mixed wash";
-
                                 const isExpanded =
                                   isSelected &&
                                   (hasWashSubPickOptions
@@ -1557,7 +1554,10 @@ export default function Order() {
 
                                     {isSelected && isExpanded && (
                                       <div className="space-y-4 border-t border-gray-100 px-3 pb-4 pt-3">
-                                        {isMixedWashOption && (
+                                        {shouldShowWashBleedDisclaimer(
+                                          currentServiceMeta,
+                                          value?.value
+                                        ) && (
                                         <div
                                           className="flex gap-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2.5 font-sf text-sm leading-snug text-amber-950"
                                           role="note"
@@ -1566,10 +1566,7 @@ export default function Order() {
                                             className="mt-0.5 h-5 w-5 shrink-0 text-amber-700"
                                             aria-hidden
                                           />
-                                          <span>
-                                            You are responsible if clothes colour bleeds due to
-                                            the selected wash settings.
-                                          </span>
+                                          <span>{WASH_BLEED_DISCLAIMER_TEXT}</span>
                                         </div>
                                         )}
 

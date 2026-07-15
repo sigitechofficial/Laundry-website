@@ -609,6 +609,12 @@ export default function OrderHistory() {
 
   const renderBookingCard = (order) => {
     const failedAttemptType = getFailedAttemptType(order);
+    const displayStatusTitle =
+      failedAttemptType === "pickup"
+        ? "Pickup Failed"
+        : failedAttemptType === "delivery"
+          ? "Delivery Failed"
+          : order?.bookingStatus?.title;
     return (
     <div
       key={order.id}
@@ -637,9 +643,9 @@ export default function OrderHistory() {
 
       <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
         <span
-          className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}
+          className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(displayStatusTitle)}`}
         >
-          {order?.bookingStatus?.title}
+          {displayStatusTitle}
         </span>
         {failedAttemptType && (
           <p className="font-sf text-xs text-red-500">

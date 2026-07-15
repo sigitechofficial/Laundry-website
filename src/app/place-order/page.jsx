@@ -90,6 +90,7 @@ export default function orderRegistration() {
     refetchOnMountOrArgChange: true,
   });
   const isRescheduleFlow = Boolean(orderData?.rescheduleData?.isReschedule);
+  const isDeliveryOnlyReschedule = isRescheduleFlow && orderData?.rescheduleData?.rescheduleType === "delivery";
   const state = history.state?.customData?.step || null;
   const dispatch = useDispatch();
   const { data } = useGetAllAddressQuery();
@@ -105,6 +106,7 @@ export default function orderRegistration() {
     typeof window !== "undefined" && !!localStorage.getItem("loginStatus");
   const { data: ordersData } = useGetAllOrdersQuery(undefined, {
     skip: !isLoggedIn,
+    refetchOnMountOrArgChange: true,
   });
   const failedAttemptBookings = useMemo(
     () => getFailedAttemptBookings(ordersData?.data),
@@ -114,9 +116,13 @@ export default function orderRegistration() {
   useEffect(() => {
     if (failedAttemptModalShown) return;
     if (failedAttemptBookings.length === 0) return;
-    setFailedAttemptModalShown(true);
-    onFailedAttemptModalOpen();
-  }, [failedAttemptBookings, failedAttemptModalShown, onFailedAttemptModalOpen]);
+    if (isRescheduleFlow) return;
+    const t = setTimeout(() => {
+      setFailedAttemptModalShown(true);
+      onFailedAttemptModalOpen();
+    }, 300);
+    return () => clearTimeout(t);
+  }, [failedAttemptBookings, failedAttemptModalShown, onFailedAttemptModalOpen, isRescheduleFlow]);
 
   const goToFailedAttemptOrder = (bookingId) => {
     onFailedAttemptModalClose();
@@ -1219,14 +1225,17 @@ export default function orderRegistration() {
 
                     <div
                       onClick={() => {
+                        if (isDeliveryOnlyReschedule) return;
                         setModal({ ...modal, modType: "collection-date" });
                         onOpen();
                       }}
+                      className={isDeliveryOnlyReschedule ? "pointer-events-none opacity-60" : ""}
                     >
                       <InputHeroUi
                         type="text"
                         label="Collection"
                         value={formatIsoDateAsDdMmYy(collectionData?.collectionDate)}
+                        isDisabled={isDeliveryOnlyReschedule}
                         endContent={
                           <span className="whitespace-nowrap">
                             {collectionData?.collectionTimeFrom
@@ -1244,12 +1253,14 @@ export default function orderRegistration() {
                       label="Select collection method"
                       list={collection}
                       value={[collectionData?.driverInstructionOptions]}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        if (isDeliveryOnlyReschedule) return;
                         setCollectionData({
                           ...collectionData,
                           driverInstructionOptions: e.target.value,
-                        })
-                      }
+                        });
+                      }}
+                      isDisabled={isDeliveryOnlyReschedule}
                     />
 
                     <div
@@ -1929,34 +1940,63 @@ export default function orderRegistration() {
         <ReusableModal
           isOpen={isFailedAttemptModalOpen}
           onOpenChange={onFailedAttemptModalOpenChange}
-          showHeader
-          headerTitle="Action needed on your order"
+          showHeader={false}
           onClose={onFailedAttemptModalClose}
+          isDismissable
+          backdrop="blur"
+          size="sm"
         >
-          <div className="px-6 py-6 space-y-4">
-            {failedAttemptBookings.map(({ order, attemptType }) => (
-              <div
-                key={order.id}
-                className="rounded-xl border border-theme-gray p-4 space-y-2"
-              >
-                <p className="font-sf text-sm text-theme-psGray">
-                  Order{" "}
-                  <span className="font-semibold text-black">
-                    #{order.orderTrackId || order.id}
-                  </span>
-                </p>
-                <p className="font-sf text-base text-black">
-                  {attemptType === "delivery"
-                    ? "We were unable to deliver your laundry. Please reschedule your delivery slot."
-                    : "Our driver was unable to collect your laundry. Please reschedule your collection slot."}
-                </p>
-                <ButtonYouth70018
-                  size="compact"
-                  text="View order"
-                  onClick={() => goToFailedAttemptOrder(order.id)}
-                />
+          <div className="px-6 pt-8 pb-6 space-y-5">
+            {/* Header */}
+            <div className="flex flex-col items-center text-center gap-2">
+              <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
               </div>
-            ))}
+              <h3 className="font-youth font-bold text-xl text-gray-900">Action Required</h3>
+              <p className="font-sf text-sm text-gray-500">
+                {failedAttemptBookings.length === 1
+                  ? "One of your orders needs attention."
+                  : `${failedAttemptBookings.length} of your orders need attention.`}
+              </p>
+            </div>
+
+            {/* Order cards */}
+            <div className="space-y-3">
+              {failedAttemptBookings.map(({ order, attemptType }) => (
+                <div
+                  key={order.id}
+                  className="rounded-2xl bg-red-50 border border-red-100 px-4 py-4 space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-sf text-xs text-gray-400">Order ID</span>
+                    <span className="font-youth font-bold text-sm text-gray-900">
+                      #{order.orderTrackId || order.id}
+                    </span>
+                  </div>
+                  <p className="font-sf text-sm text-gray-700 leading-snug">
+                    {attemptType === "delivery"
+                      ? "We were unable to deliver your laundry. Please reschedule your delivery slot."
+                      : "Our driver was unable to collect your laundry. Please reschedule your collection slot."}
+                  </p>
+                  <button
+                    onClick={() => goToFailedAttemptOrder(order.id)}
+                    className="w-full rounded-xl bg-theme-blue text-white font-youth font-bold text-sm py-2.5 hover:opacity-90 transition-opacity cursor-pointer"
+                  >
+                    View Order
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Dismiss */}
+            <button
+              onClick={onFailedAttemptModalClose}
+              className="w-full text-center font-sf text-sm text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
+            >
+              Dismiss
+            </button>
           </div>
         </ReusableModal>
 </HomeClientWrapper>

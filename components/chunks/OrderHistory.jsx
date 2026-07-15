@@ -28,11 +28,13 @@ import {
 import BookingPolicySummary, {
   CancellationSummaryCard,
 } from "../BookingPolicySummary";
+import { getFailedAttemptType } from "../../utilities/bookingAttemptStatus";
 
 /** Mirrors backend cancelBookingService status gates. */
 const MAX_CANCELLABLE_STATUS_ID = 9;
 const BOOKING_STATUS_INVOICE_GENERATED = 10;
 const BOOKING_STATUS_PROCESSING = 11;
+const BOOKING_STATUS_DELIVERY_FAILED = 15;
 const BOOKING_STATUS_DELIVERED = 16;
 const BOOKING_STATUS_COMPLETED = 17;
 const BOOKING_STATUS_CANCELLED = 19;
@@ -605,7 +607,9 @@ export default function OrderHistory() {
   const pastList = pastBookings ?? [];
   const visibleBookings = bookingTab === "active" ? activeList : pastList;
 
-  const renderBookingCard = (order) => (
+  const renderBookingCard = (order) => {
+    const failedAttemptType = getFailedAttemptType(order);
+    return (
     <div
       key={order.id}
       role="button"
@@ -619,9 +623,17 @@ export default function OrderHistory() {
       }}
       className="w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
     >
-      <h6 className="font-youth font-bold text-base sm:text-lg">
-        Order ID: {order?.orderTrackId}
-      </h6>
+      <div className="flex items-start justify-between gap-2">
+        <h6 className="font-youth font-bold text-base sm:text-lg">
+          Order ID: {order?.orderTrackId}
+        </h6>
+        {failedAttemptType && (
+          <span className="shrink-0 rounded-full bg-red-100 text-red-600 font-youth font-bold text-xs px-2.5 py-1 flex items-center gap-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            Action Required
+          </span>
+        )}
+      </div>
 
       <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
         <span
@@ -629,6 +641,11 @@ export default function OrderHistory() {
         >
           {order?.bookingStatus?.title}
         </span>
+        {failedAttemptType && (
+          <p className="font-sf text-xs text-red-500">
+            {failedAttemptType === "pickup" ? "Pickup attempt failed — reschedule needed" : "Delivery attempt failed — reschedule needed"}
+          </p>
+        )}
       </div>
 
       <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
@@ -675,7 +692,8 @@ export default function OrderHistory() {
         {order?.driverInstruction}
       </p>
     </div>
-  );
+    );
+  };
 
   // Render order details content (reusable for both modal and side panel)
   const renderOrderDetailsContent = ({ panelLayout = false } = {}) => {
@@ -1545,10 +1563,14 @@ export default function OrderHistory() {
           })
       : [];
 
+    const bookingStatusId = Number(booking?.bookingStatusId ?? booking?.bookingStatus?.id);
+    const rescheduleType = bookingStatusId === BOOKING_STATUS_DELIVERY_FAILED ? "delivery" : "full";
+
     // Map booking data to order data structure
     const orderData = {
       rescheduleData: {
         isReschedule: true,
+        rescheduleType,
         bookingId: Number(booking?.id),
         reasonText: "My plans changed",
         services: rescheduleServices,

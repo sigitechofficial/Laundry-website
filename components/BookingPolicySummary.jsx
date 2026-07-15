@@ -1,6 +1,20 @@
 "use client";
 
 import React from "react";
+import { Accordion, AccordionItem } from "@heroui/react";
+import { FiPlus, FiMinus } from "react-icons/fi";
+
+function PolicyAccordionIndicator({ isOpen }) {
+  return isOpen ? (
+    <div className="bg-theme-gray size-7 rounded-full flex justify-center items-center rotate-90 shrink-0">
+      <FiMinus size={16} color="black" />
+    </div>
+  ) : (
+    <div className="bg-theme-gray size-7 rounded-full flex justify-center items-center shrink-0">
+      <FiPlus size={16} color="black" />
+    </div>
+  );
+}
 
 function formatMinutesWindow(minutes) {
   const value = Number(minutes);
@@ -77,19 +91,22 @@ export function CancellationSummaryCard({
   cancellationPolicy,
   cancellationSummary,
   compact = false,
+  dropdown = false,
 }) {
   const policy = cancellationSummary?.policy || cancellationPolicy;
   const feePreview = cancellationSummary?.feePreview;
 
   if (!policy && !cancellationSummary) return null;
 
-  return (
-    <div className={`font-sf space-y-3 ${compact ? "" : "border-t pt-4"}`}>
-      <p className="font-youth font-bold">
-        Cancellation Policy
-        {cancellationSummary?.policySource === "snapshotted" ? " (on this order)" : ""}
-      </p>
+  const title = (
+    <span>
+      Cancellation Policy
+      {cancellationSummary?.policySource === "snapshotted" ? " (on this order)" : ""}
+    </span>
+  );
 
+  const body = (
+    <>
       {cancellationSummary ? (
         <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 space-y-1 text-sm">
           <p>
@@ -183,11 +200,34 @@ export function CancellationSummaryCard({
           ) : null}
         </div>
       ) : null}
+    </>
+  );
+
+  if (dropdown) {
+    return (
+      <Accordion selectionMode="multiple" className="px-0" itemClasses={{ base: "px-0" }}>
+        <AccordionItem
+          key="cancellation-policy"
+          aria-label="Cancellation Policy"
+          indicator={PolicyAccordionIndicator}
+          title={<span className="font-youth font-bold">{title}</span>}
+          classNames={{ trigger: "py-0", content: "font-sf space-y-3 pb-3" }}
+        >
+          {body}
+        </AccordionItem>
+      </Accordion>
+    );
+  }
+
+  return (
+    <div className={`font-sf space-y-3 ${compact ? "" : "border-t pt-4"}`}>
+      <p className="font-youth font-bold">{title}</p>
+      {body}
     </div>
   );
 }
 
-export function NoShowSummaryCard({ noShowSummary, noShowPolicy }) {
+export function NoShowSummaryCard({ noShowSummary, noShowPolicy, dropdown = false }) {
   const policy = noShowSummary?.policy || noShowPolicy;
   if (!noShowSummary && !policy) return null;
 
@@ -195,13 +235,15 @@ export function NoShowSummaryCard({ noShowSummary, noShowPolicy }) {
   const deliveryPreview = noShowSummary?.feePreview?.delivery;
   const attempts = Array.isArray(noShowSummary?.attempts) ? noShowSummary.attempts : [];
 
-  return (
-    <div className="font-sf space-y-3 border-t pt-4">
-      <p className="font-youth font-bold">
-        No-Show Policy
-        {noShowSummary?.policySource === "snapshotted" ? " (on this order)" : ""}
-      </p>
+  const title = (
+    <span>
+      No-Show Policy
+      {noShowSummary?.policySource === "snapshotted" ? " (on this order)" : ""}
+    </span>
+  );
 
+  const body = (
+    <>
       {noShowSummary ? (
         <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 space-y-1 text-sm">
           <p>
@@ -307,6 +349,29 @@ export function NoShowSummaryCard({ noShowSummary, noShowPolicy }) {
           </div>
         </div>
       ) : null}
+    </>
+  );
+
+  if (dropdown) {
+    return (
+      <Accordion selectionMode="multiple" className="px-0" itemClasses={{ base: "px-0" }}>
+        <AccordionItem
+          key="no-show-policy"
+          aria-label="No-Show Policy"
+          indicator={PolicyAccordionIndicator}
+          title={<span className="font-youth font-bold">{title}</span>}
+          classNames={{ trigger: "py-0", content: "font-sf space-y-3 pb-3" }}
+        >
+          {body}
+        </AccordionItem>
+      </Accordion>
+    );
+  }
+
+  return (
+    <div className="font-sf space-y-3 border-t pt-4">
+      <p className="font-youth font-bold">{title}</p>
+      {body}
     </div>
   );
 }
@@ -328,16 +393,21 @@ export default function BookingPolicySummary({
   if (!hasContent) return null;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <OrderPhaseBadge
         orderStatusContext={orderStatusContext}
         cancellationSummary={cancellationSummary}
       />
-      <CancellationSummaryCard
-        cancellationPolicy={cancellationPolicy}
-        cancellationSummary={cancellationSummary}
-      />
-      <NoShowSummaryCard noShowSummary={noShowSummary} noShowPolicy={noShowPolicy} />
+      <div className="border-t pt-2">
+        <CancellationSummaryCard
+          cancellationPolicy={cancellationPolicy}
+          cancellationSummary={cancellationSummary}
+          dropdown
+        />
+      </div>
+      <div className="border-t pt-2">
+        <NoShowSummaryCard noShowSummary={noShowSummary} noShowPolicy={noShowPolicy} dropdown />
+      </div>
     </div>
   );
 }

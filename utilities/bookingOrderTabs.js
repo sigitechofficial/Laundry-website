@@ -23,6 +23,9 @@ const PRE_INVOICE_EXACT = new Set(
     "on hold waiting for customer response",
     "onhold/waiting for agent response",
     "onhold waiting for agent response",
+    // Failed attempts still need customer action → keep in Active
+    "delivery failed",
+    "pickup failed",
   ].map((s) => normalizeBookingStatusTitle(s))
 );
 
@@ -52,7 +55,6 @@ function isInvoiceOrLaterByKeywords(key) {
   if (/\bprocessing\b/.test(key)) return true;
   if (key.includes("out for delivery")) return true;
   if (key.includes("driver reached") && !key.includes("pickup")) return true;
-  if (key.includes("delivery failed")) return true;
   if (key.includes("at facility")) return true;
   if (key === "delivered" || (key.includes("delivered") && !key.includes("laundry to shop"))) {
     return true;

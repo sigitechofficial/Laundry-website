@@ -650,6 +650,7 @@ export default function Order() {
       timeZone: resolvedTimeZone,
       clientTimeZone,
       reasonText: orderData?.rescheduleData?.reasonText?.trim() || "My plans changed",
+      rescheduleType: orderData?.rescheduleData?.rescheduleType || "full",
       services,
       preferencesArray: flattenedPreferences,
     };

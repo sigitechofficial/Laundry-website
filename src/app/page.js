@@ -8,6 +8,7 @@ import FAQs from "../../components/FAQs";
 import HomeClientWrapper from "../../utilities/Test";
 import Link from "next/link";
 import { ClientBtn } from "../../utilities/HelperFunctions";
+import { useSelector } from "react-redux";
 import { useGetServiceDetailsQuery } from "./store/services/api";
 import { Spinner } from "@heroui/react";
 import { BASE_URL } from "../../utilities/URL";
@@ -215,9 +216,16 @@ function HeroServiceGlassCardBottom() {
 }
 
 export default function Home() {
-  const { data, isLoading, isError } = useGetServiceDetailsQuery();
+  const savedCollectionData = useSelector(
+    (state) => state?.cart?.orderData?.collectionData
+  );
+  const { data, isLoading, isError } = useGetServiceDetailsQuery({
+    lat: savedCollectionData?.lat,
+    lng: savedCollectionData?.lng,
+  });
   const serviceData = data?.data?.serviceData ?? data?.serviceData ?? [];
   const services = Array.isArray(serviceData) ? serviceData.filter((s) => s?.service?.status !== false) : [];
+  const currencySymbol = data?.data?.currency?.symbol ?? "$";
 
   const firstServiceKey = useMemo(() => (services[0] ? getServiceKey(services[0].service?.name) : "wash-fold"), [services]);
   const [activeTab, setActiveTab] = useState(firstServiceKey);
@@ -670,7 +678,7 @@ export default function Home() {
                         <p className="text-sm font-sf text-white">{item.service?.name || "Service"}</p>
                         {minPrice != null ? (
                           <>
-                            <span className="text-[40px] font-black font-youth">${minPrice}</span>{" "}
+                            <span className="text-[40px] font-black font-youth">{currencySymbol}{minPrice}</span>{" "}
                             <span className="text-xs font-sf text-white">from /item</span>
                           </>
                         ) : (

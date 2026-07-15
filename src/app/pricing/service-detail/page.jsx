@@ -8,7 +8,7 @@ import { FaPlus, FaMinus, FaTrash } from "react-icons/fa6";
 import Footer from "../../../../components/Footer";
 import HomeClientWrapper from "../../../../utilities/Test";
 import Link from "next/link";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { setPage } from "@/app/store/slices/cartItemSlice";
 import { useGetServiceDetailsQuery } from "@/app/store/services/api";
 import { MiniLoader } from "../../../../components/Loader";
@@ -20,8 +20,18 @@ export default function ServiceDetail() {
   const urlId = searchParams.get("id");
   const dispatch = useDispatch();
 
-  const { data, isLoading } = useGetServiceDetailsQuery();
+  const savedCollectionData = useSelector(
+    (state) => state?.cart?.orderData?.collectionData
+  );
+  const savedLat = savedCollectionData?.lat;
+  const savedLng = savedCollectionData?.lng;
+
+  const { data, isLoading } = useGetServiceDetailsQuery({
+    lat: savedLat,
+    lng: savedLng,
+  });
   const services = data?.data?.serviceData ?? [];
+  const currencySymbol = data?.data?.currency?.symbol ?? "$";
 
   const [selectedServiceId, setSelectedServiceId] = useState(
     urlId ? Number(urlId) : null
@@ -178,7 +188,7 @@ export default function ServiceDetail() {
                                       </div>
                                       <div className="flex gap-3 sm:gap-4 items-center shrink-0">
                                         <p className="font-sf font-semibold text-base sm:text-lg text-black">
-                                          ${parseFloat(subCat.price).toFixed(2)}
+                                          {currencySymbol}{parseFloat(subCat.price).toFixed(2)}
                                         </p>
                                         {cartItem ? (
                                           <div className="flex items-center gap-2">
@@ -321,7 +331,7 @@ export default function ServiceDetail() {
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
                                 <span className="text-sm font-semibold w-14 text-right">
-                                  ${(item.price * item.quantity).toFixed(2)}
+                                  {currencySymbol}{(item.price * item.quantity).toFixed(2)}
                                 </span>
                                 <button
                                   type="button"
@@ -342,7 +352,7 @@ export default function ServiceDetail() {
                         <div className="flex justify-between items-center font-sf text-base font-semibold">
                           <span>Estimated Total</span>
                           <span className="text-theme-blue text-lg">
-                            ${estimatedTotal.toFixed(2)}
+                            {currencySymbol}{estimatedTotal.toFixed(2)}
                           </span>
                         </div>
                       </div>

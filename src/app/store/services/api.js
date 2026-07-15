@@ -120,10 +120,22 @@ export const api = createApi({
     }),
 
     getServiceDetails: builder.query({
-      query: () => ({
-        url: "customer/serviceDetail",
-        method: "GET",
-      }),
+      query: (params) => {
+        const lat = params?.lat;
+        const lng = params?.lng;
+        const searchParams = new URLSearchParams();
+        if (lat !== undefined && lat !== null && lat !== "") {
+          searchParams.set("lat", lat);
+        }
+        if (lng !== undefined && lng !== null && lng !== "") {
+          searchParams.set("lng", lng);
+        }
+        const query = searchParams.toString();
+        return {
+          url: `customer/serviceDetail${query ? `?${query}` : ""}`,
+          method: "GET",
+        };
+      },
     }),
 
     getServiceWithPreferenceDetails: builder.query({

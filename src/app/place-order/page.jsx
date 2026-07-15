@@ -21,7 +21,9 @@ import { setOrderData, setPage } from "../store/slices/cartItemSlice";
 import {
   useGetAllAddressQuery,
   useGetServicesQuery,
+  useGetAllOrdersQuery,
 } from "../store/services/api";
+import { getFailedAttemptBookings } from "../../../utilities/bookingAttemptStatus";
 import {
   buildDeliveryUpdateForMinDate,
   formatIsoDateLong,
@@ -92,6 +94,35 @@ export default function orderRegistration() {
   const dispatch = useDispatch();
   const { data } = useGetAllAddressQuery();
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
+  const {
+    isOpen: isFailedAttemptModalOpen,
+    onOpen: onFailedAttemptModalOpen,
+    onClose: onFailedAttemptModalClose,
+    onOpenChange: onFailedAttemptModalOpenChange,
+  } = useDisclosure();
+  const [failedAttemptModalShown, setFailedAttemptModalShown] = useState(false);
+  const isLoggedIn =
+    typeof window !== "undefined" && !!localStorage.getItem("loginStatus");
+  const { data: ordersData } = useGetAllOrdersQuery(undefined, {
+    skip: !isLoggedIn,
+  });
+  const failedAttemptBookings = useMemo(
+    () => getFailedAttemptBookings(ordersData?.data),
+    [ordersData]
+  );
+
+  useEffect(() => {
+    if (failedAttemptModalShown) return;
+    if (failedAttemptBookings.length === 0) return;
+    setFailedAttemptModalShown(true);
+    onFailedAttemptModalOpen();
+  }, [failedAttemptBookings, failedAttemptModalShown, onFailedAttemptModalOpen]);
+
+  const goToFailedAttemptOrder = (bookingId) => {
+    onFailedAttemptModalClose();
+    router.push(`/profile?tab=order-history&bookingId=${bookingId}`);
+  };
+
   const [step, setStep] = useState(state ?? "get-started");
   const [isCheckingZone, setIsCheckingZone] = useState(false);
   const [modal, setModal] = useState({
@@ -1892,6 +1923,40 @@ export default function orderRegistration() {
                 {formatIsoDateLong(turnaroundModal.minDeliveryDate)}
               </span>
             </p>
+          </div>
+        </ReusableModal>
+
+        <ReusableModal
+          isOpen={isFailedAttemptModalOpen}
+          onOpenChange={onFailedAttemptModalOpenChange}
+          showHeader
+          headerTitle="Action needed on your order"
+          onClose={onFailedAttemptModalClose}
+        >
+          <div className="px-6 py-6 space-y-4">
+            {failedAttemptBookings.map(({ order, attemptType }) => (
+              <div
+                key={order.id}
+                className="rounded-xl border border-theme-gray p-4 space-y-2"
+              >
+                <p className="font-sf text-sm text-theme-psGray">
+                  Order{" "}
+                  <span className="font-semibold text-black">
+                    #{order.orderTrackId || order.id}
+                  </span>
+                </p>
+                <p className="font-sf text-base text-black">
+                  {attemptType === "delivery"
+                    ? "We were unable to deliver your laundry. Please reschedule your delivery slot."
+                    : "Our driver was unable to collect your laundry. Please reschedule your collection slot."}
+                </p>
+                <ButtonYouth70018
+                  size="compact"
+                  text="View order"
+                  onClick={() => goToFailedAttemptOrder(order.id)}
+                />
+              </div>
+            ))}
           </div>
         </ReusableModal>
 </HomeClientWrapper>

@@ -9,6 +9,7 @@ import HomeClientWrapper from "../../utilities/Test";
 import Link from "next/link";
 import { ClientBtn } from "../../utilities/HelperFunctions";
 import { useSelector } from "react-redux";
+import { useRouter } from "next/navigation";
 import { useGetServiceDetailsQuery } from "./store/services/api";
 import { Spinner } from "@heroui/react";
 import { BASE_URL } from "../../utilities/URL";
@@ -216,13 +217,34 @@ function HeroServiceGlassCardBottom() {
 }
 
 export default function Home() {
+  const router = useRouter();
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
+  // Logged-in customers should never land on the marketing/landing page —
+  // even via direct URL — send them straight into their booking flow.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const isLoggedIn = !!localStorage.getItem("loginStatus");
+    if (isLoggedIn) {
+      const hasOrderInProgress = !!localStorage.getItem("orderData");
+      router.replace(hasOrderInProgress ? "/checkout/order" : "/place-order");
+      return;
+    }
+
+    setIsCheckingAuth(false);
+  }, [router]);
+
   const savedCollectionData = useSelector(
     (state) => state?.cart?.orderData?.collectionData
   );
-  const { data, isLoading, isError } = useGetServiceDetailsQuery({
-    lat: savedCollectionData?.lat,
-    lng: savedCollectionData?.lng,
-  });
+  const { data, isLoading, isError } = useGetServiceDetailsQuery(
+    {
+      lat: savedCollectionData?.lat,
+      lng: savedCollectionData?.lng,
+    },
+    { skip: isCheckingAuth }
+  );
   const serviceData = data?.data?.serviceData ?? data?.serviceData ?? [];
   const services = Array.isArray(serviceData) ? serviceData.filter((s) => s?.service?.status !== false) : [];
   const currencySymbol = data?.data?.currency?.symbol ?? "$";
@@ -235,6 +257,15 @@ export default function Home() {
       setActiveTab(firstServiceKey);
     }
   }, [services, firstServiceKey, activeTab]);
+
+  if (isCheckingAuth) {
+    return (
+      <div className="w-full h-screen flex justify-center items-center">
+        <Spinner size="lg" color="primary" />
+      </div>
+    );
+  }
+
   return (
     <HomeClientWrapper>
       <div className="w-full relative">

@@ -15,7 +15,7 @@ import { formatDate } from "../../utilities/ConversionFunction";
 import ReusableModal from "../Modal";
 import { useDisclosure, Spinner, addToast } from "@heroui/react";
 import SelectHero from "../SelectHero";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { setOrderData } from "@/app/store/slices/cartItemSlice";
 import { BASE_URL } from "../../utilities/URL";
@@ -46,6 +46,7 @@ function resolveBookingStatusId(order) {
 
 export default function OrderHistory() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const dispatch = useDispatch();
   const { data, isLoading, refetch: refetchOrders } = useGetAllOrdersQuery(
     undefined,
@@ -127,6 +128,18 @@ export default function OrderHistory() {
       onOrderDetailsModalOpen();
     }
   };
+
+  // Deep-link support: /profile?tab=order-history&bookingId=123 auto-opens
+  // that order (used when redirected here from a "failed attempt" notice).
+  const autoOpenedBookingIdRef = React.useRef(null);
+  React.useEffect(() => {
+    const bookingIdParam = searchParams?.get("bookingId");
+    if (!bookingIdParam) return;
+    if (autoOpenedBookingIdRef.current === bookingIdParam) return;
+
+    autoOpenedBookingIdRef.current = bookingIdParam;
+    handleSelectBooking({ id: Number(bookingIdParam) });
+  }, [searchParams]);
 
   const renderOrderDetailsPanel = ({ panelLayout = false } = {}) => {
     if (isBookingDetailsLoading) {

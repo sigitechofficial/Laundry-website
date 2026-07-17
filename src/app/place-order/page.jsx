@@ -17,12 +17,14 @@ import {
 } from "../../../utilities/bookingSlotsApi";
 import { useLiveClock } from "../../../utilities/useLiveClock";
 import { useDispatch, useSelector } from "react-redux";
-import { setOrderData, setPage } from "../store/slices/cartItemSlice";
+import { setOrderData, setPage, clearCartData } from "../store/slices/cartItemSlice";
 import {
   useGetAllAddressQuery,
   useGetServicesQuery,
   useGetAllOrdersQuery,
+  useRescheduleBookingMutation,
 } from "../store/services/api";
+import { to24Hour } from "../../../utilities/ConversionFunction";
 import { getFailedAttemptBookings } from "../../../utilities/bookingAttemptStatus";
 import {
   buildDeliveryUpdateForMinDate,
@@ -93,6 +95,8 @@ export default function orderRegistration() {
   const isDeliveryOnlyReschedule = isRescheduleFlow && orderData?.rescheduleData?.rescheduleType === "delivery";
   const state = history.state?.customData?.step || null;
   const dispatch = useDispatch();
+  const [rescheduleBooking, { isLoading: isRescheduling }] =
+    useRescheduleBookingMutation();
   const { data } = useGetAllAddressQuery();
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const {
@@ -999,9 +1003,66 @@ export default function orderRegistration() {
     };
 
     dispatch(setOrderData(nextOrderData));
+
+    // Reschedule flow (failed pickup/delivery): submit directly and skip the
+    // services/checkout page — only the schedule changes, services stay the same.
+    if (isRescheduleFlow) {
+      await submitReschedule(selectedTimeZone);
+      return;
+    }
+
     setStep("");
     onClose();
     router.push("/checkout/order");
+  };
+
+  const submitReschedule = async (timeZone) => {
+    const payload = {
+      bookingId: Number(orderData?.rescheduleData?.bookingId),
+      collectionDate: collectionData?.collectionDate,
+      collectionTimeFrom: to24Hour(collectionData?.collectionTimeFrom),
+      collectionTimeTo: to24Hour(collectionData?.collectionTimeTo),
+      deliveryDate: deliveryData?.deliveryDate,
+      deliveryTimeFrom: to24Hour(deliveryData?.deliveryTimeFrom),
+      deliveryTimeTo: to24Hour(deliveryData?.deliveryTimeTo),
+      timeZone,
+      clientTimeZone,
+      reasonText:
+        orderData?.rescheduleData?.reasonText?.trim() || "My plans changed",
+      rescheduleType: orderData?.rescheduleData?.rescheduleType || "full",
+    };
+
+    try {
+      const response = await rescheduleBooking(payload).unwrap();
+      if (response?.status === "1") {
+        dispatch(clearCartData());
+        addToast({
+          title: "Reschedule Booking",
+          description: response?.message || "Booking rescheduled successfully.",
+          color: "success",
+        });
+        router.replace(
+          `/profile?tab=order-history&bookingId=${payload.bookingId}`
+        );
+      } else {
+        addToast({
+          title: "Reschedule Booking",
+          description:
+            response?.error || response?.message || "Failed to reschedule booking.",
+          color: "danger",
+        });
+      }
+    } catch (error) {
+      addToast({
+        title: "Reschedule Booking",
+        description:
+          error?.data?.error ||
+          error?.data?.message ||
+          error?.message ||
+          "Failed to reschedule booking.",
+        color: "danger",
+      });
+    }
   };
 
   const handleProceedToCheckout = async () => {
@@ -1328,9 +1389,19 @@ export default function orderRegistration() {
                     </div>
                     <div className="pt-6 pb-10">
                       <ButtonYouth70018
-                        text={isCheckingZone ? "Checking..." : "Continue"}
+                        text={
+                          isCheckingZone
+                            ? "Checking..."
+                            : isRescheduling
+                              ? "Rescheduling..."
+                              : isRescheduleFlow
+                                ? "Reschedule"
+                                : "Continue"
+                        }
+                        isPending={isRescheduling}
                         isDisabled={
                           isCheckingZone ||
+                          isRescheduling ||
                           isDeliveryBeforeMinimum ||
                           isDeliverySameOrBeforeCollection ||
                           isSameDayDeliveryBeforeCollection ||
@@ -1940,63 +2011,69 @@ export default function orderRegistration() {
         <ReusableModal
           isOpen={isFailedAttemptModalOpen}
           onOpenChange={onFailedAttemptModalOpenChange}
-          showHeader={false}
+          showHeader
+          headerTitle="Action Required"
+          modalScroll={modalScroll}
           onClose={onFailedAttemptModalClose}
           isDismissable
           backdrop="blur"
           size="sm"
         >
-          <div className="px-6 pt-8 pb-6 space-y-5">
-            {/* Header */}
-            <div className="flex flex-col items-center text-center gap-2">
-              <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-1">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                </svg>
-              </div>
-              <h3 className="font-youth font-bold text-xl text-gray-900">Action Required</h3>
-              <p className="font-sf text-sm text-gray-500">
-                {failedAttemptBookings.length === 1
-                  ? "One of your orders needs attention."
-                  : `${failedAttemptBookings.length} of your orders need attention.`}
-              </p>
-            </div>
-
-            {/* Order cards */}
-            <div className="space-y-3">
-              {failedAttemptBookings.map(({ order, attemptType }) => (
-                <div
-                  key={order.id}
-                  className="rounded-2xl bg-red-50 border border-red-100 px-4 py-4 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-sf text-xs text-gray-400">Order ID</span>
-                    <span className="font-youth font-bold text-sm text-gray-900">
-                      #{order.orderTrackId || order.id}
-                    </span>
-                  </div>
-                  <p className="font-sf text-sm text-gray-700 leading-snug">
-                    {attemptType === "delivery"
-                      ? "We were unable to deliver your laundry. Please reschedule your delivery slot."
-                      : "Our driver was unable to collect your laundry. Please reschedule your collection slot."}
-                  </p>
-                  <button
-                    onClick={() => goToFailedAttemptOrder(order.id)}
-                    className="w-full rounded-xl bg-theme-blue text-white font-youth font-bold text-sm py-2.5 hover:opacity-90 transition-opacity cursor-pointer"
-                  >
-                    View Order
-                  </button>
+          <div
+            onScroll={handleModalScroll}
+            className="max-h-[85vh] overflow-y-auto modal-scroll"
+          >
+            <div className="px-6 pt-8 pb-6 space-y-5">
+              {/* Header */}
+              <div className="flex flex-col items-center text-center gap-2">
+                <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
                 </div>
-              ))}
-            </div>
+                <h3 className="font-youth font-bold text-[22px] text-gray-900">Action Required</h3>
+                <p className="font-sf text-base text-theme-psGray">
+                  {failedAttemptBookings.length === 1
+                    ? "One of your orders needs attention."
+                    : `${failedAttemptBookings.length} of your orders need attention.`}
+                </p>
+              </div>
 
-            {/* Dismiss */}
-            <button
-              onClick={onFailedAttemptModalClose}
-              className="w-full text-center font-sf text-sm text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
-            >
-              Dismiss
-            </button>
+              {/* Order cards */}
+              <div className="space-y-3">
+                {failedAttemptBookings.map(({ order, attemptType }) => (
+                  <div
+                    key={order.id}
+                    className="rounded-2xl bg-red-50 border border-red-100 px-4 py-4 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-sf text-sm text-theme-psGray">Order ID</span>
+                      <span className="font-youth font-bold text-sm text-gray-900">
+                        #{order.orderTrackId || order.id}
+                      </span>
+                    </div>
+                    <p className="font-sf text-sm text-theme-psGray leading-snug">
+                      {attemptType === "delivery"
+                        ? "We were unable to deliver your laundry. Please reschedule your delivery slot."
+                        : "Our driver was unable to collect your laundry. Please reschedule your collection slot."}
+                    </p>
+                    <ButtonYouth70018
+                      size="compact"
+                      text="View Order"
+                      onClick={() => goToFailedAttemptOrder(order.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Dismiss */}
+              <ButtonYouth70018
+                size="compact"
+                variant="outline"
+                text="Dismiss"
+                onClick={onFailedAttemptModalClose}
+              />
+            </div>
           </div>
         </ReusableModal>
 </HomeClientWrapper>

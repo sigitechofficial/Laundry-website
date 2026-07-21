@@ -15,8 +15,10 @@ export function getFailedAttemptType(order) {
   const statusId = resolveStatusId(order);
   if (statusId === DELIVERY_FAILED_STATUS_ID) return "delivery";
 
-  const pickupAttemptCount = Number(order?.pickupAttemptCount) || 0;
-  if (statusId === AWAITING_COLLECTION_STATUS_ID && pickupAttemptCount > 0) {
+  if (
+    statusId === AWAITING_COLLECTION_STATUS_ID &&
+    Boolean(order?.pickupRescheduleRequired)
+  ) {
     return "pickup";
   }
 

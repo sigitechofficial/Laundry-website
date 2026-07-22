@@ -209,6 +209,30 @@ export const api = createApi({
         };
       },
     }),
+    trackOrder: builder.query({
+      query: (arg) => {
+        const bookingId =
+          typeof arg === "object" && arg !== null
+            ? arg.bookingId ?? arg.id
+            : arg;
+        const orderTrackId =
+          typeof arg === "object" && arg !== null ? arg.orderTrackId : undefined;
+        const timeZone =
+          (typeof arg === "object" && arg !== null && arg.timeZone) ||
+          (typeof Intl !== "undefined"
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone
+            : "UTC");
+        const params = new URLSearchParams({
+          timeZone: String(timeZone),
+        });
+        if (bookingId) params.set("bookingId", String(bookingId));
+        if (orderTrackId) params.set("orderTrackId", String(orderTrackId));
+        return {
+          url: `customer/trackOrder?${params.toString()}`,
+          method: "GET",
+        };
+      },
+    }),
     getOnHoldBookings: builder.query({
       query: () => ({
         url: "customer/getOnHoldBookingsForCustomer",
@@ -363,6 +387,7 @@ export const {
   useGetAllOrdersQuery,
   useCreateIntentMutation,
   useBookingDetailByIdQuery,
+  useTrackOrderQuery,
   useGetOnHoldBookingsQuery,
   useGetOnHoldBookingByIdQuery,
   useGetOnHoldCustomerShowQuery,

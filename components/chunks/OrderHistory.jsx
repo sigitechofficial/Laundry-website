@@ -11,7 +11,7 @@ import {
   useGetAllReasonsQuery,
   useCancelBookingMutation,
 } from "@/app/store/services/api";
-import { formatDate } from "../../utilities/ConversionFunction";
+import { formatDate, formatTimeToAmPm } from "../../utilities/ConversionFunction";
 import ReusableModal from "../Modal";
 import { useDisclosure, Spinner, addToast } from "@heroui/react";
 import SelectHero from "../SelectHero";
@@ -1570,7 +1570,11 @@ export default function OrderHistory() {
       : [];
 
     const bookingStatusId = Number(booking?.bookingStatusId ?? booking?.bookingStatus?.id);
-    const rescheduleType = bookingStatusId === BOOKING_STATUS_DELIVERY_FAILED ? "delivery" : "full";
+    const actionType = booking?.actionRequired?.type;
+    const rescheduleType =
+      actionType === "delivery" || bookingStatusId === BOOKING_STATUS_DELIVERY_FAILED
+        ? "delivery"
+        : "full";
 
     // Map booking data to order data structure
     const orderData = {
@@ -1886,11 +1890,11 @@ export default function OrderHistory() {
         {manageOrder?.modType === "track" ? (
           <div
             onScroll={handleModalScroll}
-            className="modal-scroll overflow-auto"
+            className="modal-scroll overflow-auto max-h-[85vh]"
           >
             <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
               <h4 className="font-youth font-bold sm:text-[22px] text-center">
-                Order ID: {bookingDtails?.data?.orderTrackId}
+                Track Order
               </h4>
 
               <p
@@ -1901,68 +1905,137 @@ export default function OrderHistory() {
               </p>
             </div>
 
-            <div className="w-full px-6 py-4 font-sf flex justify-between items-center">
-              <p className="font-sf font-semibold cursor-pointer">
-                Order Status
-              </p>
-              <button className={`rounded-full shrink-0 font-youth font-bold text-sm px-3 py-1.5 ${getStatusColorClasses(bookingDtails?.data?.bookingStatus?.title)}`}>
-                {bookingDtails?.data?.bookingStatus?.title}
-              </button>
-            </div>
-
-            <div className="w-full px-6 py-2 font-sf">
-              <p className="text-theme-psGray text-sm w-max ml-auto">
-                02-13-2025, 12:40
-              </p>
-              <div className="flex items-center gap-5">
-                <div>
-                  <img src="/images/statuses/image1.png" alt="status image" />
-                </div>
-
-                <div>
-                  <h6 className="font-semibold">Order Created</h6>
-                  <p className="text-theme-psGray text-sm">
-                    Your Order has been created
+            {isBookingDetailsLoading ? (
+              <div className="flex justify-center py-16">
+                <Spinner />
+              </div>
+            ) : (
+              <>
+                <div className="w-full px-6 pt-4 pb-2 font-sf">
+                  <p className="text-sm text-theme-psGray">
+                    Order ID:{" "}
+                    <span className="font-semibold text-gray-900">
+                      #{bookingDtails?.data?.orderTrackId || manageOrder?.orderId}
+                    </span>
                   </p>
                 </div>
-              </div>
-            </div>
 
-            <div className="w-full px-6 py-2 font-sf">
-              <p className="text-theme-psGray text-sm w-max ml-auto">
-                02-13-2025, 12:40
-              </p>
-              <div className="flex items-center gap-5">
-                <div>
-                  <img src="/images/statuses/image2.png" alt="status image" />
+                <div className="w-full px-6 py-3 font-sf flex justify-between items-start gap-3">
+                  <div>
+                    <p className="font-sf font-semibold">Order Status</p>
+                    <p className="text-sm text-theme-psGray mt-1">
+                      {bookingDtails?.data?.trackCurrentStatus?.message ||
+                        bookingDtails?.data?.bookingStatus?.description ||
+                        ""}
+                    </p>
+                  </div>
+                  <button
+                    className={`rounded-full shrink-0 font-youth font-bold text-sm px-3 py-1.5 ${getStatusColorClasses(
+                      bookingDtails?.data?.trackCurrentStatus?.title ||
+                        bookingDtails?.data?.bookingStatus?.title
+                    )}`}
+                  >
+                    {bookingDtails?.data?.trackCurrentStatus?.title ||
+                      bookingDtails?.data?.bookingStatus?.title ||
+                      "—"}
+                  </button>
                 </div>
 
-                <div>
-                  <h6 className="font-semibold">Order Confirmed</h6>
-                  <p className="text-theme-psGray text-sm line-clamp-2">
-                    The booking has been confirmed and is ready for co...
-                  </p>
-                </div>
-              </div>
-            </div>
+                {bookingDtails?.data?.actionRequired ? (
+                  <div className="mx-6 mb-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 space-y-3">
+                    <div>
+                      <p className="font-youth font-bold text-sm text-red-600">
+                        {bookingDtails.data.actionRequired.title || "Action Required"}
+                      </p>
+                      <p className="font-sf text-sm text-theme-psGray mt-1">
+                        {bookingDtails.data.actionRequired.message}
+                      </p>
+                    </div>
+                    <PurpleButton
+                      text="Reschedule"
+                      onClick={handleScheduleAgain}
+                    />
+                  </div>
+                ) : null}
 
-            <div className="w-full px-6 py-2 font-sf mb-5">
-              <p className="text-theme-psGray text-sm w-max ml-auto">
-                02-13-2025, 12:40
-              </p>
-              <div className="flex items-center gap-5">
-                <div>
-                  <img src="/images/statuses/image3.png" alt="status image" />
+                <div className="w-full px-6 pb-6">
+                  {(bookingDtails?.data?.trackTimeline || []).length === 0 ? (
+                    <p className="font-sf text-sm text-theme-psGray py-8 text-center">
+                      Tracking updates will appear here as your order progresses.
+                    </p>
+                  ) : (
+                    <div className="relative">
+                      {(bookingDtails?.data?.trackTimeline || []).map(
+                        (event, index, list) => {
+                          const isLast = index === list.length - 1;
+                          const stampDate = event?.date
+                            ? formatDate(event.date)
+                            : "";
+                          const stampTime = event?.time
+                            ? formatTimeToAmPm(event.time)
+                            : "";
+                          const isException = Boolean(event?.isException);
+                          return (
+                            <div
+                              key={event.id || `${event.title}-${index}`}
+                              className="relative flex gap-4 pb-5 last:pb-0"
+                            >
+                              <div className="flex flex-col items-center">
+                                <div
+                                  className={`w-3 h-3 rounded-full mt-1.5 shrink-0 ${
+                                    isException
+                                      ? "bg-red-500"
+                                      : index === 0
+                                        ? "bg-theme-blue"
+                                        : "bg-gray-300"
+                                  }`}
+                                />
+                                {!isLast ? (
+                                  <div className="w-px flex-1 bg-gray-200 mt-1" />
+                                ) : null}
+                              </div>
+                              <div className="flex-1 min-w-0 pb-1">
+                                <div className="flex items-start justify-between gap-3">
+                                  <h6
+                                    className={`font-semibold font-sf ${
+                                      isException ? "text-red-600" : "text-gray-900"
+                                    }`}
+                                  >
+                                    {event.title}
+                                  </h6>
+                                  <p className="font-sf text-xs text-theme-psGray whitespace-nowrap shrink-0">
+                                    {[stampDate, stampTime]
+                                      .filter(Boolean)
+                                      .join(", ")}
+                                  </p>
+                                </div>
+                                <p
+                                  className={`font-sf text-sm mt-1 ${
+                                    isException
+                                      ? "text-red-500"
+                                      : "text-theme-psGray"
+                                  }`}
+                                >
+                                  {event.message}
+                                </p>
+                                {event.attemptNumber ? (
+                                  <p className="font-sf text-xs text-theme-psGray mt-1">
+                                    Attempt {event.attemptNumber}
+                                    {event.attemptType
+                                      ? ` · ${event.attemptType}`
+                                      : ""}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        }
+                      )}
+                    </div>
+                  )}
                 </div>
-
-                <div>
-                  <h6 className="font-semibold">Driver Out for PickUp</h6>
-                  <p className="text-theme-psGray text-sm line-clamp-2">
-                    Driver accepted the booking and coming for lau...
-                  </p>
-                </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         ) : manageOrder?.modType === "iron" ? (
           <div

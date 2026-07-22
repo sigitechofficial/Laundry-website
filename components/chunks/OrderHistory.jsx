@@ -1981,15 +1981,26 @@ export default function OrderHistory() {
                               className="relative flex gap-4 pb-5 last:pb-0"
                             >
                               <div className="flex flex-col items-center">
-                                <div
-                                  className={`w-3 h-3 rounded-full mt-1.5 shrink-0 ${
-                                    isException
-                                      ? "bg-red-500"
-                                      : index === 0
-                                        ? "bg-theme-blue"
-                                        : "bg-gray-300"
-                                  }`}
-                                />
+                                {index === 0 ? (
+                                  <div
+                                    className={`track-current-dot${
+                                      isException
+                                        ? " track-current-dot--exception"
+                                        : ""
+                                    }`}
+                                    aria-hidden="true"
+                                  >
+                                    <span className="track-current-dot__ring" />
+                                    <span className="track-current-dot__ring track-current-dot__ring--delayed" />
+                                    <span className="track-current-dot__core" />
+                                  </div>
+                                ) : (
+                                  <div
+                                    className={`w-3 h-3 rounded-full mt-1.5 shrink-0 ${
+                                      isException ? "bg-red-500" : "bg-gray-300"
+                                    }`}
+                                  />
+                                )}
                                 {!isLast ? (
                                   <div className="w-px flex-1 bg-gray-200 mt-1" />
                                 ) : null}

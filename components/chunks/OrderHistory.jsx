@@ -29,6 +29,8 @@ import BookingPolicySummary, {
   CancellationSummaryCard,
 } from "../BookingPolicySummary";
 import { getFailedAttemptType } from "../../utilities/bookingAttemptStatus";
+import LiveTrackingAction from "../LiveTrackingAction";
+import LiveTrackingMap from "../LiveTrackingMap";
 
 /** Mirrors backend cancelBookingService status gates. */
 const MAX_CANCELLABLE_STATUS_ID = 9;
@@ -78,6 +80,12 @@ export default function OrderHistory() {
     onOpen: onManageOrderModalOpen,
     onClose: onManageOrderModalClose,
     onOpenChange: onManageOrderModalOpenChange,
+  } = useDisclosure();
+  const {
+    isOpen: isLiveMapOpen,
+    onOpen: onLiveMapOpen,
+    onClose: onLiveMapClose,
+    onOpenChange: onLiveMapOpenChange,
   } = useDisclosure();
   const [manageOrder, setManageOrder] = useState({
     manage: false,
@@ -878,6 +886,13 @@ export default function OrderHistory() {
               Track your order
             </p>
           )}
+        </div>
+
+        <div className="mb-4">
+          <LiveTrackingAction
+            bookingStatusId={resolveBookingStatusId(bookingDtails?.data)}
+            onTrack={onLiveMapOpen}
+          />
         </div>
 
         {schedule?.operational ? (
@@ -1958,6 +1973,16 @@ export default function OrderHistory() {
                   </div>
                 ) : null}
 
+                <div className="px-6 mb-4">
+                  <LiveTrackingAction
+                    bookingStatusId={resolveBookingStatusId(bookingDtails?.data)}
+                    onTrack={() => {
+                      onClose();
+                      onLiveMapOpen();
+                    }}
+                  />
+                </div>
+
                 <div className="w-full px-6 pb-6">
                   {(bookingDtails?.data?.trackTimeline || []).length === 0 ? (
                     <p className="font-sf text-sm text-theme-psGray py-8 text-center">
@@ -2152,6 +2177,42 @@ export default function OrderHistory() {
         ) : (
           "dddd"
         )}
+      </ReusableModal>
+
+      {/* Live driver map — mirrors customer app LiveTrackingMapScreen */}
+      <ReusableModal
+        isDismissable={true}
+        isOpen={isLiveMapOpen}
+        onOpenChange={onLiveMapOpenChange}
+        showHeader={true}
+        headerTitle="Live tracking"
+        modalScroll={false}
+        onBack={false}
+        onClose={() => onLiveMapClose()}
+        showFooter={false}
+        onFooterAction={() => false}
+        size="5xl"
+        backdrop="blur"
+        className="custom-modal-class max-h-[95vh] overflow-hidden"
+      >
+        <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+          <h4 className="font-youth font-bold sm:text-[22px] text-center">
+            Live tracking
+          </h4>
+          <p
+            onClick={() => onLiveMapClose()}
+            className="font-sf text-base absolute top-4 right-4 cursor-pointer"
+          >
+            Close
+          </p>
+        </div>
+        {isLiveMapOpen && manageOrder?.orderId ? (
+          <LiveTrackingMap
+            bookingId={manageOrder.orderId}
+            orderTrackId={bookingDtails?.data?.orderTrackId}
+            onClose={onLiveMapClose}
+          />
+        ) : null}
       </ReusableModal>
 
       {/* Cancel Order Confirmation Modal */}

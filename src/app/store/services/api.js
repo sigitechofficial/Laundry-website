@@ -233,6 +233,19 @@ export const api = createApi({
         };
       },
     }),
+    /** Bootstrap live map session (Firebase custom token + RTDB path). */
+    getLiveTracking: builder.query({
+      query: (arg) => {
+        const bookingId =
+          typeof arg === "object" && arg !== null
+            ? arg.bookingId ?? arg.id
+            : arg;
+        return {
+          url: `customer/live-tracking/${bookingId}`,
+          method: "GET",
+        };
+      },
+    }),
     getOnHoldBookings: builder.query({
       query: () => ({
         url: "customer/getOnHoldBookingsForCustomer",
@@ -388,6 +401,8 @@ export const {
   useCreateIntentMutation,
   useBookingDetailByIdQuery,
   useTrackOrderQuery,
+  useGetLiveTrackingQuery,
+  useLazyGetLiveTrackingQuery,
   useGetOnHoldBookingsQuery,
   useGetOnHoldBookingByIdQuery,
   useGetOnHoldCustomerShowQuery,

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Spinner } from "@heroui/react";
 import { IoSearchOutline } from "react-icons/io5";
 import { useLazyGetAddressesByPostcodeQuery } from "../src/app/store/services/api";
@@ -20,10 +20,8 @@ export default function AddressFilterLookup({
   placeholder = "Search your address",
   className = "",
 }) {
-  const containerRef = useRef(null);
   const [query, setQuery] = useState("");
   const [allAddresses, setAllAddresses] = useState([]);
-  const [showDropdown, setShowDropdown] = useState(false);
   const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
 
   const [fetchAddresses] = useLazyGetAddressesByPostcodeQuery();
@@ -33,7 +31,6 @@ export default function AddressFilterLookup({
 
     const loadAddresses = async () => {
       setQuery("");
-      setShowDropdown(false);
 
       if (!isFullUkPostcode(postcode)) {
         setAllAddresses([]);
@@ -43,7 +40,6 @@ export default function AddressFilterLookup({
       const cached = readSessionAddressCache(postcode);
       if (cached?.addresses?.length) {
         setAllAddresses(cached.addresses);
-        setShowDropdown(true);
         return;
       }
 
@@ -57,7 +53,6 @@ export default function AddressFilterLookup({
         if (list.length > 0) {
           writeSessionAddressCache(normalized, { addresses: list });
           setAllAddresses(list);
-          setShowDropdown(true);
         } else {
           setAllAddresses([]);
         }
@@ -75,32 +70,13 @@ export default function AddressFilterLookup({
     };
   }, [postcode, fetchAddresses]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (containerRef.current && !containerRef.current.contains(event.target)) {
-        setShowDropdown(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const filteredAddresses = useMemo(
     () => filterAddresses(allAddresses, query),
     [allAddresses, query]
   );
 
-  const handleQueryChange = (nextValue) => {
-    setQuery(nextValue);
-    if (allAddresses.length > 0) {
-      setShowDropdown(true);
-    }
-  };
-
   const handleSelectAddress = (address) => {
     onAddressSelect?.(address);
-    setShowDropdown(false);
     setQuery("");
   };
 
@@ -109,8 +85,8 @@ export default function AddressFilterLookup({
   const inputDisabled = disabled || !hasPostcode || isLoadingAddresses;
 
   return (
-    <div className={`relative z-[100] ${className}`} ref={containerRef}>
-      <div className="relative border-2 border-theme-gray-2/25 rounded-lg w-full min-h-14 pl-3 pr-1 py-1">
+    <div className={`flex flex-col gap-3 ${className}`}>
+      <div className="relative border-2 border-theme-gray-2/25 rounded-lg w-full min-h-14 pl-3 pr-1 py-1 shrink-0">
         <div className="absolute top-1/2 -translate-y-1/2 left-3 z-10 pointer-events-none">
           <IoSearchOutline className="text-2xl text-theme-gray-2" />
         </div>
@@ -121,12 +97,7 @@ export default function AddressFilterLookup({
           placeholder={isLoadingAddresses ? "Loading addresses..." : placeholder}
           value={query}
           disabled={inputDisabled}
-          onChange={(e) => handleQueryChange(e.target.value)}
-          onFocus={() => {
-            if (hasAddresses && filteredAddresses.length > 0) {
-              setShowDropdown(true);
-            }
-          }}
+          onChange={(e) => setQuery(e.target.value)}
         />
 
         {isLoadingAddresses && (
@@ -134,47 +105,59 @@ export default function AddressFilterLookup({
             <Spinner size="sm" />
           </div>
         )}
-
-        {showDropdown && filteredAddresses.length > 0 && (
-          <div className="absolute left-0 right-0 top-full z-[10001] mt-1 bg-white rounded-lg shadow-xl max-h-[250px] overflow-y-auto border border-gray-200">
-            {filteredAddresses.map((address, index) => (
-              <button
-                key={address.suggestionId || address.id || index}
-                type="button"
-                onClick={() => handleSelectAddress(address)}
-                className="w-full text-left px-4 py-2.5 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
-              >
-                <span className="font-sf text-sm text-gray-700 leading-snug break-words whitespace-normal block">
-                  {formatAddressListLabel(address, postcode)}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {!hasPostcode && (
-        <p className="text-xs text-theme-psGray mt-2 font-sf">
+        <p className="text-xs text-theme-psGray font-sf">
           Enter a full postcode on the form first.
         </p>
       )}
 
+      {hasPostcode && isLoadingAddresses && (
+        <div className="flex items-center justify-center py-8 border border-gray-200 rounded-lg bg-gray-50 min-h-[140px]">
+          <Spinner size="md" />
+        </div>
+      )}
+
       {hasPostcode && !isLoadingAddresses && !hasAddresses && (
-        <p className="text-xs text-theme-psGray mt-2 font-sf">
-          No addresses found for this postcode.
-        </p>
+        <div className="flex items-center justify-center py-10 border border-gray-200 rounded-lg bg-gray-50 min-h-[120px]">
+          <p className="text-sm text-theme-psGray font-sf text-center px-4">
+            No addresses found for this postcode.
+          </p>
+        </div>
       )}
 
       {hasPostcode && hasAddresses && !isLoadingAddresses && (
-        <p className="text-xs text-theme-psGray mt-2 font-sf">
-          {allAddresses.length} addresses at this postcode — tap to browse or type to filter.
-        </p>
-      )}
+        <>
+          <div className="border border-gray-200 rounded-lg bg-white min-h-[140px] max-h-[240px] overflow-y-auto modal-scroll">
+            {filteredAddresses.length > 0 ? (
+              filteredAddresses.map((address, index) => (
+                <button
+                  key={address.suggestionId || address.id || index}
+                  type="button"
+                  onClick={() => handleSelectAddress(address)}
+                  className="w-full text-left px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors"
+                >
+                  <span className="font-sf text-sm text-gray-700 leading-snug break-words whitespace-normal block">
+                    {formatAddressListLabel(address, postcode)}
+                  </span>
+                </button>
+              ))
+            ) : (
+              <div className="flex items-center justify-center py-10 px-4">
+                <p className="text-sm text-theme-psGray font-sf text-center">
+                  No matching address. Try flat number or street name.
+                </p>
+              </div>
+            )}
+          </div>
 
-      {hasAddresses && showDropdown && query.trim() && filteredAddresses.length === 0 && (
-        <p className="text-xs text-theme-psGray mt-2 font-sf">
-          No matching address. Try flat number or street name.
-        </p>
+          <p className="text-xs text-theme-psGray font-sf">
+            {query.trim()
+              ? `${filteredAddresses.length} of ${allAddresses.length} addresses`
+              : `${allAddresses.length} addresses at this postcode — type above to filter`}
+          </p>
+        </>
       )}
     </div>
   );

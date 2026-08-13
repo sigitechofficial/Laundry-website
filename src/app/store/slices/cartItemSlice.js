@@ -21,6 +21,16 @@ const getInitialState = () => {
     if (storedOrderData) orderData = JSON.parse(storedOrderData);
     if (storedPreferences) preferences = JSON.parse(storedPreferences);
     if (storedPage) page = storedPage;
+
+    // Drop stale one-bag flag (e.g. old default true without a source service)
+    if (
+      orderData?.sameBagForAllServices === true &&
+      (orderData?.sameBagSourceServiceId == null ||
+        orderData?.sameBagSourceServiceId === "")
+    ) {
+      orderData.sameBagForAllServices = false;
+      orderData.sameBagSourceServiceId = null;
+    }
   }
 
   return {
@@ -74,6 +84,9 @@ const getInitialState = () => {
       driverInstruction: orderData?.driverInstruction || "",
       frequency: orderData?.frequency || "Just once",
       driverTip: orderData?.driverTip || 0,
+      sameBagForAllServices: orderData?.sameBagForAllServices === true,
+      sameBagSourceServiceId: orderData?.sameBagSourceServiceId ?? null,
+      totalBags: orderData?.totalBags ?? "",
     },
     preferences,
     page,
@@ -132,13 +145,28 @@ const cartItemSlice = createSlice({
         (item) => item.serviceId === serviceId
       );
 
+      const merged =
+        existingIndex !== -1
+          ? { ...state.preferences[existingIndex], ...data }
+          : { serviceId, ...data };
+
+      if (Object.prototype.hasOwnProperty.call(data, "bagsCount")) {
+        const bags = Number(data.bagsCount);
+        if (!Number.isFinite(bags) || bags <= 0) {
+          delete merged.bagsCount;
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(data, "itemsCount")) {
+        const items = Number(data.itemsCount);
+        if (!Number.isFinite(items) || items <= 0) {
+          delete merged.itemsCount;
+        }
+      }
+
       if (existingIndex !== -1) {
-        state.preferences[existingIndex] = {
-          ...state.preferences[existingIndex],
-          ...data,
-        };
+        state.preferences[existingIndex] = merged;
       } else {
-        state.preferences.push({ serviceId, ...data });
+        state.preferences.push(merged);
       }
 
       if (typeof window !== "undefined") {
@@ -211,6 +239,9 @@ const cartItemSlice = createSlice({
         driverInstruction: "",
         frequency: "Just once",
         driverTip: 0,
+        sameBagForAllServices: false,
+        sameBagSourceServiceId: null,
+        totalBags: "",
       };
       state.preferences = [];
       state.page = "";

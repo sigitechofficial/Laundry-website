@@ -110,6 +110,7 @@ export const api = createApi({
         url: "customer/allServices",
         method: "GET",
       }),
+      keepUnusedDataFor: 30,
     }),
     getServiceById: builder.query({
       query: (id) => ({
@@ -119,10 +120,22 @@ export const api = createApi({
     }),
 
     getServiceDetails: builder.query({
-      query: () => ({
-        url: "customer/serviceDetail",
-        method: "GET",
-      }),
+      query: (params) => {
+        const lat = params?.lat;
+        const lng = params?.lng;
+        const searchParams = new URLSearchParams();
+        if (lat !== undefined && lat !== null && lat !== "") {
+          searchParams.set("lat", lat);
+        }
+        if (lng !== undefined && lng !== null && lng !== "") {
+          searchParams.set("lng", lng);
+        }
+        const query = searchParams.toString();
+        return {
+          url: `customer/serviceDetail${query ? `?${query}` : ""}`,
+          method: "GET",
+        };
+      },
     }),
 
     getServiceWithPreferenceDetails: builder.query({
@@ -176,10 +189,62 @@ export const api = createApi({
     }),
 
     bookingDetailById: builder.query({
-      query: (id) => ({
-        url: `customer/bookingDetailsById?bookingId=${id}`,
-        method: "GET",
-      }),
+      query: (arg) => {
+        const bookingId =
+          typeof arg === "object" && arg !== null
+            ? arg.bookingId ?? arg.id
+            : arg;
+        const timeZone =
+          (typeof arg === "object" && arg !== null && arg.timeZone) ||
+          (typeof Intl !== "undefined"
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone
+            : "UTC");
+        const params = new URLSearchParams({
+          bookingId: String(bookingId),
+          timeZone: String(timeZone),
+        });
+        return {
+          url: `customer/bookingDetailsById?${params.toString()}`,
+          method: "GET",
+        };
+      },
+    }),
+    trackOrder: builder.query({
+      query: (arg) => {
+        const bookingId =
+          typeof arg === "object" && arg !== null
+            ? arg.bookingId ?? arg.id
+            : arg;
+        const orderTrackId =
+          typeof arg === "object" && arg !== null ? arg.orderTrackId : undefined;
+        const timeZone =
+          (typeof arg === "object" && arg !== null && arg.timeZone) ||
+          (typeof Intl !== "undefined"
+            ? Intl.DateTimeFormat().resolvedOptions().timeZone
+            : "UTC");
+        const params = new URLSearchParams({
+          timeZone: String(timeZone),
+        });
+        if (bookingId) params.set("bookingId", String(bookingId));
+        if (orderTrackId) params.set("orderTrackId", String(orderTrackId));
+        return {
+          url: `customer/trackOrder?${params.toString()}`,
+          method: "GET",
+        };
+      },
+    }),
+    /** Bootstrap live map session (Firebase custom token + RTDB path). */
+    getLiveTracking: builder.query({
+      query: (arg) => {
+        const bookingId =
+          typeof arg === "object" && arg !== null
+            ? arg.bookingId ?? arg.id
+            : arg;
+        return {
+          url: `customer/live-tracking/${bookingId}`,
+          method: "GET",
+        };
+      },
     }),
     getOnHoldBookings: builder.query({
       query: () => ({
@@ -263,6 +328,7 @@ export const api = createApi({
         url: `customer/postcode/autocomplete?q=${encodeURIComponent(q)}`,
         method: "GET",
       }),
+      keepUnusedDataFor: 0,
     }),
 
     getFAQs: builder.query({
@@ -334,6 +400,9 @@ export const {
   useGetAllOrdersQuery,
   useCreateIntentMutation,
   useBookingDetailByIdQuery,
+  useTrackOrderQuery,
+  useGetLiveTrackingQuery,
+  useLazyGetLiveTrackingQuery,
   useGetOnHoldBookingsQuery,
   useGetOnHoldBookingByIdQuery,
   useGetOnHoldCustomerShowQuery,

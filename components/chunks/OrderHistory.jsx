@@ -11,17 +11,46 @@ import {
   useGetAllReasonsQuery,
   useCancelBookingMutation,
 } from "@/app/store/services/api";
-import { formatDate } from "../../utilities/ConversionFunction";
+import { formatDate, formatTimeToAmPm } from "../../utilities/ConversionFunction";
 import ReusableModal from "../Modal";
 import { useDisclosure, Spinner, addToast } from "@heroui/react";
 import SelectHero from "../SelectHero";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useDispatch } from "react-redux";
 import { setOrderData } from "@/app/store/slices/cartItemSlice";
 import { BASE_URL } from "../../utilities/URL";
+import { resolveBookingSchedule } from "../../utilities/bookingScheduleDisplay";
+import BookingSlotTimes from "../BookingSlotTimes";
+import {
+  isActiveBookingStatus,
+  isPastBookingStatus,
+} from "../../utilities/bookingOrderTabs";
+import BookingPolicySummary, {
+  CancellationSummaryCard,
+} from "../BookingPolicySummary";
+import { getFailedAttemptType } from "../../utilities/bookingAttemptStatus";
+import LiveTrackingAction from "../LiveTrackingAction";
+import LiveTrackingMap from "../LiveTrackingMap";
+
+/** Mirrors backend cancelBookingService status gates. */
+const MAX_CANCELLABLE_STATUS_ID = 9;
+const BOOKING_STATUS_INVOICE_GENERATED = 10;
+const BOOKING_STATUS_PROCESSING = 11;
+const BOOKING_STATUS_DELIVERY_FAILED = 15;
+const BOOKING_STATUS_DELIVERED = 16;
+const BOOKING_STATUS_COMPLETED = 17;
+const BOOKING_STATUS_CANCELLED = 19;
+const UNPROCESSED_BOOKING_STATUS_IDS = new Set([4, 5, 6, 7, 8, 9]);
+
+function resolveBookingStatusId(order) {
+  const raw = order?.bookingStatusId ?? order?.bookingStatus?.id;
+  const statusId = Number(raw);
+  return Number.isFinite(statusId) ? statusId : null;
+}
 
 export default function OrderHistory() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const dispatch = useDispatch();
   const { data, isLoading, refetch: refetchOrders } = useGetAllOrdersQuery(
     undefined,
@@ -32,6 +61,7 @@ export default function OrderHistory() {
   );
   const [order, setOrder] = useState("");
   const [modalScroll, setModalScroll] = useState(false);
+  const [panelScroll, setPanelScroll] = useState(false);
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const {
     isOpen: isCancelModalOpen,
@@ -51,6 +81,12 @@ export default function OrderHistory() {
     onClose: onManageOrderModalClose,
     onOpenChange: onManageOrderModalOpenChange,
   } = useDisclosure();
+  const {
+    isOpen: isLiveMapOpen,
+    onOpen: onLiveMapOpen,
+    onClose: onLiveMapClose,
+    onOpenChange: onLiveMapOpenChange,
+  } = useDisclosure();
   const [manageOrder, setManageOrder] = useState({
     manage: false,
     modType: "track",
@@ -63,26 +99,99 @@ export default function OrderHistory() {
   const [showManageDetails, setShowManageDetails] = useState(false);
   const [shouldRenderManageDetails, setShouldRenderManageDetails] = useState(false);
   const [isOrderItemsExpanded, setIsOrderItemsExpanded] = useState(true);
+  const [bookingTab, setBookingTab] = useState("active");
+  const clientTimeZone = React.useMemo(
+    () => Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC",
+    []
+  );
 
-  const { data: bookingDtails, isLoading: bookingDetailsLoading } =
-    useBookingDetailByIdQuery(manageOrder?.orderId, {
+  const {
+    data: bookingDtails,
+    isLoading: bookingDetailsLoading,
+    isFetching: bookingDetailsFetching,
+    isError: bookingDetailsError,
+  } = useBookingDetailByIdQuery(
+    manageOrder?.orderId
+      ? { bookingId: manageOrder.orderId, timeZone: clientTimeZone }
+      : undefined,
+    {
       skip: !manageOrder?.orderId,
+    }
+  );
+
+  const isBookingDetailsLoading = bookingDetailsLoading || bookingDetailsFetching;
+
+  const handleSelectBooking = (order) => {
+    const orderId = order?.id;
+    if (!orderId) return;
+
+    setManageOrder({
+      manage: false,
+      modType: "track",
+      orderId,
     });
+
+    const isMobileViewport =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isMobileViewport) {
+      onOrderDetailsModalOpen();
+    }
+  };
+
+  // Deep-link support: /profile?tab=order-history&bookingId=123 auto-opens
+  // that order (used when redirected here from a "failed attempt" notice).
+  const autoOpenedBookingIdRef = React.useRef(null);
+  React.useEffect(() => {
+    const bookingIdParam = searchParams?.get("bookingId");
+    if (!bookingIdParam) return;
+    if (autoOpenedBookingIdRef.current === bookingIdParam) return;
+
+    autoOpenedBookingIdRef.current = bookingIdParam;
+    handleSelectBooking({ id: Number(bookingIdParam) });
+  }, [searchParams]);
+
+  const renderOrderDetailsPanel = ({ panelLayout = false } = {}) => {
+    if (isBookingDetailsLoading) {
+      return (
+        <div className="w-full flex items-center justify-center py-16">
+          <Spinner
+            size="lg"
+            label="Loading order details..."
+            classNames={{
+              label: "text-foreground mt-4 font-youth font-semibold text-theme-blue",
+            }}
+            variant="wave"
+          />
+        </div>
+      );
+    }
+
+    if (bookingDetailsError || !bookingDtails?.data) {
+      return (
+        <p className="font-sf text-theme-psGray text-center py-16">
+          Unable to load order details. Please try again.
+        </p>
+      );
+    }
+
+    return renderOrderDetailsContent({ panelLayout });
+  };
 
   // Handle smooth transition when order details are loaded
   React.useEffect(() => {
-    if (bookingDtails?.data && !bookingDetailsLoading) {
-      // Reset animation state first
+    if (manageOrder?.orderId && isBookingDetailsLoading) {
+      setShowOrderDetails(true);
+    } else if (bookingDtails?.data && !isBookingDetailsLoading) {
       setShowOrderDetails(false);
       setIsOrderItemsExpanded(true);
-      // Small delay to trigger animation
       setTimeout(() => {
         setShowOrderDetails(true);
       }, 50);
     } else if (!manageOrder?.orderId) {
       setShowOrderDetails(false);
     }
-  }, [bookingDtails, bookingDetailsLoading, manageOrder?.orderId]);
+  }, [bookingDtails, isBookingDetailsLoading, manageOrder?.orderId]);
 
   // Handle smooth transition for manage order details section
   React.useEffect(() => {
@@ -136,6 +245,53 @@ export default function OrderHistory() {
     });
   }
 
+  function handlePanelScroll(e) {
+    const isScrolled = e.target.scrollTop > 50;
+    setPanelScroll((prev) => {
+      if (prev !== isScrolled) return isScrolled;
+      return prev;
+    });
+  }
+
+  React.useEffect(() => {
+    setPanelScroll(false);
+  }, [manageOrder?.orderId]);
+
+  const formatCardBrand = (brand) => {
+    if (!brand) return "Card";
+    const normalized = String(brand).trim();
+    if (!normalized) return "Card";
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1).toLowerCase();
+  };
+
+  const getCardPaymentLabel = (cardDetails, paymentMethodId) => {
+    if (cardDetails?.last4) {
+      return `${formatCardBrand(cardDetails.brand)} ending in ${cardDetails.last4}`;
+    }
+    if (paymentMethodId?.startsWith("pm_")) return "Card on file";
+    return paymentMethodId || "Payment Method";
+  };
+
+  const getCardPaymentSubtext = (cardDetails) => {
+    if (!cardDetails) return null;
+    const parts = [];
+    if (cardDetails.cardholderName) {
+      parts.push(cardDetails.cardholderName);
+    }
+    if (cardDetails.expMonth && cardDetails.expYear) {
+      const month = String(cardDetails.expMonth).padStart(2, "0");
+      const year = String(cardDetails.expYear).slice(-2);
+      parts.push(`Expires ${month}/${year}`);
+    }
+    if (cardDetails.funding) {
+      parts.push(
+        String(cardDetails.funding).charAt(0).toUpperCase() +
+          String(cardDetails.funding).slice(1).toLowerCase()
+      );
+    }
+    return parts.length > 0 ? parts.join(" · ") : null;
+  };
+
   // Check if an order is cancelled
   const isOrderCancelled = (order) => {
     if (!order) return false;
@@ -163,21 +319,47 @@ export default function OrderHistory() {
     return "bg-theme-skyBlue text-[#0391C4]";
   };
 
-  // Check if order can be cancelled based on cancellation policy
+  // Check if order can be cancelled based on cancellation policy (status IDs match backend).
   const canCancelOrder = (order, config) => {
     if (!order) return { canCancel: true, reason: null };
-    if (!config) return { canCancel: true, reason: null };
 
-    // Check order status - if processed, cannot cancel
-    const orderStatus = order?.bookingStatus?.title?.toLowerCase() || "";
-    if (orderStatus.includes("processed") || orderStatus.includes("completed") || orderStatus.includes("delivered")) {
-      return { canCancel: false, reason: 'Order already processed or completed' };
+    const statusId = resolveBookingStatusId(order);
+
+    if (statusId === BOOKING_STATUS_CANCELLED) {
+      return { canCancel: false, reason: "This order has already been cancelled" };
     }
 
-    // Check if unprocessed cancellation is allowed
-    if (orderStatus.includes("picked") || orderStatus.includes("unprocessed")) {
-      if (!config.allowCancelUnprocessed) {
-        return { canCancel: false, reason: 'Unprocessed orders cannot be cancelled' };
+    if (statusId === BOOKING_STATUS_PROCESSING) {
+      return {
+        canCancel: false,
+        reason: "Items are currently being processed at the facility",
+      };
+    }
+
+    if (
+      statusId === BOOKING_STATUS_DELIVERED ||
+      statusId === BOOKING_STATUS_COMPLETED
+    ) {
+      return { canCancel: false, reason: "Cannot cancel completed bookings" };
+    }
+
+    if (statusId === BOOKING_STATUS_INVOICE_GENERATED) {
+      return {
+        canCancel: false,
+        reason: "Invoice has already been generated for this order",
+      };
+    }
+
+    if (statusId != null && statusId > MAX_CANCELLABLE_STATUS_ID) {
+      return { canCancel: false, reason: "Cannot cancel booking at this stage" };
+    }
+
+    if (statusId != null && UNPROCESSED_BOOKING_STATUS_IDS.has(statusId)) {
+      if (config && config.allowCancelUnprocessed === false) {
+        return {
+          canCancel: false,
+          reason: "Unprocessed orders cannot be cancelled according to the policy",
+        };
       }
     }
 
@@ -197,8 +379,23 @@ export default function OrderHistory() {
 
     setIsCheckingCancellation(true);
 
-    // Check cancellation eligibility
+    const cancellationSummary = bookingDtails.data?.cancellationSummary;
+    if (cancellationSummary?.canCancel === false) {
+      addToast({
+        title: "Cannot Cancel Order",
+        description:
+          cancellationSummary.cancelBlockedReason ||
+          "This order cannot be cancelled",
+        color: "warning",
+      });
+      setIsCheckingCancellation(false);
+      return;
+    }
+
+    // Prefer snapshotted booking policy; fall back to zone active policy.
     const cancellationConfig =
+      cancellationSummary?.policy ||
+      bookingDtails.data?.cancellationPolicy ||
       activePoliciesData?.data?.activeCancellationPolicy?.cancellationConfig;
     const eligibility = canCancelOrder(bookingDtails.data, cancellationConfig);
 
@@ -315,6 +512,22 @@ export default function OrderHistory() {
     );
   };
 
+  const getProofSectionNote = (deliveryType) => {
+    const fromApi =
+      deliveryType === "pickUp"
+        ? bookingDtails?.data?.pickupProofNote
+        : bookingDtails?.data?.deliveryProofNote;
+    if (fromApi && String(fromApi).trim()) {
+      return String(fromApi).trim();
+    }
+    const proofs =
+      deliveryType === "pickUp" ? getProofOfCollection() : getProofOfDelivery();
+    const match = proofs.find(
+      (proof) => proof?.note && String(proof.note).trim() !== ""
+    );
+    return match ? String(match.note).trim() : null;
+  };
+
   // Helper function to get image URL from proof object
   const getImageUrl = (imgUpload) => {
     if (!imgUpload) return null;
@@ -366,26 +579,9 @@ export default function OrderHistory() {
   const activeBookings = React.useMemo(() => {
     if (!data?.data || !Array.isArray(data.data)) return null;
 
-    const active = data.data.filter((order) => {
-      const status = order?.bookingStatus?.title?.toLowerCase() || "";
-
-      // Include orders with active statuses (created, order created, pending, etc.)
-      // Exclude cancelled, completed, delivered, processed, etc.
-      if (
-        status.includes("cancel") ||
-        status.includes("cancelled") ||
-        status.includes("completed") ||
-        status.includes("delivered") ||
-        status.includes("processed") ||
-        status.includes("finished") ||
-        status.includes("done")
-      ) {
-        return false;
-      }
-
-      // Include all other statuses (created, order created, pending, in progress, etc.)
-      return true;
-    }).sort((a, b) => {
+    const active = data.data.filter((order) =>
+      isActiveBookingStatus(order?.bookingStatus?.title)
+    ).sort((a, b) => {
       const dateA = a.createdAt || a.created_at || a.orderDate || a.bookingDate;
       const dateB = b.createdAt || b.created_at || b.orderDate || b.bookingDate;
       if (dateA && dateB) return new Date(dateB) - new Date(dateA);
@@ -401,25 +597,9 @@ export default function OrderHistory() {
   const pastBookings = React.useMemo(() => {
     if (!data?.data || !Array.isArray(data.data)) return null;
 
-    const past = data.data.filter((order) => {
-      const status = order?.bookingStatus?.title?.toLowerCase() || "";
-
-      // Include orders with past/final statuses
-      if (
-        status.includes("cancel") ||
-        status.includes("cancelled") ||
-        status.includes("completed") ||
-        status.includes("delivered") ||
-        status.includes("processed") ||
-        status.includes("finished") ||
-        status.includes("done")
-      ) {
-        return true;
-      }
-
-      // Exclude active statuses (created, order created, pending, etc.)
-      return false;
-    }).sort((a, b) => {
+    const past = data.data.filter((order) =>
+      isPastBookingStatus(order?.bookingStatus?.title)
+    ).sort((a, b) => {
       const dateA = a.createdAt || a.created_at || a.orderDate || a.bookingDate;
       const dateB = b.createdAt || b.created_at || b.orderDate || b.bookingDate;
       if (dateA && dateB) return new Date(dateB) - new Date(dateA);
@@ -431,46 +611,239 @@ export default function OrderHistory() {
     return past.length === 0 ? null : past;
   }, [data?.data]);
 
+  const activeList = activeBookings ?? [];
+  const pastList = pastBookings ?? [];
+  const visibleBookings = bookingTab === "active" ? activeList : pastList;
+
+  const renderBookingCard = (order) => {
+    const failedAttemptType = getFailedAttemptType(order);
+    const displayStatusTitle =
+      failedAttemptType === "pickup"
+        ? "Pickup Failed"
+        : failedAttemptType === "delivery"
+          ? "Delivery Failed"
+          : order?.bookingStatus?.title;
+    return (
+    <div
+      key={order.id}
+      role="button"
+      tabIndex={0}
+      onClick={() => handleSelectBooking(order)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          handleSelectBooking(order);
+        }
+      }}
+      className="w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <h6 className="font-youth font-bold text-base sm:text-lg">
+          Order ID: {order?.orderTrackId}
+        </h6>
+        {failedAttemptType && (
+          <span className="shrink-0 rounded-full bg-red-100 text-red-600 font-youth font-bold text-xs px-2.5 py-1 flex items-center gap-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+            Action Required
+          </span>
+        )}
+      </div>
+
+      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
+        <span
+          className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(displayStatusTitle)}`}
+        >
+          {displayStatusTitle}
+        </span>
+        {failedAttemptType && (
+          <p className="font-sf text-xs text-red-500">
+            {failedAttemptType === "pickup" ? "Pickup attempt failed — reschedule needed" : "Delivery attempt failed — reschedule needed"}
+          </p>
+        )}
+      </div>
+
+      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
+        <div className="flex gap-2 items-center py-2">
+          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+          <div>
+            <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+              Pick up
+            </p>
+            <p className="font-sf text-base sm:text-xl">
+              {formatDate(order?.collectionDate)}
+            </p>
+          </div>
+        </div>
+
+        <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+          <GoClock size={18} className="sm:w-5 sm:h-5" />
+          {formatTo24Hour(order?.collectionTimeFrom)} -{" "}
+          {formatTo24Hour(order?.collectionTimeTo)}
+        </p>
+      </div>
+
+      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+        <div className="flex gap-2 items-center py-2">
+          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+          <div>
+            <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
+              Drop off
+            </p>
+            <p className="font-sf text-base sm:text-xl">
+              {formatDate(order?.deliveryDate)}
+            </p>
+          </div>
+        </div>
+
+        <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
+          <GoClock size={18} className="sm:w-5 sm:h-5" />
+          {formatTo24Hour(order?.deliveryTimeFrom)} -{" "}
+          {formatTo24Hour(order?.deliveryTimeTo)}
+        </p>
+      </div>
+
+      <p className="font-sf text-base text-theme-psGray">
+        {order?.driverInstruction}
+      </p>
+    </div>
+    );
+  };
+
   // Render order details content (reusable for both modal and side panel)
-  const renderOrderDetailsContent = () => {
+  const renderOrderDetailsContent = ({ panelLayout = false } = {}) => {
     if (!bookingDtails?.data) return null;
+    const schedule = resolveBookingSchedule(bookingDtails.data);
     const selectedServices = Array.isArray(
       bookingDtails?.data?.customerSelectedServices
     )
       ? bookingDtails.data.customerSelectedServices
       : [];
     const bookingCurrencySymbol =
-      bookingDtails?.data?.zone?.currencyUnitZ?.symbol || "$";
-    const subTotalValue = Number.parseFloat(bookingDtails?.data?.subTotal);
-    const serviceFeeValue = Number.parseFloat(
-      bookingDtails?.data?.billingDetail?.serviceCharge ??
-        bookingDtails?.data?.zone?.serviceCharge
-    );
-    const upfrontAmountValue = Number.parseFloat(
-      bookingDtails?.data?.billingDetail?.upfrontAmount
-    );
+      bookingDtails?.data?.paymentSummary?.currencySymbol ||
+      bookingDtails?.data?.zone?.currencyUnitZ?.symbol ||
+      "$";
+    const paymentSummary = bookingDtails?.data?.paymentSummary;
+    const hasPaymentSummary = Boolean(paymentSummary?.orderSummary);
+    const isCashBooking =
+      paymentSummary?.paymentType === "cash" ||
+      bookingDtails?.data?.paymentType === "cash";
+    const minimumAdjustment = hasPaymentSummary
+      ? Number(paymentSummary.minimumAdjustment) ||
+        Number(paymentSummary.orderSummary?.minimumAdjustment) ||
+        0
+      : 0;
+
     const tipValue = Number.parseFloat(bookingDtails?.data?.tips?.[0]?.amount);
-    const orderAmountValue = Number.parseFloat(bookingDtails?.data?.orderAmount);
-    const billingTotalValue = Number.parseFloat(
-      bookingDtails?.data?.billingDetail?.total
-    );
     const discountValue = Number.parseFloat(
       bookingDtails?.data?.billingDetail?.discount
     );
 
-    const displaySubTotal = Number.isFinite(subTotalValue) ? subTotalValue : 0;
-    const displayServiceFee = Number.isFinite(serviceFeeValue) ? serviceFeeValue : 0;
-    const displayUpfrontAmount = Number.isFinite(upfrontAmountValue)
-      ? upfrontAmountValue
+    const servicesSubtotal = (() => {
+      if (hasPaymentSummary) {
+        return Number(paymentSummary.laundrySubtotal) || 0;
+      }
+      const fromApi = Number.parseFloat(bookingDtails?.data?.servicesSubtotal);
+      if (Number.isFinite(fromApi) && fromApi >= 0) {
+        return fromApi;
+      }
+      const fromBilling = Number.parseFloat(
+        bookingDtails?.data?.billingDetail?.categoryCharge
+      );
+      if (Number.isFinite(fromBilling) && fromBilling >= 0) {
+        return fromBilling;
+      }
+      return 0;
+    })();
+
+    const formatBillingLine = (amount, { signed = false } = {}) => {
+      const numeric = Number(amount);
+      if (!Number.isFinite(numeric)) return `${bookingCurrencySymbol}0.00`;
+      const base = `${bookingCurrencySymbol}${Math.abs(numeric).toFixed(2)}`;
+      if (!signed) return base;
+      if (numeric > 0) return `+${base}`;
+      if (numeric < 0) return `-${base}`;
+      return base;
+    };
+
+    const legacyServiceFeeValue = Number.parseFloat(
+      bookingDtails?.data?.billingDetail?.serviceCharge ??
+        bookingDtails?.data?.zone?.serviceCharge
+    );
+    const legacyUpfrontAmountValue = Number.parseFloat(
+      bookingDtails?.data?.billingDetail?.upfrontAmount
+    );
+    const legacyOrderAmountValue = Number.parseFloat(
+      bookingDtails?.data?.orderAmount
+    );
+    const legacyBillingTotalValue = Number.parseFloat(
+      bookingDtails?.data?.billingDetail?.total
+    );
+
+    const displayServiceFee = hasPaymentSummary
+      ? Number(paymentSummary.orderSummary.serviceFee) || 0
+      : Number.isFinite(legacyServiceFeeValue)
+      ? legacyServiceFeeValue
       : 0;
-    const displayTip = Number.isFinite(tipValue) ? tipValue : 0;
-    const displayDiscount = Number.isFinite(discountValue) ? discountValue : 0;
-    const displayTotal =
-      Number.isFinite(billingTotalValue) && billingTotalValue > 0
-        ? billingTotalValue
-        : Number.isFinite(orderAmountValue) && orderAmountValue > 0
-        ? orderAmountValue
-        : displaySubTotal;
+    const displayTip = hasPaymentSummary
+      ? Number(paymentSummary.orderSummary.driverTip) || 0
+      : Number.isFinite(tipValue)
+      ? tipValue
+      : 0;
+    const displayDiscount = hasPaymentSummary
+      ? Number(paymentSummary.orderSummary.discount) || 0
+      : Number.isFinite(discountValue)
+      ? discountValue
+      : 0;
+    const displayTotalOrderAmount = hasPaymentSummary
+      ? Number(paymentSummary.orderSummary.totalOrderAmount) || 0
+      : servicesSubtotal + displayServiceFee + displayTip;
+    const displayPaidAtBooking = hasPaymentSummary
+      ? paymentSummary.paidAtBooking
+      : {
+          minimumOrderPayment: Number.isFinite(legacyUpfrontAmountValue)
+            ? legacyUpfrontAmountValue
+            : 0,
+          serviceFee: displayServiceFee,
+          driverTip: displayTip,
+          totalPaid:
+            (Number.isFinite(legacyUpfrontAmountValue)
+              ? legacyUpfrontAmountValue
+              : 0) + displayServiceFee + displayTip,
+        };
+    const displayAmountDueNow = hasPaymentSummary
+      ? Number(paymentSummary.amountDueNow) || 0
+      : Number.isFinite(legacyBillingTotalValue) && legacyBillingTotalValue > 0
+      ? legacyBillingTotalValue
+      : Number.isFinite(legacyOrderAmountValue) && legacyOrderAmountValue > 0
+      ? legacyOrderAmountValue
+      : 0;
+
+    const showInvoiceBreakdown =
+      hasPaymentSummary &&
+      (servicesSubtotal > 0 ||
+        bookingDtails?.data?.invoiceStatus === "finalized" ||
+        bookingDtails?.data?.invoiceStatus === "draft");
+    const paymentStatus =
+      bookingDtails?.data?.billingDetail?.paymentStatus || "Pending";
+    const isFullyPaid =
+      paymentSummary?.paymentState === "fully_paid" || paymentStatus === "Paid";
+    const isOutstanding = !isFullyPaid && displayAmountDueNow > 0;
+    const displayPaidLater = paymentSummary?.paidLater;
+    const paidLaterAmount = Number(displayPaidLater?.totalPaid) || 0;
+    const cashTotalPaid = Number(displayPaidAtBooking?.totalPaid) || 0;
+    const showCashPaymentMethodOnly =
+      isCashBooking && cashTotalPaid <= 0;
+    const paymentStateLabel = paymentSummary?.paymentStateLabel || "";
+    const balancePaymentMethod = paymentSummary?.balancePaymentMethod;
+    const cashRemaining = paymentSummary?.cashRemaining;
+    const balanceCollectionLabel = paymentSummary?.balanceCollectionLabel;
+
+    const cardDetails = bookingDtails?.data?.cardDetails;
+    const cardPaymentLabel = getCardPaymentLabel(
+      cardDetails,
+      bookingDtails?.data?.paymentMethodId
+    );
+    const cardPaymentSubtext = getCardPaymentSubtext(cardDetails);
 
     const groupedSelectedServices = selectedServices.reduce((acc, item) => {
       const serviceName = item?.service?.name || "Service";
@@ -480,18 +853,24 @@ export default function OrderHistory() {
       acc[serviceName].push(item);
       return acc;
     }, {});
-    const displayedItemsCount = Object.values(groupedSelectedServices).reduce(
-      (sum, serviceItems) => sum + serviceItems.length,
-      0
-    );
+
+    const totalBagsCount = (() => {
+      const fromTotal = Number(bookingDtails?.data?.totalBags);
+      if (Number.isFinite(fromTotal) && fromTotal > 0) return fromTotal;
+      const fromPickup = Number(bookingDtails?.data?.noOfBags);
+      if (Number.isFinite(fromPickup) && fromPickup > 0) return fromPickup;
+      return null;
+    })();
 
     return (
       <>
-        <h6 className="font-youth font-bold text-2xl sm:text-3xl md:text-[32px]">
-          Order ID: {bookingDtails?.data?.orderTrackId}
-        </h6>
+        {!panelLayout ? (
+          <h6 className="font-youth font-bold text-2xl sm:text-3xl md:text-[32px]">
+            Order ID: {bookingDtails?.data?.orderTrackId}
+          </h6>
+        ) : null}
 
-        <div className="flex justify-between items-center font-sf pt-3 pb-6">
+        <div className={`flex justify-between items-center font-sf ${panelLayout ? "pt-1 pb-6" : "pt-3 pb-6"}`}>
           <button
             title={bookingDtails?.data?.bookingStatus?.description}
             className={`rounded-full shrink-0 font-youth font-bold text-sm p-3 ${getStatusColorClasses(bookingDtails?.data?.bookingStatus?.title)}`}
@@ -509,6 +888,40 @@ export default function OrderHistory() {
           )}
         </div>
 
+        <div className="mb-4">
+          <LiveTrackingAction
+            bookingStatusId={resolveBookingStatusId(bookingDtails?.data)}
+            onTrack={onLiveMapOpen}
+          />
+        </div>
+
+        {schedule?.operational ? (
+          <div className="rounded-xl bg-[#F5F5F5] px-4 py-3 text-sm font-sf space-y-1 mb-2">
+            {schedule.zone?.name ? (
+              <p>
+                <span className="text-theme-psGray">Service zone: </span>
+                <span className="font-medium">{schedule.zone.name}</span>
+              </p>
+            ) : null}
+            {schedule.operational?.displayLabel ? (
+              <p>
+                <span className="text-theme-psGray">Booking times in: </span>
+                <span className="font-medium">
+                  {schedule.operational.displayLabel}
+                </span>
+              </p>
+            ) : null}
+            {schedule.customerLocal?.ianaTimeZone ? (
+              <p>
+                <span className="text-theme-psGray">Your timezone: </span>
+                <span className="font-medium">
+                  {schedule.customerLocal.ianaTimeZone}
+                </span>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="space-y-4">
           <div className="font-sf space-y-3">
             <p className="font-youth font-bold">Collection</p>
@@ -520,13 +933,16 @@ export default function OrderHistory() {
                 {formatDate(bookingDtails?.data?.collectionDate)}
               </p>
             </div>
-            <div className="flex gap-2 items-center">
-              <div className="flex items-center justify-center">
+            <div className="flex gap-2 items-start">
+              <div className="flex items-center justify-center mt-0.5">
                 <IoTimeOutline size="16" />
               </div>
-              <p className="text-sm font-medium">
-                {formatTo24Hour(bookingDtails?.data?.collectionTimeFrom)} - {formatTo24Hour(bookingDtails?.data?.collectionTimeTo)}
-              </p>
+              <BookingSlotTimes
+                timeFrom={bookingDtails?.data?.collectionTimeFrom}
+                timeTo={bookingDtails?.data?.collectionTimeTo}
+                slot={schedule?.collection}
+                operationalShortLabel={schedule?.operational?.shortLabel}
+              />
             </div>
             <div className="flex gap-2 items-center">
               <div className="flex items-center justify-center">
@@ -547,13 +963,16 @@ export default function OrderHistory() {
                 {formatDate(bookingDtails?.data?.deliveryDate)}
               </p>
             </div>
-            <div className="flex gap-2 items-center">
-              <div className="flex items-center justify-center">
+            <div className="flex gap-2 items-start">
+              <div className="flex items-center justify-center mt-0.5">
                 <IoTimeOutline size="16" />
               </div>
-              <p className="text-sm font-medium">
-                {formatTo24Hour(bookingDtails?.data?.deliveryTimeFrom)} - {formatTo24Hour(bookingDtails?.data?.deliveryTimeTo)}
-              </p>
+              <BookingSlotTimes
+                timeFrom={bookingDtails?.data?.deliveryTimeFrom}
+                timeTo={bookingDtails?.data?.deliveryTimeTo}
+                slot={schedule?.delivery}
+                operationalShortLabel={schedule?.operational?.shortLabel}
+              />
             </div>
             <div className="flex gap-2 items-center">
               <div className="flex items-center justify-center">
@@ -564,6 +983,19 @@ export default function OrderHistory() {
               </p>
             </div>
           </div>
+          {totalBagsCount != null ? (
+            <div className="font-sf space-y-3">
+              <p className="font-youth font-bold">Bags</p>
+              <div className="flex gap-2 items-center">
+                <div className="flex items-center justify-center">
+                  <IoBagCheck size="16" />
+                </div>
+                <p className="text-sm font-medium">
+                  Total bags: {totalBagsCount}
+                </p>
+              </div>
+            </div>
+          ) : null}
           <div className="font-sf space-y-3">
             <p className="font-youth font-bold">Address</p>
             <div className="flex gap-2 items-center">
@@ -588,100 +1020,14 @@ export default function OrderHistory() {
             </p>
           </div>
 
-          {/* Cancellation policy attached to this booking */}
-          {bookingDtails?.data?.cancellationPolicy && (
-            <div className="font-sf space-y-3 border-t pt-4">
-              <p className="font-youth font-bold">Cancellation Policy (Attached)</p>
-              <div className="space-y-2 text-sm">
-                <p>
-                  <span className="text-theme-psGray">Policy: </span>
-                  <span className="font-medium">
-                    {bookingDtails.data.cancellationPolicy.name || "N/A"}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-theme-psGray">Description: </span>
-                  <span className="font-medium">
-                    {bookingDtails.data.cancellationPolicy.description || "N/A"}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-theme-psGray">Free cancellation window: </span>
-                  <span className="font-medium">
-                    {formatMinutesWindow(
-                      bookingDtails.data.cancellationPolicy
-                        .freeCancellationWindowMinutes
-                    )}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-theme-psGray">Late cancellation charge: </span>
-                  <span className="font-medium">
-                    {formatChargeWithFallback(
-                      bookingDtails.data.cancellationPolicy.prePickupChargeAmount,
-                      bookingDtails.data.cancellationPolicy.prePickupChargeCurrency,
-                      bookingDtails.data.cancellationPolicy.prePickupChargePercentage
-                    )}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-theme-psGray">First cancellation free: </span>
-                  <span className="font-medium">
-                    {bookingDtails.data.cancellationPolicy.firstCancellationFree
-                      ? "Yes"
-                      : "No"}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-theme-psGray">Unprocessed cancellation: </span>
-                  <span className="font-medium">
-                    {bookingDtails.data.cancellationPolicy.allowCancelUnprocessed
-                      ? "Allowed"
-                      : "Not allowed"}
-                  </span>
-                </p>
-                {bookingDtails.data.cancellationPolicy.allowCancelUnprocessed && (
-                  <p>
-                    <span className="text-theme-psGray">Unprocessed charge: </span>
-                    <span className="font-medium">
-                      {formatChargeWithFallback(
-                        bookingDtails.data.cancellationPolicy
-                          .unprocessedChargeAmount,
-                        bookingDtails.data.cancellationPolicy
-                          .unprocessedChargeCurrency,
-                        bookingDtails.data.cancellationPolicy
-                          .unprocessedChargePercentage
-                      )}
-                      {Number(bookingDtails.data.cancellationPolicy.unprocessedAfterPickupMinutes) >
-                      0
-                        ? ` after ${bookingDtails.data.cancellationPolicy.unprocessedAfterPickupMinutes} minute(s) from pickup`
-                        : ""}
-                    </span>
-                  </p>
-                )}
-                <p>
-                  <span className="text-theme-psGray">Courtesy rules: </span>
-                  <span className="font-medium">
-                    {bookingDtails.data.cancellationPolicy.courtesyCount || 0} time(s) in{" "}
-                    {bookingDtails.data.cancellationPolicy.courtesyWindowDays || 0} day(s), cap{" "}
-                    {formatChargeWithFallback(
-                      bookingDtails.data.cancellationPolicy.courtesyCapAmount,
-                      bookingDtails.data.cancellationPolicy.prePickupChargeCurrency,
-                      null
-                    )}
-                  </span>
-                </p>
-                <p>
-                  <span className="text-theme-psGray">Customer leniency: </span>
-                  <span className="font-medium">
-                    {bookingDtails.data.cancellationPolicy.customerLeniencyEnabled
-                      ? "Enabled"
-                      : "Disabled"}
-                  </span>
-                </p>
-              </div>
-            </div>
-          )}
+          <BookingPolicySummary
+            orderStatusContext={bookingDtails?.data?.orderStatusContext}
+            cancellationPolicy={bookingDtails?.data?.cancellationPolicy}
+            cancellationSummary={bookingDtails?.data?.cancellationSummary}
+            noShowPolicy={bookingDtails?.data?.noShowPolicy}
+            noShowSummary={bookingDtails?.data?.noShowSummary}
+          />
+
           {!isOrderCancelled(bookingDtails?.data) && (
             <PurpleButton
               text="Manage Order"
@@ -702,7 +1048,9 @@ export default function OrderHistory() {
             <div className="font-sf text-left">
               <h6 className="font-semibold text-xl">Order details</h6>
               <p className="text-theme-psGray">
-                {displayedItemsCount} items
+                {totalBagsCount != null
+                  ? `${totalBagsCount} bag${totalBagsCount === 1 ? "" : "s"}`
+                  : null}
               </p>
             </div>
             <MdKeyboardArrowRight
@@ -740,12 +1088,14 @@ export default function OrderHistory() {
                           const hasPrice = Number.isFinite(unitPrice);
                           const lineTotal =
                             hasQty && hasPrice ? unitPrice * quantity : unitPrice;
+                          const addOns = Array.isArray(item?.addOns) ? item.addOns : [];
 
                           return (
                             <div
                               key={`${item?.serviceId || "service"}-${item?.categoryId || "cat"}-${item?.subCategoryId || "sub"}-${index}`}
-                              className="flex items-start justify-between gap-3 border-t border-gray-200 pt-2 first:border-t-0 first:pt-0"
+                              className="space-y-1.5 border-t border-gray-200 pt-2 first:border-t-0 first:pt-0"
                             >
+                              <div className="flex items-start justify-between gap-3">
                               <div className="space-y-0.5">
                                 {categoryName && (
                                   <p className="text-xs text-theme-psGray">
@@ -786,6 +1136,62 @@ export default function OrderHistory() {
                                   </p>
                                 )}
                               </div>
+                              </div>
+
+                              {addOns.length > 0 && (
+                                <div className="ml-2 space-y-1.5 border-l-2 border-theme-blue/20 pl-3">
+                                  {addOns.map((addOn, addOnIndex) => {
+                                    const addOnName =
+                                      addOn?.addOnService?.name || "Add-on";
+                                    const addOnQty =
+                                      Number.parseInt(addOn?.items, 10) > 0
+                                        ? Number.parseInt(addOn.items, 10)
+                                        : 1;
+                                    const addOnUnitPrice = Number.parseFloat(
+                                      addOn?.price ?? addOn?.addOnService?.price
+                                    );
+                                    const parsedLineTotal = Number.parseFloat(
+                                      addOn?.lineTotal
+                                    );
+                                    const addOnLineTotal = Number.isFinite(
+                                      parsedLineTotal
+                                    )
+                                      ? parsedLineTotal
+                                      : Number.isFinite(addOnUnitPrice)
+                                        ? addOnUnitPrice * addOnQty
+                                        : null;
+
+                                    return (
+                                      <div
+                                        key={`${addOn?.id || addOn?.addOnServiceId || addOnIndex}`}
+                                        className="flex items-start justify-between gap-3"
+                                      >
+                                        <div className="space-y-0.5">
+                                          <p className="text-xs text-theme-psGray">
+                                            Add-on: {addOnName}
+                                          </p>
+                                          {Number.isFinite(addOnQty) && addOnQty > 0 && (
+                                            <p className="text-xs text-theme-psGray">
+                                              Qty: {addOnQty}
+                                            </p>
+                                          )}
+                                        </div>
+                                        {formatItemAmount(
+                                          addOnLineTotal,
+                                          bookingCurrencySymbol
+                                        ) && (
+                                          <p className="text-xs font-semibold shrink-0">
+                                            {formatItemAmount(
+                                              addOnLineTotal,
+                                              bookingCurrencySymbol
+                                            )}
+                                          </p>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -799,76 +1205,219 @@ export default function OrderHistory() {
               </div>
             </div>
           </div>
-          <div className="space-y-1 font-sf border-b pb-3">
-            <div className="flex justify-between items-center ">
-              <h4 className="font-semibold">Subtotal</h4>
-              <p className="font-semibold">
-                {bookingCurrencySymbol}
-                {displaySubTotal.toFixed(2)}
-              </p>
-            </div>
-            <div className="flex justify-between items-center">
-              <h4 className="text-sm text-theme-psGray">Discount</h4>
-              <p className="text-sm text-theme-psGray">
-                -{bookingCurrencySymbol}
-                {displayDiscount.toFixed(2)}
-              </p>
-            </div>
-            <div className="flex justify-between items-center">
-              <h4 className="text-sm text-theme-psGray">Service fee</h4>
-              <p className="text-sm text-theme-psGray">
-                +{bookingCurrencySymbol}
-                {displayServiceFee.toFixed(2)}
-              </p>
-            </div>
-            <div className="flex justify-between items-center">
-              <h4 className="text-sm text-theme-psGray">Upfront amount</h4>
-              <p className="text-sm text-theme-psGray">
-                -{bookingCurrencySymbol}
-                {displayUpfrontAmount.toFixed(2)}
-              </p>
-            </div>
-            <div className="flex justify-between items-center">
-              <h4 className="text-sm text-theme-psGray">Tip</h4>
-              <p className="text-sm text-theme-psGray">
-                +{bookingCurrencySymbol}
-                {displayTip.toFixed(2)}
-              </p>
-            </div>
-            <div className="flex justify-between items-center pt-1">
-              <h4 className="font-semibold">Total</h4>
-              <p className="font-semibold">
-                {bookingCurrencySymbol}
-                {displayTotal.toFixed(2)}
-              </p>
-            </div>
-          </div>
-          {(bookingDtails?.data?.paymentMethodId || bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId) && (
-            <div className="space-y-1 font-sf border-b pb-3">
-              <h4 className="font-semibold text-2xl">Payment</h4>
-              <div className="flex justify-between items-center">
-                <div>
-                  <h6>
-                    {bookingDtails?.data?.paymentMethodId?.startsWith("pm_")
-                      ? "Card on file"
-                      : bookingDtails?.data?.paymentMethodId || "Payment Method"}
-                  </h6>
-                  {(bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId) && (
-                    <p className="text-sm text-theme-psGray">
-                      Payment ID: {bookingDtails?.data?.paymentId || bookingDtails?.data?.bookingPaymentId}
-                    </p>
-                  )}
-                  {bookingDtails?.data?.createdAt && (
-                    <p className="text-sm text-theme-psGray">
-                      {formatDate(bookingDtails.data.createdAt)}
-                    </p>
-                  )}
-                </div>
-                <p className="font-semibold">
-                  {bookingCurrencySymbol}
-                  {displayTotal.toFixed(2)}
+          <div className="font-sf space-y-3 pt-4 pb-3">
+            <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+              <div className="flex justify-between items-center gap-4">
+                <p className="text-sm font-semibold">Laundry subtotal</p>
+                <p className="text-sm font-semibold shrink-0">
+                  {formatBillingLine(servicesSubtotal)}
                 </p>
               </div>
+            </div>
+
+            {showInvoiceBreakdown ? (
+              <div className="rounded-xl border border-gray-200 bg-[#FAFAFA] px-4 py-3 space-y-2">
+                <p className="text-xs text-theme-psGray">
+                  The minimum order payment is not added again as a separate
+                  charge.
+                </p>
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-theme-psGray">Laundry subtotal</p>
+                  <p className="text-sm shrink-0">
+                    {formatBillingLine(servicesSubtotal)}
+                  </p>
+                </div>
+                {minimumAdjustment > 0 ? (
+                  <div className="flex justify-between items-center gap-4">
+                    <p className="text-sm text-theme-psGray">Minimum order adjustment</p>
+                    <p className="text-sm shrink-0">
+                      {formatBillingLine(minimumAdjustment)}
+                    </p>
+                  </div>
+                ) : null}
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-theme-psGray">Service fee</p>
+                  <p className="text-sm shrink-0">
+                    {formatBillingLine(displayServiceFee)}
+                  </p>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-theme-psGray">Driver tip</p>
+                  <p className="text-sm shrink-0">
+                    {formatBillingLine(displayTip)}
+                  </p>
+                </div>
+                {displayDiscount > 0 ? (
+                  <div className="flex justify-between items-center gap-4">
+                    <p className="text-sm text-theme-psGray">Discount</p>
+                    <p className="text-sm shrink-0">
+                      {formatBillingLine(-displayDiscount, { signed: true })}
+                    </p>
+                  </div>
+                ) : null}
+                <div className="flex justify-between items-center gap-4 pt-2 border-t border-gray-200">
+                  <p className="text-sm font-semibold">Total order amount</p>
+                  <p className="text-sm font-semibold shrink-0">
+                    {formatBillingLine(displayTotalOrderAmount)}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {showCashPaymentMethodOnly ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                <p className="text-sm font-semibold text-amber-900">Payment method</p>
+                <p className="text-sm text-amber-800 mt-1">Cash</p>
+                {paymentStateLabel ? (
+                  <p className="text-xs text-amber-700 mt-1">{paymentStateLabel}</p>
+                ) : null}
+              </div>
+            ) : !isCashBooking ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 space-y-2">
+                <p className="text-sm font-semibold text-emerald-900">
+                  Paid at booking
+                </p>
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-emerald-800">
+                    Minimum order payment
+                    <span className="block text-xs text-emerald-700">
+                      Applied to laundry subtotal
+                    </span>
+                  </p>
+                  <p className="text-sm shrink-0 text-emerald-900">
+                    {formatBillingLine(displayPaidAtBooking.minimumOrderPayment)}
+                  </p>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-emerald-800">Service fee</p>
+                  <p className="text-sm shrink-0 text-emerald-900">
+                    {formatBillingLine(displayPaidAtBooking.serviceFee)}
+                  </p>
+                </div>
+                <div className="flex justify-between items-center gap-4">
+                  <p className="text-sm text-emerald-800">Driver tip</p>
+                  <p className="text-sm shrink-0 text-emerald-900">
+                    {formatBillingLine(displayPaidAtBooking.driverTip)}
+                  </p>
+                </div>
+                <div className="flex justify-between items-center gap-4 pt-2 border-t border-emerald-200">
+                  <p className="text-sm font-semibold text-emerald-900">
+                    Total paid
+                  </p>
+                  <p className="text-sm font-semibold shrink-0 text-emerald-900">
+                    {formatBillingLine(displayPaidAtBooking.totalPaid)}
+                  </p>
+                </div>
+                {displayPaidAtBooking?.label ? (
+                  <p className="text-xs text-emerald-700">{displayPaidAtBooking.label}</p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {paidLaterAmount > 0 ? (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 space-y-2">
+                <p className="text-sm font-semibold text-blue-900">Paid later</p>
+                {displayPaidLater?.label ? (
+                  <p className="text-xs text-blue-800">{displayPaidLater.label}</p>
+                ) : null}
+                <div className="flex justify-between items-center gap-4 pt-1">
+                  <p className="text-sm font-semibold text-blue-900">Total paid</p>
+                  <p className="text-sm font-semibold shrink-0 text-blue-900">
+                    {formatBillingLine(paidLaterAmount)}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {showInvoiceBreakdown ? (
+              <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 space-y-2">
+                <div className="flex justify-between items-start gap-4">
+                  <div>
+                    <p className="text-sm font-semibold text-sky-900">
+                      {isCashBooking ? "Pay cash on delivery" : "Amount due now"}
+                    </p>
+                    <p className="text-xs text-sky-800 mt-1">
+                      {isCashBooking
+                        ? `${formatBillingLine(displayTotalOrderAmount)} total due in cash`
+                        : balancePaymentMethod === "cash" && isOutstanding
+                          ? `${formatBillingLine(displayAmountDueNow)} balance to pay in cash`
+                          : `${formatBillingLine(displayTotalOrderAmount)} actual total − ${formatBillingLine(displayPaidAtBooking.totalPaid)} already paid`}
+                    </p>
+                    {balanceCollectionLabel && isOutstanding ? (
+                      <p className="text-xs text-sky-700 mt-1">{balanceCollectionLabel}</p>
+                    ) : null}
+                    {paymentStateLabel && isOutstanding ? (
+                      <p className="text-xs text-sky-700 mt-1">{paymentStateLabel}</p>
+                    ) : null}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-lg font-bold text-sky-900">
+                      {formatBillingLine(displayAmountDueNow)}
+                    </p>
+                    {isOutstanding ? (
+                      <span className="inline-block mt-1 rounded-full bg-sky-200 px-2 py-0.5 text-xs font-semibold text-sky-900">
+                        {cashRemaining ? "Cash due" : "Outstanding"}
+                      </span>
+                    ) : (
+                      <span className="inline-block mt-1 rounded-full bg-emerald-200 px-2 py-0.5 text-xs font-semibold text-emerald-900">
+                        Paid
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+          {(bookingDtails?.data?.paymentMethodId ||
+            bookingDtails?.data?.paymentId ||
+            bookingDtails?.data?.bookingPaymentId ||
+            cardDetails ||
+            paidLaterAmount > 0) && (
+            <div className="space-y-1 font-sf border-b pb-3">
+              <h4 className="font-semibold text-2xl">Payment</h4>
+              {Number(displayPaidAtBooking?.totalPaid) > 0 ? (
+                <div className="flex justify-between items-center py-2">
+                  <div>
+                    <h6>{cardPaymentLabel}</h6>
+                    <p className="text-sm text-theme-psGray">
+                      {displayPaidAtBooking?.label || "Paid by card"} — upfront
+                    </p>
+                    {bookingDtails?.data?.createdAt && (
+                      <p className="text-sm text-theme-psGray">
+                        {formatDate(bookingDtails.data.createdAt)}
+                      </p>
+                    )}
+                  </div>
+                  <p className="font-semibold">
+                    {formatBillingLine(displayPaidAtBooking.totalPaid)}
+                  </p>
+                </div>
+              ) : null}
+              {paidLaterAmount > 0 ? (
+                <div className="flex justify-between items-center py-2">
+                  <div>
+                    <h6>
+                      {displayPaidLater?.method === "cash"
+                        ? "Cash"
+                        : displayPaidLater?.label || "Balance payment"}
+                    </h6>
+                    <p className="text-sm text-theme-psGray">
+                      {displayPaidLater?.label || "Paid at delivery"}
+                    </p>
+                  </div>
+                  <p className="font-semibold">
+                    {formatBillingLine(paidLaterAmount)}
+                  </p>
+                </div>
+              ) : null}
+              {(bookingDtails?.data?.paymentId ||
+                bookingDtails?.data?.bookingPaymentId) && (
+                <p className="text-sm text-theme-psGray pb-2">
+                  Payment ID:{" "}
+                  {bookingDtails?.data?.paymentId ||
+                    bookingDtails?.data?.bookingPaymentId}
+                </p>
+              )}
               <div className="py-2">
                 <PurpleButton text="Send receipt to email" />
               </div>
@@ -878,6 +1427,16 @@ export default function OrderHistory() {
           {getProofOfCollection().length > 0 && (
             <div className="space-y-1 font-sf pb-3 border-b">
               <h4 className="font-semibold text-2xl">Proof of Collection</h4>
+              {getProofSectionNote("pickUp") ? (
+                <div className="rounded-xl bg-[#F5F5F5] px-4 py-3 mt-2">
+                  <p className="text-xs font-semibold text-theme-psGray uppercase tracking-wide">
+                    Agent note
+                  </p>
+                  <p className="text-sm text-black mt-1 whitespace-pre-wrap">
+                    {getProofSectionNote("pickUp")}
+                  </p>
+                </div>
+              ) : null}
               <div className="py-3">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
                   {getProofOfCollection().map((proof, index) => {
@@ -901,9 +1460,9 @@ export default function OrderHistory() {
                             Items: {proof.noOfItems}
                           </p>
                         )}
-                        {proof.note && (
-                          <p className="text-xs text-theme-psGray text-center line-clamp-2">
-                            {proof.note}
+                        {proof.noOfBags !== undefined && proof.noOfBags !== null && (
+                          <p className="text-xs text-theme-psGray text-center">
+                            Bags: {proof.noOfBags}
                           </p>
                         )}
                         {proof.createdAt && (
@@ -923,6 +1482,16 @@ export default function OrderHistory() {
           {getProofOfDelivery().length > 0 && (
             <div className="space-y-1 font-sf pb-3 border-b">
               <h4 className="font-semibold text-2xl">Proof of Delivery</h4>
+              {getProofSectionNote("dropOff") ? (
+                <div className="rounded-xl bg-[#F5F5F5] px-4 py-3 mt-2">
+                  <p className="text-xs font-semibold text-theme-psGray uppercase tracking-wide">
+                    Agent note
+                  </p>
+                  <p className="text-sm text-black mt-1 whitespace-pre-wrap">
+                    {getProofSectionNote("dropOff")}
+                  </p>
+                </div>
+              ) : null}
               <div className="py-3">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
                   {getProofOfDelivery().map((proof, index) => {
@@ -946,9 +1515,9 @@ export default function OrderHistory() {
                             Items: {proof.noOfItems}
                           </p>
                         )}
-                        {proof.note && (
-                          <p className="text-xs text-theme-psGray text-center line-clamp-2">
-                            {proof.note}
+                        {proof.noOfBags !== undefined && proof.noOfBags !== null && (
+                          <p className="text-xs text-theme-psGray text-center">
+                            Bags: {proof.noOfBags}
                           </p>
                         )}
                         {proof.createdAt && (
@@ -980,6 +1549,8 @@ export default function OrderHistory() {
     }
 
     const booking = bookingDtails.data;
+    const pickupAddress = booking.pickupAddress || booking.pickUpAddress || {};
+    const dropOffAddress = booking.dropOffAddress || {};
     const clientTimeZone =
       Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
     const serviceTimeZone =
@@ -1013,10 +1584,18 @@ export default function OrderHistory() {
           })
       : [];
 
+    const bookingStatusId = Number(booking?.bookingStatusId ?? booking?.bookingStatus?.id);
+    const actionType = booking?.actionRequired?.type;
+    const rescheduleType =
+      actionType === "delivery" || bookingStatusId === BOOKING_STATUS_DELIVERY_FAILED
+        ? "delivery"
+        : "full";
+
     // Map booking data to order data structure
     const orderData = {
       rescheduleData: {
         isReschedule: true,
+        rescheduleType,
         bookingId: Number(booking?.id),
         reasonText: "My plans changed",
         services: rescheduleServices,
@@ -1028,18 +1607,18 @@ export default function OrderHistory() {
         collectionTimeFrom: booking.collectionTimeFrom || "",
         collectionTimeTo: booking.collectionTimeTo || "",
         driverInstructionOptions: booking.driverInstructionOptions || "",
-        streetAddress: booking.pickUpAddress?.streetAddress || "",
-        district: booking.pickUpAddress?.district || "",
-        city: booking.pickUpAddress?.city || "",
-        province: booking.pickUpAddress?.province || "",
-        country: booking.pickUpAddress?.country || "",
-        postalCode: booking.pickUpAddress?.postalCode || "",
-        lat: booking.pickUpAddress?.lat || null,
-        lng: booking.pickUpAddress?.lng || null,
-        title: booking.pickUpAddress?.title || "Home",
-        hotelName: booking.pickUpAddress?.hotelName || null,
-        apartmentNumber: booking.pickUpAddress?.apartmentNumber || null,
-        floor: booking.pickUpAddress?.floor || null,
+        streetAddress: pickupAddress.streetAddress || "",
+        district: pickupAddress.district || "",
+        city: pickupAddress.city || "",
+        province: pickupAddress.province || "",
+        country: pickupAddress.country || "",
+        postalCode: pickupAddress.postalcode || pickupAddress.postalCode || "",
+        lat: pickupAddress.lat ?? null,
+        lng: pickupAddress.lng ?? null,
+        title: pickupAddress.title || "Home",
+        hotelName: pickupAddress.hotelName || null,
+        apartmentNumber: pickupAddress.apartmentNumber || null,
+        floor: pickupAddress.floor || null,
         addressType: "pickUp",
         save: false,
         timeZone: serviceTimeZone || clientTimeZone,
@@ -1050,18 +1629,18 @@ export default function OrderHistory() {
         deliveryTimeFrom: booking.deliveryTimeFrom || "",
         deliveryTimeTo: booking.deliveryTimeTo || "",
         driverInstructionOptions1: booking.driverInstructionOptions1 || "",
-        streetAddress: booking.dropOffAddress?.streetAddress || "",
-        district: booking.dropOffAddress?.district || "",
-        city: booking.dropOffAddress?.city || "",
-        province: booking.dropOffAddress?.province || "",
-        country: booking.dropOffAddress?.country || "",
-        postalCode: booking.dropOffAddress?.postalCode || "",
-        lat: booking.dropOffAddress?.lat || null,
-        lng: booking.dropOffAddress?.lng || null,
-        title: booking.dropOffAddress?.title || "Home",
-        hotelName: booking.dropOffAddress?.hotelName || null,
-        apartmentNumber: booking.dropOffAddress?.apartmentNumber || null,
-        floor: booking.dropOffAddress?.floor || null,
+        streetAddress: dropOffAddress.streetAddress || "",
+        district: dropOffAddress.district || "",
+        city: dropOffAddress.city || "",
+        province: dropOffAddress.province || "",
+        country: dropOffAddress.country || "",
+        postalCode: dropOffAddress.postalcode || dropOffAddress.postalCode || "",
+        lat: dropOffAddress.lat ?? null,
+        lng: dropOffAddress.lng ?? null,
+        title: dropOffAddress.title || "Home",
+        hotelName: dropOffAddress.hotelName || null,
+        apartmentNumber: dropOffAddress.apartmentNumber || null,
+        floor: dropOffAddress.floor || null,
         addressType: "dropOff",
       },
       driverInstruction: booking.driverInstruction || "",
@@ -1114,6 +1693,7 @@ export default function OrderHistory() {
         cfg.unprocessedAbsoluteCurrency,
         cfg.unprocessedAbsoluteAmount
       ) ||
+      formatPercent(cfg.unprocessedOrderValuePercentage) ||
       formatPercent(cfg.unprocessedPercentage) ||
       "policy-based";
 
@@ -1133,7 +1713,7 @@ export default function OrderHistory() {
         Here's What You've Ordered
       </h2>
 
-      <div className="w-full flex flex-col md:flex-row gap-5">
+      <div className="w-full flex flex-col md:flex-row md:items-start gap-5 min-h-0">
         <div className="w-full font-sf space-y-5">
           {/* Loading Spinner */}
           {isLoading ? (
@@ -1149,170 +1729,117 @@ export default function OrderHistory() {
             </div>
           ) : (
             <>
-              {/* Active Bookings Section */}
-              {activeBookings && (
-                <>
-                  <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4">Active Bookings</h3>
-                  {activeBookings.map((order) => {
-                    return (
-                      <div
-                        key={order.id}
-                        onClick={() => {
-                          setManageOrder({ ...manageOrder, orderId: order?.id });
-                          // Open modal on mobile screens
-                          if (typeof window !== "undefined" && window.innerWidth < 768) {
-                            onOrderDetailsModalOpen();
-                          }
-                        }}
-                        className="w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
-                      >
-                        <h6 className="font-youth font-bold text-base sm:text-lg">
-                          Order ID: {order?.orderTrackId}
-                        </h6>
+              <div className="inline-flex w-full sm:w-auto p-1 rounded-full bg-[#F0F2F7] border border-[#E4E8F0] mb-5">
+                <button
+                  type="button"
+                  onClick={() => setBookingTab("active")}
+                  className={`flex-1 sm:flex-none px-5 sm:px-8 py-2.5 rounded-full font-youth font-bold text-sm sm:text-base transition-all duration-200 ${
+                    bookingTab === "active"
+                      ? "bg-theme-blue text-white shadow-sm"
+                      : "text-theme-psGray hover:text-gray-900"
+                  }`}
+                >
+                  Active
+                  {activeList.length > 0 ? (
+                    <span
+                      className={`ml-2 text-xs font-sf font-semibold ${
+                        bookingTab === "active" ? "text-white/80" : "text-theme-psGray"
+                      }`}
+                    >
+                      ({activeList.length})
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBookingTab("past")}
+                  className={`flex-1 sm:flex-none px-5 sm:px-8 py-2.5 rounded-full font-youth font-bold text-sm sm:text-base transition-all duration-200 ${
+                    bookingTab === "past"
+                      ? "bg-theme-blue text-white shadow-sm"
+                      : "text-theme-psGray hover:text-gray-900"
+                  }`}
+                >
+                  Past
+                  {pastList.length > 0 ? (
+                    <span
+                      className={`ml-2 text-xs font-sf font-semibold ${
+                        bookingTab === "past" ? "text-white/80" : "text-theme-psGray"
+                      }`}
+                    >
+                      ({pastList.length})
+                    </span>
+                  ) : null}
+                </button>
+              </div>
 
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-                          <button className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
-                            {order?.bookingStatus?.title}
-                          </button>
-                        </div>
-
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
-                          <div className="flex gap-2 items-center py-2">
-                            <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                            <div>
-                              <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                                Pick up
-                              </p>
-                              <p className="font-sf text-base sm:text-xl">
-                                {formatDate(order?.collectionDate)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                            <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {formatTo24Hour(order?.collectionTimeFrom)} - {formatTo24Hour(order?.collectionTimeTo)}
-                          </p>
-                        </div>
-
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-                          <div className="flex gap-2 items-center py-2">
-                            <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                            <div>
-                              <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                                Drop off
-                              </p>
-                              <p className="font-sf text-base sm:text-xl">
-                                {formatDate(order?.deliveryDate)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                            <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {formatTo24Hour(order?.deliveryTimeFrom)} - {formatTo24Hour(order?.deliveryTimeTo)}
-                          </p>
-                        </div>
-
-                        <p className="font-sf text-base text-theme-psGray">
-                          {order?.driverInstruction}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
-
-              {/* Past Bookings Section */}
-              {pastBookings && (
-                <>
-                  <h3 className="font-youth font-bold text-xl sm:text-2xl mb-4 mt-6 sm:mt-8">Past Bookings</h3>
-                  {pastBookings.map((order) => {
-                    return (
-                      <div
-                        key={order.id}
-                        onClick={() => {
-                          setManageOrder({ ...manageOrder, orderId: order?.id });
-                          // Open modal on mobile screens
-                          if (typeof window !== "undefined" && window.innerWidth < 768) {
-                            onOrderDetailsModalOpen();
-                          }
-                        }}
-                        className="w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
-                      >
-                        <h6 className="font-youth font-bold text-base sm:text-lg">
-                          Order ID: {order?.orderTrackId}
-                        </h6>
-
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-0">
-                          <button className={`rounded-full shrink-0 font-youth font-bold text-xs sm:text-sm px-3 py-2 sm:p-3 ${getStatusColorClasses(order?.bookingStatus?.title)}`}>
-                            {order?.bookingStatus?.title}
-                          </button>
-                        </div>
-
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
-                          <div className="flex gap-2 items-center py-2">
-                            <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                            <div>
-                              <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                                Pick up
-                              </p>
-                              <p className="font-sf text-base sm:text-xl">
-                                {formatDate(order?.collectionDate)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                            <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {formatTo24Hour(order?.collectionTimeFrom)} - {formatTo24Hour(order?.collectionTimeTo)}
-                          </p>
-                        </div>
-
-                        <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
-                          <div className="flex gap-2 items-center py-2">
-                            <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
-                            <div>
-                              <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
-                                Drop off
-                              </p>
-                              <p className="font-sf text-base sm:text-xl">
-                                {formatDate(order?.deliveryDate)}
-                              </p>
-                            </div>
-                          </div>
-
-                          <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-                            <GoClock size={18} className="sm:w-5 sm:h-5" />
-                            {formatTo24Hour(order?.deliveryTimeFrom)} - {formatTo24Hour(order?.deliveryTimeTo)}
-                          </p>
-                        </div>
-
-                        <p className="font-sf text-base text-theme-psGray">
-                          {order?.driverInstruction}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </>
+              {visibleBookings.length > 0 ? (
+                <div className="space-y-5">
+                  {visibleBookings.map((order) => renderBookingCard(order))}
+                </div>
+              ) : (
+                <div className="w-full xl:max-w-[859px] rounded-2xl border border-dashed border-[#D9DEE8] bg-[#FBFBFB] px-6 py-12 text-center">
+                  <p className="font-youth font-bold text-lg text-theme-blue">
+                    {bookingTab === "active"
+                      ? "No active bookings"
+                      : "No past bookings"}
+                  </p>
+                  <p className="font-sf text-sm text-theme-psGray mt-2">
+                    {bookingTab === "active"
+                      ? "Your current orders will appear here."
+                      : "Completed and cancelled orders will appear here."}
+                  </p>
+                </div>
               )}
             </>
           )}
         </div>
 
         {/* Desktop/Tablet Side Panel - Hidden on mobile */}
-        {bookingDtails && !bookingDetailsLoading ? (
+        {manageOrder?.orderId ? (
           <div
-            className={`hidden md:block w-full max-w-[600px] h-max px-4 sm:px-6 py-4 shadow-theme-shadow-light rounded-[20px] transition-all duration-500 ease-in-out ${showOrderDetails
-              ? 'opacity-100 translate-x-0'
-              : 'opacity-0 translate-x-4'
-              }`}
+            className={`hidden md:flex md:flex-col w-full max-w-[600px] shrink-0 min-h-0 sticky top-4 self-start h-[calc(100vh-6rem)] overflow-hidden shadow-theme-shadow-light rounded-[20px] transition-all duration-500 ease-in-out ${
+              showOrderDetails || isBookingDetailsLoading
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 translate-x-4"
+            }`}
           >
-            {renderOrderDetailsContent()}
+            {bookingDtails?.data?.orderTrackId ? (
+              <div
+                className={`pointer-events-none absolute transition-all duration-300 ease-in-out font-sf ${
+                  panelScroll
+                    ? "translate-y-0 opacity-100"
+                    : "-translate-y-full opacity-0"
+                } top-0 left-0 z-20 bg-white w-full shadow-md rounded-t-[20px]`}
+              >
+                <div className="flex justify-center items-center w-full h-[58px] px-4">
+                  <h2
+                    className={`font-youth font-bold sm:text-[22px] text-center transition-all duration-500 ease-in-out ${
+                      panelScroll
+                        ? "translate-y-0 opacity-100 delay-500"
+                        : "-translate-y-4 opacity-0 delay-0"
+                    }`}
+                  >
+                    Order ID: {bookingDtails.data.orderTrackId}
+                  </h2>
+                </div>
+              </div>
+            ) : null}
+
+            <div
+              onScroll={handlePanelScroll}
+              className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain hideScrollbar modal-scroll px-4 sm:px-6 pt-4 pb-8"
+            >
+              {bookingDtails?.data?.orderTrackId && !isBookingDetailsLoading ? (
+                <div className="h-[58px] shrink-0 flex items-center justify-center relative border-b border-theme-gray-2 -mx-4 sm:-mx-6 px-4 sm:px-6 mb-2">
+                  <h4 className="font-youth font-bold sm:text-[22px] text-center">
+                    Order ID: {bookingDtails.data.orderTrackId}
+                  </h4>
+                </div>
+              ) : null}
+              {renderOrderDetailsPanel({ panelLayout: true })}
+            </div>
           </div>
-        ) : (
-          ""
-        )}
+        ) : null}
       </div>
 
       {/* Mobile Order Details Modal - Bottom Sheet */}
@@ -1322,7 +1849,7 @@ export default function OrderHistory() {
         onOpenChange={(open) => {
           onOrderDetailsModalOpenChange(open);
           if (!open) {
-            setManageOrder({ ...manageOrder, orderId: "" });
+            setManageOrder({ manage: false, modType: "track", orderId: "" });
           }
         }}
         onClose={onOrderDetailsModalClose}
@@ -1347,7 +1874,7 @@ export default function OrderHistory() {
         }}
       >
         <div className="w-full h-full px-4 sm:px-6 py-4 overflow-y-auto">
-          {renderOrderDetailsContent()}
+          {renderOrderDetailsPanel()}
         </div>
       </ReusableModal>
 
@@ -1378,11 +1905,11 @@ export default function OrderHistory() {
         {manageOrder?.modType === "track" ? (
           <div
             onScroll={handleModalScroll}
-            className="modal-scroll overflow-auto"
+            className="modal-scroll overflow-auto max-h-[85vh]"
           >
             <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
               <h4 className="font-youth font-bold sm:text-[22px] text-center">
-                Order ID: {bookingDtails?.data?.orderTrackId}
+                Track Order
               </h4>
 
               <p
@@ -1393,68 +1920,158 @@ export default function OrderHistory() {
               </p>
             </div>
 
-            <div className="w-full px-6 py-4 font-sf flex justify-between items-center">
-              <p className="font-sf font-semibold cursor-pointer">
-                Order Status
-              </p>
-              <button className={`rounded-full shrink-0 font-youth font-bold text-sm px-3 py-1.5 ${getStatusColorClasses(bookingDtails?.data?.bookingStatus?.title)}`}>
-                {bookingDtails?.data?.bookingStatus?.title}
-              </button>
-            </div>
-
-            <div className="w-full px-6 py-2 font-sf">
-              <p className="text-theme-psGray text-sm w-max ml-auto">
-                02-13-2025, 12:40
-              </p>
-              <div className="flex items-center gap-5">
-                <div>
-                  <img src="/images/statuses/image1.png" alt="status image" />
-                </div>
-
-                <div>
-                  <h6 className="font-semibold">Order Created</h6>
-                  <p className="text-theme-psGray text-sm">
-                    Your Order has been created
+            {isBookingDetailsLoading ? (
+              <div className="flex justify-center py-16">
+                <Spinner />
+              </div>
+            ) : (
+              <>
+                <div className="w-full px-6 pt-4 pb-2 font-sf">
+                  <p className="text-sm text-theme-psGray">
+                    Order ID:{" "}
+                    <span className="font-semibold text-gray-900">
+                      #{bookingDtails?.data?.orderTrackId || manageOrder?.orderId}
+                    </span>
                   </p>
                 </div>
-              </div>
-            </div>
 
-            <div className="w-full px-6 py-2 font-sf">
-              <p className="text-theme-psGray text-sm w-max ml-auto">
-                02-13-2025, 12:40
-              </p>
-              <div className="flex items-center gap-5">
-                <div>
-                  <img src="/images/statuses/image2.png" alt="status image" />
+                <div className="w-full px-6 py-3 font-sf flex justify-between items-start gap-3">
+                  <div>
+                    <p className="font-sf font-semibold">Order Status</p>
+                    <p className="text-sm text-theme-psGray mt-1">
+                      {bookingDtails?.data?.trackCurrentStatus?.message ||
+                        bookingDtails?.data?.bookingStatus?.description ||
+                        ""}
+                    </p>
+                  </div>
+                  <button
+                    className={`rounded-full shrink-0 font-youth font-bold text-sm px-3 py-1.5 ${getStatusColorClasses(
+                      bookingDtails?.data?.trackCurrentStatus?.title ||
+                        bookingDtails?.data?.bookingStatus?.title
+                    )}`}
+                  >
+                    {bookingDtails?.data?.trackCurrentStatus?.title ||
+                      bookingDtails?.data?.bookingStatus?.title ||
+                      "—"}
+                  </button>
                 </div>
 
-                <div>
-                  <h6 className="font-semibold">Order Confirmed</h6>
-                  <p className="text-theme-psGray text-sm line-clamp-2">
-                    The booking has been confirmed and is ready for co...
-                  </p>
-                </div>
-              </div>
-            </div>
+                {bookingDtails?.data?.actionRequired ? (
+                  <div className="mx-6 mb-3 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 space-y-3">
+                    <div>
+                      <p className="font-youth font-bold text-sm text-red-600">
+                        {bookingDtails.data.actionRequired.title || "Action Required"}
+                      </p>
+                      <p className="font-sf text-sm text-theme-psGray mt-1">
+                        {bookingDtails.data.actionRequired.message}
+                      </p>
+                    </div>
+                    <PurpleButton
+                      text="Reschedule"
+                      onClick={handleScheduleAgain}
+                    />
+                  </div>
+                ) : null}
 
-            <div className="w-full px-6 py-2 font-sf mb-5">
-              <p className="text-theme-psGray text-sm w-max ml-auto">
-                02-13-2025, 12:40
-              </p>
-              <div className="flex items-center gap-5">
-                <div>
-                  <img src="/images/statuses/image3.png" alt="status image" />
+                <div className="px-6 mb-4">
+                  <LiveTrackingAction
+                    bookingStatusId={resolveBookingStatusId(bookingDtails?.data)}
+                    onTrack={() => {
+                      onClose();
+                      onLiveMapOpen();
+                    }}
+                  />
                 </div>
 
-                <div>
-                  <h6 className="font-semibold">Driver Out for PickUp</h6>
-                  <p className="text-theme-psGray text-sm line-clamp-2">
-                    Driver accepted the booking and coming for lau...
-                  </p>
+                <div className="w-full px-6 pb-6">
+                  {(bookingDtails?.data?.trackTimeline || []).length === 0 ? (
+                    <p className="font-sf text-sm text-theme-psGray py-8 text-center">
+                      Tracking updates will appear here as your order progresses.
+                    </p>
+                  ) : (
+                    <div className="relative">
+                      {(bookingDtails?.data?.trackTimeline || []).map(
+                        (event, index, list) => {
+                          const isLast = index === list.length - 1;
+                          const stampDate = event?.date
+                            ? formatDate(event.date)
+                            : "";
+                          const stampTime = event?.time
+                            ? formatTimeToAmPm(event.time)
+                            : "";
+                          const isException = Boolean(event?.isException);
+                          return (
+                            <div
+                              key={event.id || `${event.title}-${index}`}
+                              className="relative flex gap-4 pb-5 last:pb-0"
+                            >
+                              <div className="flex flex-col items-center">
+                                {index === 0 ? (
+                                  <div
+                                    className={`track-current-dot${
+                                      isException
+                                        ? " track-current-dot--exception"
+                                        : ""
+                                    }`}
+                                    aria-hidden="true"
+                                  >
+                                    <span className="track-current-dot__ring" />
+                                    <span className="track-current-dot__ring track-current-dot__ring--delayed" />
+                                    <span className="track-current-dot__core" />
+                                  </div>
+                                ) : (
+                                  <div
+                                    className={`w-3 h-3 rounded-full mt-1.5 shrink-0 ${
+                                      isException ? "bg-red-500" : "bg-gray-300"
+                                    }`}
+                                  />
+                                )}
+                                {!isLast ? (
+                                  <div className="w-px flex-1 bg-gray-200 mt-1" />
+                                ) : null}
+                              </div>
+                              <div className="flex-1 min-w-0 pb-1">
+                                <div className="flex items-start justify-between gap-3">
+                                  <h6
+                                    className={`font-semibold font-sf ${
+                                      isException ? "text-red-600" : "text-gray-900"
+                                    }`}
+                                  >
+                                    {event.title}
+                                  </h6>
+                                  <p className="font-sf text-xs text-theme-psGray whitespace-nowrap shrink-0">
+                                    {[stampDate, stampTime]
+                                      .filter(Boolean)
+                                      .join(", ")}
+                                  </p>
+                                </div>
+                                <p
+                                  className={`font-sf text-sm mt-1 ${
+                                    isException
+                                      ? "text-red-500"
+                                      : "text-theme-psGray"
+                                  }`}
+                                >
+                                  {event.message}
+                                </p>
+                                {event.attemptNumber ? (
+                                  <p className="font-sf text-xs text-theme-psGray mt-1">
+                                    Attempt {event.attemptNumber}
+                                    {event.attemptType
+                                      ? ` · ${event.attemptType}`
+                                      : ""}
+                                  </p>
+                                ) : null}
+                              </div>
+                            </div>
+                          );
+                        }
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-            </div>
+              </>
+            )}
           </div>
         ) : manageOrder?.modType === "iron" ? (
           <div
@@ -1562,6 +2179,42 @@ export default function OrderHistory() {
         )}
       </ReusableModal>
 
+      {/* Live driver map — mirrors customer app LiveTrackingMapScreen */}
+      <ReusableModal
+        isDismissable={true}
+        isOpen={isLiveMapOpen}
+        onOpenChange={onLiveMapOpenChange}
+        showHeader={true}
+        headerTitle="Live tracking"
+        modalScroll={false}
+        onBack={false}
+        onClose={() => onLiveMapClose()}
+        showFooter={false}
+        onFooterAction={() => false}
+        size="5xl"
+        backdrop="blur"
+        className="custom-modal-class max-h-[95vh] overflow-hidden"
+      >
+        <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+          <h4 className="font-youth font-bold sm:text-[22px] text-center">
+            Live tracking
+          </h4>
+          <p
+            onClick={() => onLiveMapClose()}
+            className="font-sf text-base absolute top-4 right-4 cursor-pointer"
+          >
+            Close
+          </p>
+        </div>
+        {isLiveMapOpen && manageOrder?.orderId ? (
+          <LiveTrackingMap
+            bookingId={manageOrder.orderId}
+            orderTrackId={bookingDtails?.data?.orderTrackId}
+            onClose={onLiveMapClose}
+          />
+        ) : null}
+      </ReusableModal>
+
       {/* Cancel Order Confirmation Modal */}
       <ReusableModal
         isDismissable={true}
@@ -1651,16 +2304,14 @@ export default function OrderHistory() {
               )}
             </div>
 
-            {/* Warning Message */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <p className="font-sf text-sm text-yellow-800">
-                <strong>Note:</strong> Cancellation charges may apply based on
-                your order status and cancellation policy.
-              </p>
-            </div>
-
-            {/* Active Cancellation Policy */}
-            {cancellationPolicySummary && (
+            {/* Cancellation fee preview for this order */}
+            {bookingDtails?.data?.cancellationSummary ? (
+              <CancellationSummaryCard
+                cancellationPolicy={bookingDtails.data.cancellationPolicy}
+                cancellationSummary={bookingDtails.data.cancellationSummary}
+                compact
+              />
+            ) : cancellationPolicySummary ? (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
                 <p className="font-sf text-sm font-semibold text-gray-800">
                   Active Cancellation Policy ({cancellationPolicySummary.name})
@@ -1683,7 +2334,7 @@ export default function OrderHistory() {
                     : ""}
                 </p>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       </ReusableModal>

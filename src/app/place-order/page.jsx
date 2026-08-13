@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import InputHeroUi from "../../../components/InputHeroUi";
 import { ButtonYouth70018 } from "../../../components/Buttons";
 import { PiArrowRight } from "react-icons/pi";
@@ -11,13 +11,21 @@ import { Spinner, addToast, useDisclosure } from "@heroui/react";
 import { IoSearchOutline } from "react-icons/io5";
 import { TbLocation } from "react-icons/tb";
 import { useRouter } from "next/navigation";
-import { generateCollectionSlots } from "../../../utilities/generateSlots";
+import {
+  fetchBookingSlots,
+  fetchZoneForCoordinates,
+} from "../../../utilities/bookingSlotsApi";
+import { useLiveClock } from "../../../utilities/useLiveClock";
 import { useDispatch, useSelector } from "react-redux";
-import { setOrderData, setPage } from "../store/slices/cartItemSlice";
+import { setOrderData, setPage, clearCartData } from "../store/slices/cartItemSlice";
 import {
   useGetAllAddressQuery,
   useGetServicesQuery,
+  useGetAllOrdersQuery,
+  useRescheduleBookingMutation,
 } from "../store/services/api";
+import { to24Hour } from "../../../utilities/ConversionFunction";
+import { getFailedAttemptBookings } from "../../../utilities/bookingAttemptStatus";
 import {
   buildDeliveryUpdateForMinDate,
   formatIsoDateLong,
@@ -46,16 +54,85 @@ const delivery = [
   { key: "Deliver to the Reception/Porter", label: "Deliver to the Reception/Porter" },
 ];
 
+function SlotTimezoneBanner({ operational, clientLocal }) {
+  const { time: liveOperationalTime, abbrev: liveOperationalAbbrev } =
+    useLiveClock(operational?.ianaTimeZone);
+  const { time: liveClientTime } = useLiveClock(clientLocal?.ianaTimeZone);
+
+  if (!operational) return null;
+  const showLocal =
+    clientLocal?.ianaTimeZone &&
+    clientLocal.ianaTimeZone !== operational.ianaTimeZone;
+  const opAbbrev =
+    liveOperationalAbbrev || operational.abbreviationNow || "";
+  const opNow = liveOperationalTime || operational.nowFormatted || "";
+  const clientNow = liveClientTime || clientLocal?.nowFormatted || "";
+
+  return (
+    <div className="rounded-xl bg-theme-gray/80 px-4 py-3 text-sm font-sf space-y-1 mb-4">
+      <p>
+        Times in{" "}
+        <span className="font-semibold">{operational.displayLabel}</span>
+        {opAbbrev ? ` (${opAbbrev}, now ${opNow})` : ` (now ${opNow})`}
+      </p>
+      {showLocal ? (
+        <p className="text-theme-psGray">
+          Your local ({clientLocal.ianaTimeZone}): now {clientNow}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export default function orderRegistration() {
   const router = useRouter();
   const orderData = useSelector((state) => state.cart.orderData);
   const preferencesData = useSelector((state) => state.cart.preferences) || [];
-  const { data: servicesApiData } = useGetServicesQuery();
+  const { data: servicesApiData } = useGetServicesQuery(undefined, {
+    refetchOnMountOrArgChange: true,
+  });
   const isRescheduleFlow = Boolean(orderData?.rescheduleData?.isReschedule);
+  const isDeliveryOnlyReschedule = isRescheduleFlow && orderData?.rescheduleData?.rescheduleType === "delivery";
   const state = history.state?.customData?.step || null;
   const dispatch = useDispatch();
+  const [rescheduleBooking, { isLoading: isRescheduling }] =
+    useRescheduleBookingMutation();
   const { data } = useGetAllAddressQuery();
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
+  const {
+    isOpen: isFailedAttemptModalOpen,
+    onOpen: onFailedAttemptModalOpen,
+    onClose: onFailedAttemptModalClose,
+    onOpenChange: onFailedAttemptModalOpenChange,
+  } = useDisclosure();
+  const [failedAttemptModalShown, setFailedAttemptModalShown] = useState(false);
+  const isLoggedIn =
+    typeof window !== "undefined" && !!localStorage.getItem("loginStatus");
+  const { data: ordersData } = useGetAllOrdersQuery(undefined, {
+    skip: !isLoggedIn,
+    refetchOnMountOrArgChange: true,
+  });
+  const failedAttemptBookings = useMemo(
+    () => getFailedAttemptBookings(ordersData?.data),
+    [ordersData]
+  );
+
+  useEffect(() => {
+    if (failedAttemptModalShown) return;
+    if (failedAttemptBookings.length === 0) return;
+    if (isRescheduleFlow) return;
+    const t = setTimeout(() => {
+      setFailedAttemptModalShown(true);
+      onFailedAttemptModalOpen();
+    }, 300);
+    return () => clearTimeout(t);
+  }, [failedAttemptBookings, failedAttemptModalShown, onFailedAttemptModalOpen, isRescheduleFlow]);
+
+  const goToFailedAttemptOrder = (bookingId) => {
+    onFailedAttemptModalClose();
+    router.push(`/profile?tab=order-history&bookingId=${bookingId}`);
+  };
+
   const [step, setStep] = useState(state ?? "get-started");
   const [isCheckingZone, setIsCheckingZone] = useState(false);
   const [modal, setModal] = useState({
@@ -90,30 +167,12 @@ export default function orderRegistration() {
   const clientTimeZone =
     Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
 
-  const slots = generateCollectionSlots({
-    daysCount: 7, // next 7 calendar days (includes Sat/Sun)
-    slotDurationInHours: 1,
-    lastHour: 19, // 7 PM
-    startAfterHours: 2, // show slots starting 2 hours ahead
-    includeWeekends: true,
-  });
-
-  /* Longer horizon than collection (7d) so last pickup day still has later delivery days */
-  const slotsDelivery = generateCollectionSlots({
-    daysCount: 21,
-    slotDurationInHours: 1,
-    lastHour: 19, // 7 PM
-    startAfterHours: 24,
-    includeWeekends: true,
-  });
-
-  const getLocalDateString = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
+  const [slots, setSlots] = useState([]);
+  const [slotsDelivery, setSlotsDelivery] = useState([]);
+  const [slotsOperational, setSlotsOperational] = useState(null);
+  const [slotsClientLocal, setSlotsClientLocal] = useState(null);
+  const [zoneInfo, setZoneInfo] = useState(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
   /** ISO yyyy-mm-dd → "April 2026" (avoids hardcoded month/year in modals) */
   const formatSlotMonthYear = (isoDate) => {
@@ -142,13 +201,11 @@ export default function orderRegistration() {
     return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${yy}`;
   };
 
-  const initialCollectionSlot = React.useMemo(() => {
-    const today = getLocalDateString();
-    return slots?.find((slot) => slot.date === today) || slots?.[0] || null;
-  }, [slots]);
+  const initialCollectionSlot = useMemo(() => slots?.[0] || null, [slots]);
 
-  const initialDeliverySlot = React.useMemo(() => {
-    const baseDate = initialCollectionSlot?.date || getLocalDateString();
+  const initialDeliverySlot = useMemo(() => {
+    const baseDate = initialCollectionSlot?.date;
+    if (!baseDate) return slotsDelivery?.[0] || null;
     return (
       slotsDelivery?.find((slot) => slot.date > baseDate) ||
       slotsDelivery?.[0] ||
@@ -207,6 +264,191 @@ export default function orderRegistration() {
     if (!collectionData?.collectionDate) return "";
     return getMinDeliveryDate(collectionData.collectionDate, cartMaxTurnaroundDays);
   }, [collectionData?.collectionDate, cartMaxTurnaroundDays]);
+
+  const loadDeliverySlotsForCountry = async (countryId, fromDate) => {
+    const delData = await fetchBookingSlots({
+      countryId,
+      clientTimeZone,
+      type: "delivery",
+      daysCount: 21,
+      fromDate: fromDate || undefined,
+    });
+    setSlotsDelivery(delData.days || []);
+    return delData;
+  };
+
+  const loadSlotsForPickupAddress = async (
+    lat,
+    lng,
+    { preserveSchedule = false } = {}
+  ) => {
+    setSlotsLoading(true);
+    try {
+      const zone = await fetchZoneForCoordinates(lat, lng);
+      setZoneInfo(zone);
+
+      const colData = await fetchBookingSlots({
+        countryId: zone.countryId,
+        clientTimeZone,
+        type: "collection",
+        daysCount: 7,
+      });
+      setSlots(colData.days || []);
+      setSlotsOperational(colData.operational || null);
+      setSlotsClientLocal(colData.clientLocal || null);
+
+      const firstDay = colData.days?.[0];
+      const firstSlot = firstDay?.timeSlots?.[0];
+      if (firstDay && firstSlot) {
+        let resolvedCollectionDate = firstDay.date;
+        if (preserveSchedule && collectionData?.collectionDate) {
+          const matchedCollectionDay = colData.days?.find(
+            (d) => d.date === collectionData.collectionDate
+          );
+          if (matchedCollectionDay) {
+            resolvedCollectionDate = matchedCollectionDay.date;
+          }
+        }
+
+        setCollectionData((prev) => {
+          let day = firstDay;
+          let slot = firstSlot;
+          if (preserveSchedule && prev.collectionDate) {
+            const matchedDay = colData.days?.find(
+              (d) => d.date === prev.collectionDate
+            );
+            if (matchedDay?.timeSlots?.length) {
+              day = matchedDay;
+              slot =
+                matchedDay.timeSlots.find(
+                  (s) => s.start === prev.collectionTimeFrom
+                ) || matchedDay.timeSlots[0];
+            }
+          }
+          return {
+            ...prev,
+            collectionDate: day.date,
+            collectionTimeFrom: slot.start,
+            collectionTimeTo: slot.end,
+            availableTimeSlots: day.timeSlots,
+            operationalTimeZone: colData.operational?.ianaTimeZone,
+            timeZone: colData.operational?.ianaTimeZone,
+            clientTimeZone,
+          };
+        });
+
+        const minDel =
+          getMinDeliveryDate(resolvedCollectionDate, cartMaxTurnaroundDays) ||
+          resolvedCollectionDate;
+        const delData = await loadDeliverySlotsForCountry(zone.countryId, minDel);
+        setDeliveryData((prev) => {
+          const firstDel =
+            delData.days?.find((d) => d.date >= minDel) || delData.days?.[0];
+          const firstDelSlot = firstDel?.timeSlots?.[0];
+          if (!firstDel || !firstDelSlot) return prev;
+
+          let day = firstDel;
+          let slot = firstDelSlot;
+          if (preserveSchedule && prev.deliveryDate) {
+            const matchedDay = delData.days?.find(
+              (d) => d.date === prev.deliveryDate
+            );
+            if (matchedDay?.timeSlots?.length) {
+              day = matchedDay;
+              slot =
+                matchedDay.timeSlots.find(
+                  (s) => s.start === prev.deliveryTimeFrom
+                ) || matchedDay.timeSlots[0];
+            }
+          }
+
+          return {
+            ...prev,
+            deliveryDate: day.date,
+            deliveryTimeFrom: slot.start,
+            deliveryTimeTo: slot.end,
+            availableTimeSlots: day.timeSlots,
+            operationalTimeZone: colData.operational?.ianaTimeZone,
+            timeZone: colData.operational?.ianaTimeZone,
+            clientTimeZone,
+          };
+        });
+      }
+    } catch (err) {
+      addToast({
+        title: err?.message || "Could not load time slots for this address.",
+        color: "danger",
+      });
+      setSlots([]);
+      setSlotsDelivery([]);
+      setSlotsOperational(null);
+      setSlotsClientLocal(null);
+    } finally {
+      setSlotsLoading(false);
+    }
+  };
+
+  const deliverySlotsFetchKeyRef = useRef(null);
+
+  useEffect(() => {
+    if (!collectionData?.lat || !collectionData?.lng) return;
+    deliverySlotsFetchKeyRef.current = null;
+    loadSlotsForPickupAddress(collectionData.lat, collectionData.lng, {
+      preserveSchedule: isRescheduleFlow,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collectionData?.lat, collectionData?.lng, clientTimeZone, isRescheduleFlow]);
+
+  // Delivery slots: fetch once when delivery modal opens (not on every collection date tap)
+  useEffect(() => {
+    if (!isOpen) {
+      deliverySlotsFetchKeyRef.current = null;
+      return;
+    }
+    if (
+      modal?.modType !== "delivery-date" ||
+      !zoneInfo?.countryId ||
+      !collectionData?.collectionDate
+    ) {
+      return;
+    }
+    const minStr =
+      minDeliveryForCart ||
+      getMinDeliveryDate(collectionData.collectionDate, 0);
+    const fetchKey = `${zoneInfo.countryId}-${minStr}-${clientTimeZone}`;
+    if (deliverySlotsFetchKeyRef.current === fetchKey) return;
+    deliverySlotsFetchKeyRef.current = fetchKey;
+
+    loadDeliverySlotsForCountry(zoneInfo.countryId, minStr)
+      .then((delData) => {
+        setDeliveryData((prev) => {
+          const day =
+            delData.days?.find((d) => d.date === prev.deliveryDate) ||
+            delData.days?.find((d) => d.date >= minStr) ||
+            delData.days?.[0];
+          if (!day?.timeSlots?.length) return prev;
+          const slot =
+            day.timeSlots.find((s) => s.start === prev.deliveryTimeFrom) ||
+            day.timeSlots[0];
+          return {
+            ...prev,
+            deliveryDate: day.date,
+            deliveryTimeFrom: slot.start,
+            deliveryTimeTo: slot.end,
+            availableTimeSlots: day.timeSlots,
+          };
+        });
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    isOpen,
+    modal?.modType,
+    zoneInfo?.countryId,
+    collectionData?.collectionDate,
+    minDeliveryForCart,
+    clientTimeZone,
+  ]);
 
   // Parse time string to minutes since midnight for comparison (handles "1:00 PM", "10:00 AM", or "13:00:00")
   const parseTimeToMinutes = (timeStr) => {
@@ -698,6 +940,9 @@ export default function orderRegistration() {
     }
 
     const selectedTimeZone =
+      collectionData?.operationalTimeZone ||
+      zoneInfo?.operationalTimeZone ||
+      zoneInfo?.ianaTimeZone ||
       collectionData?.timeZone ||
       orderData?.timeZone ||
       orderData?.rescheduleData?.timeZone ||
@@ -758,9 +1003,66 @@ export default function orderRegistration() {
     };
 
     dispatch(setOrderData(nextOrderData));
+
+    // Reschedule flow (failed pickup/delivery): submit directly and skip the
+    // services/checkout page — only the schedule changes, services stay the same.
+    if (isRescheduleFlow) {
+      await submitReschedule(selectedTimeZone);
+      return;
+    }
+
     setStep("");
     onClose();
     router.push("/checkout/order");
+  };
+
+  const submitReschedule = async (timeZone) => {
+    const payload = {
+      bookingId: Number(orderData?.rescheduleData?.bookingId),
+      collectionDate: collectionData?.collectionDate,
+      collectionTimeFrom: to24Hour(collectionData?.collectionTimeFrom),
+      collectionTimeTo: to24Hour(collectionData?.collectionTimeTo),
+      deliveryDate: deliveryData?.deliveryDate,
+      deliveryTimeFrom: to24Hour(deliveryData?.deliveryTimeFrom),
+      deliveryTimeTo: to24Hour(deliveryData?.deliveryTimeTo),
+      timeZone,
+      clientTimeZone,
+      reasonText:
+        orderData?.rescheduleData?.reasonText?.trim() || "My plans changed",
+      rescheduleType: orderData?.rescheduleData?.rescheduleType || "full",
+    };
+
+    try {
+      const response = await rescheduleBooking(payload).unwrap();
+      if (response?.status === "1") {
+        dispatch(clearCartData());
+        addToast({
+          title: "Reschedule Booking",
+          description: response?.message || "Booking rescheduled successfully.",
+          color: "success",
+        });
+        router.replace(
+          `/profile?tab=order-history&bookingId=${payload.bookingId}`
+        );
+      } else {
+        addToast({
+          title: "Reschedule Booking",
+          description:
+            response?.error || response?.message || "Failed to reschedule booking.",
+          color: "danger",
+        });
+      }
+    } catch (error) {
+      addToast({
+        title: "Reschedule Booking",
+        description:
+          error?.data?.error ||
+          error?.data?.message ||
+          error?.message ||
+          "Failed to reschedule booking.",
+        color: "danger",
+      });
+    }
   };
 
   const handleProceedToCheckout = async () => {
@@ -958,6 +1260,10 @@ export default function orderRegistration() {
                             postalCode: next,
                           }))
                         }
+                        onPostcodeSelected={() => {
+                          setModal((prev) => ({ ...prev, modType: "address" }));
+                          onOpen();
+                        }}
                       />
                     )}
                     <div
@@ -980,14 +1286,17 @@ export default function orderRegistration() {
 
                     <div
                       onClick={() => {
+                        if (isDeliveryOnlyReschedule) return;
                         setModal({ ...modal, modType: "collection-date" });
                         onOpen();
                       }}
+                      className={isDeliveryOnlyReschedule ? "pointer-events-none opacity-60" : ""}
                     >
                       <InputHeroUi
                         type="text"
                         label="Collection"
                         value={formatIsoDateAsDdMmYy(collectionData?.collectionDate)}
+                        isDisabled={isDeliveryOnlyReschedule}
                         endContent={
                           <span className="whitespace-nowrap">
                             {collectionData?.collectionTimeFrom
@@ -1005,12 +1314,14 @@ export default function orderRegistration() {
                       label="Select collection method"
                       list={collection}
                       value={[collectionData?.driverInstructionOptions]}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        if (isDeliveryOnlyReschedule) return;
                         setCollectionData({
                           ...collectionData,
                           driverInstructionOptions: e.target.value,
-                        })
-                      }
+                        });
+                      }}
+                      isDisabled={isDeliveryOnlyReschedule}
                     />
 
                     <div
@@ -1078,9 +1389,19 @@ export default function orderRegistration() {
                     </div>
                     <div className="pt-6 pb-10">
                       <ButtonYouth70018
-                        text={isCheckingZone ? "Checking..." : "Continue"}
+                        text={
+                          isCheckingZone
+                            ? "Checking..."
+                            : isRescheduling
+                              ? "Rescheduling..."
+                              : isRescheduleFlow
+                                ? "Reschedule"
+                                : "Continue"
+                        }
+                        isPending={isRescheduling}
                         isDisabled={
                           isCheckingZone ||
+                          isRescheduling ||
                           isDeliveryBeforeMinimum ||
                           isDeliverySameOrBeforeCollection ||
                           isSameDayDeliveryBeforeCollection ||
@@ -1181,10 +1502,11 @@ export default function orderRegistration() {
                 </p>
               </div>
 
-              <div className="w-full px-6 py-8">
+              <div className="w-full px-6 py-6 flex flex-col gap-4 max-h-[75vh] overflow-y-auto modal-scroll">
                 {renderModalAddressSearch()}
 
-                <div className="flex items-center gap-5 pt-4">
+                <div className="border-t border-gray-100 pt-4 space-y-4">
+                <div className="flex items-center gap-5">
                   <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
                     <TbLocation size={20} />
                   </div>
@@ -1205,7 +1527,7 @@ export default function orderRegistration() {
                 {data?.data &&
                   data?.data?.map((add) => {
                     return (
-                      <div className="flex items-center gap-5 pt-4">
+                      <div key={add?.id} className="flex items-center gap-5">
                         <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
                           <TbLocation size={20} />
                         </div>
@@ -1224,6 +1546,7 @@ export default function orderRegistration() {
                       </div>
                     );
                   })}
+                </div>
               </div>
             </div>
           ) : modal?.modType === "collection-date" ? (
@@ -1245,6 +1568,20 @@ export default function orderRegistration() {
               </div>
 
               <div className="w-full px-6 py-6">
+                <SlotTimezoneBanner
+                  operational={slotsOperational}
+                  clientLocal={slotsClientLocal}
+                />
+                {slotsLoading && !slots?.length ? (
+                  <div className="flex justify-center py-8">
+                    <Spinner />
+                  </div>
+                ) : null}
+                {!slotsLoading && !slots?.length ? (
+                  <p className="font-sf text-sm text-theme-psGray pb-4">
+                    Select a pickup address to see available collection times.
+                  </p>
+                ) : null}
                 <div className="space-y-5">
                   <h6 className="font-sf text-xl font-medium">
                     {formatSlotMonthYear(
@@ -1261,10 +1598,15 @@ export default function orderRegistration() {
                         >
                           <div
                             onClick={() => {
+                              const firstSlot = item?.timeSlots?.[0];
                               setCollectionData({
                                 ...collectionData,
                                 collectionDate: item?.date,
                                 availableTimeSlots: item?.timeSlots,
+                                collectionTimeFrom:
+                                  firstSlot?.start || collectionData?.collectionTimeFrom,
+                                collectionTimeTo:
+                                  firstSlot?.end || collectionData?.collectionTimeTo,
                               });
                             }}
                             className={`text-2xl font-semibold size-14 rounded-full shrink-0 flex items-center justify-center ${collectionData?.collectionDate === item?.date
@@ -1305,17 +1647,26 @@ export default function orderRegistration() {
                             collectionTimeTo: item?.end,
                           });
                         }}
-                        className={`w-full h-14 px-5 flex justify-between items-center  rounded-full shrink-0 font-sf font-semibold text-2xl ${collectionData?.collectionTimeFrom === item?.start
+                        className={`w-full min-h-14 px-5 py-2 flex flex-col justify-center rounded-full shrink-0 font-sf font-semibold text-2xl ${collectionData?.collectionTimeFrom === item?.start
                           ? "bg-theme-blue text-white"
                           : "bg-theme-gray"
                           }`}
                       >
-                        <div className="flex items-center">
-                          {formatTo24HourDisplay(item?.start)}
+                        <div className="flex justify-between items-center w-full">
+                          <span>{formatTo24HourDisplay(item?.start)}</span>
+                          <span>{formatTo24HourDisplay(item?.end)}</span>
                         </div>
-                        <div className="flex items-center">
-                          {formatTo24HourDisplay(item?.end)}
-                        </div>
+                        {item?.local ? (
+                          <p
+                            className={`text-xs font-normal mt-0.5 ${collectionData?.collectionTimeFrom === item?.start
+                              ? "text-white/90"
+                              : "text-theme-psGray"
+                              }`}
+                          >
+                            Your time: {formatTo24HourDisplay(item.local.start12h)}{" "}
+                            – {formatTo24HourDisplay(item.local.end12h)}
+                          </p>
+                        ) : null}
                       </div>
                     );
                   })}
@@ -1337,10 +1688,11 @@ export default function orderRegistration() {
                 </p>
               </div>
 
-              <div className="w-full px-6 py-8">
+              <div className="w-full px-6 py-6 flex flex-col gap-4 max-h-[75vh] overflow-y-auto modal-scroll">
                 {renderModalAddressSearch()}
 
-                <div className="flex items-center gap-5 pt-4">
+                <div className="border-t border-gray-100 pt-4">
+                <div className="flex items-center gap-5">
                   <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
                     <TbLocation size={20} />
                   </div>
@@ -1356,6 +1708,7 @@ export default function orderRegistration() {
                       Fomino will use your location
                     </p>
                   </div>
+                </div>
                 </div>
               </div>
             </div>
@@ -1378,6 +1731,15 @@ export default function orderRegistration() {
               </div>
 
               <div className="w-full px-6 py-6">
+                <SlotTimezoneBanner
+                  operational={slotsOperational}
+                  clientLocal={slotsClientLocal}
+                />
+                {slotsLoading && !slotsDelivery?.length ? (
+                  <div className="flex justify-center py-8">
+                    <Spinner />
+                  </div>
+                ) : null}
                 <div className="space-y-5">
                   <h6 className="font-sf text-xl font-medium">
                     {formatSlotMonthYear(
@@ -1410,10 +1772,26 @@ export default function orderRegistration() {
                           >
                             <div
                               onClick={() => {
+                                const rawSlots = item?.timeSlots || [];
+                                const candidateSlots =
+                                  item?.date === collectionData?.collectionDate &&
+                                  collectionData?.collectionTimeTo
+                                    ? rawSlots.filter(
+                                        (slot) =>
+                                          parseTimeToMinutes(slot?.start) >=
+                                          parseTimeToMinutes(collectionData.collectionTimeTo)
+                                      )
+                                    : rawSlots;
+                                const firstSlot =
+                                  candidateSlots?.[0] || rawSlots?.[0];
                                 setDeliveryData({
                                   ...deliveryData,
                                   deliveryDate: item?.date,
                                   availableTimeSlots: item?.timeSlots,
+                                  deliveryTimeFrom:
+                                    firstSlot?.start || deliveryData?.deliveryTimeFrom,
+                                  deliveryTimeTo:
+                                    firstSlot?.end || deliveryData?.deliveryTimeTo,
                                 });
                               }}
                               className={`text-2xl font-semibold size-14 rounded-full shrink-0 flex items-center justify-center ${deliveryData?.deliveryDate === item?.date
@@ -1467,17 +1845,26 @@ export default function orderRegistration() {
                             deliveryTimeTo: item?.end,
                           });
                         }}
-                        className={`w-full h-14 px-5 flex justify-between items-center  rounded-full shrink-0 font-sf font-semibold text-2xl ${deliveryData?.deliveryTimeFrom === item?.start
+                        className={`w-full min-h-14 px-5 py-2 flex flex-col justify-center rounded-full shrink-0 font-sf font-semibold text-2xl ${deliveryData?.deliveryTimeFrom === item?.start
                           ? "bg-theme-blue text-white"
                           : "bg-theme-gray"
                           }`}
                       >
-                        <div className="flex items-center">
-                          {formatTo24HourDisplay(item?.start)}
+                        <div className="flex justify-between items-center w-full">
+                          <span>{formatTo24HourDisplay(item?.start)}</span>
+                          <span>{formatTo24HourDisplay(item?.end)}</span>
                         </div>
-                        <div className="flex items-center">
-                          {formatTo24HourDisplay(item?.end)}
-                        </div>
+                        {item?.local ? (
+                          <p
+                            className={`text-xs font-normal mt-0.5 ${deliveryData?.deliveryTimeFrom === item?.start
+                              ? "text-white/90"
+                              : "text-theme-psGray"
+                              }`}
+                          >
+                            Your time: {formatTo24HourDisplay(item.local.start12h)}{" "}
+                            – {formatTo24HourDisplay(item.local.end12h)}
+                          </p>
+                        ) : null}
                       </div>
                     ));
                   })()}
@@ -1499,10 +1886,11 @@ export default function orderRegistration() {
                 </p>
               </div>
 
-              <div className="w-full px-6 py-8">
+              <div className="w-full px-6 py-6 flex flex-col gap-4 max-h-[75vh] overflow-y-auto modal-scroll">
                 {renderModalAddressSearch()}
 
-                <div className="flex items-center gap-5 pt-4">
+                <div className="border-t border-gray-100 pt-4">
+                <div className="flex items-center gap-5">
                   <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
                     <TbLocation size={20} />
                   </div>
@@ -1518,6 +1906,7 @@ export default function orderRegistration() {
                       Fomino will use your location
                     </p>
                   </div>
+                </div>
                 </div>
               </div>
             </div>
@@ -1616,6 +2005,75 @@ export default function orderRegistration() {
                 {formatIsoDateLong(turnaroundModal.minDeliveryDate)}
               </span>
             </p>
+          </div>
+        </ReusableModal>
+
+        <ReusableModal
+          isOpen={isFailedAttemptModalOpen}
+          onOpenChange={onFailedAttemptModalOpenChange}
+          showHeader
+          headerTitle="Action Required"
+          modalScroll={modalScroll}
+          onClose={onFailedAttemptModalClose}
+          isDismissable
+          backdrop="blur"
+          size="sm"
+        >
+          <div
+            onScroll={handleModalScroll}
+            className="max-h-[85vh] overflow-y-auto modal-scroll"
+          >
+            <div className="px-6 pt-8 pb-6 space-y-5">
+              {/* Header */}
+              <div className="flex flex-col items-center text-center gap-2">
+                <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                </div>
+                <h3 className="font-youth font-bold text-[22px] text-gray-900">Action Required</h3>
+                <p className="font-sf text-base text-theme-psGray">
+                  {failedAttemptBookings.length === 1
+                    ? "One of your orders needs attention."
+                    : `${failedAttemptBookings.length} of your orders need attention.`}
+                </p>
+              </div>
+
+              {/* Order cards */}
+              <div className="space-y-3">
+                {failedAttemptBookings.map(({ order, attemptType }) => (
+                  <div
+                    key={order.id}
+                    className="rounded-2xl bg-red-50 border border-red-100 px-4 py-4 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-sf text-sm text-theme-psGray">Order ID</span>
+                      <span className="font-youth font-bold text-sm text-gray-900">
+                        #{order.orderTrackId || order.id}
+                      </span>
+                    </div>
+                    <p className="font-sf text-sm text-theme-psGray leading-snug">
+                      {attemptType === "delivery"
+                        ? "We were unable to deliver your laundry. Please reschedule your delivery slot."
+                        : "Our driver was unable to collect your laundry. Please reschedule your collection slot."}
+                    </p>
+                    <ButtonYouth70018
+                      size="compact"
+                      text="View Order"
+                      onClick={() => goToFailedAttemptOrder(order.id)}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Dismiss */}
+              <ButtonYouth70018
+                size="compact"
+                variant="outline"
+                text="Dismiss"
+                onClick={onFailedAttemptModalClose}
+              />
+            </div>
           </div>
         </ReusableModal>
 </HomeClientWrapper>

@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Header from "../../../../components/Header";
 import CategoryCard from "../../../../components/CategoryCard";
 import { MdKeyboardArrowRight, MdOutlineDryCleaning } from "react-icons/md";
@@ -40,6 +40,20 @@ import InputField from "../../../../components/InputHeroUi";
 import { FaRegEdit } from "react-icons/fa";
 import StripeCheckout from "../../../../utilities/StripeCheckout";
 import { useRouter } from "next/navigation";
+import BagsItemsWarningModal from "../../../../components/BagsItemsWarningModal";
+import { getServicesMissingBagsOrItems } from "../../../../utilities/checkoutBagsItems";
+import {
+  cartHasMixedWashDisclaimer,
+  WASH_BLEED_DISCLAIMER_TEXT,
+} from "../../../../utilities/washBleedDisclaimer";
+
+const parseServiceBooleanFlag = (value) =>
+  value === true || value === "true" || value === 1 || value === "1";
+
+const parseQuantityCount = (value) => {
+  const parsed = parseInt(String(value ?? "").replace(/\D/g, ""), 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+};
 
 export default function Payment() {
   const dispatch = useDispatch();
@@ -58,6 +72,31 @@ export default function Payment() {
   const customerId =
     typeof window !== "undefined" && localStorage.getItem("stripeCustomerId");
   const { data, isLoading } = useGetServicesQuery();
+  const serviceList = data?.data?.serviceData ?? [];
+
+  const showWashBleedDisclaimerInCart = useMemo(
+    () => cartHasMixedWashDisclaimer(preferencesData, serviceList),
+    [preferencesData, serviceList]
+  );
+
+  const useSharedBags = useMemo(() => {
+    const serviceCount = (preferencesData || []).filter((p) => p?.serviceId)
+      .length;
+    return serviceCount >= 2 && orderData?.sameBagForAllServices === true;
+  }, [preferencesData, orderData?.sameBagForAllServices]);
+
+  const sharedBagCount = parseQuantityCount(orderData?.totalBags);
+
+  const resolvedTotalBags = useMemo(() => {
+    if (useSharedBags) {
+      return sharedBagCount > 0 ? sharedBagCount : null;
+    }
+    const sum = (preferencesData || []).reduce((acc, item) => {
+      const n = parseQuantityCount(item?.bagsCount);
+      return acc + (n > 0 ? n : 0);
+    }, 0);
+    return sum > 0 ? sum : null;
+  }, [useSharedBags, sharedBagCount, preferencesData]);
   const { data: addressData, refetch: refetchCharges } = useGetChargesQuery(
     {
       lat: orderData?.collectionData?.lat,
@@ -72,8 +111,9 @@ export default function Payment() {
     skip: zoneId == null,
   });
   const serviceTimeZone =
-    addressData?.data?.zone?.timeZone ||
-    addressData?.data?.zoneTimeZone ||
+    orderData?.collectionData?.operationalTimeZone ||
+    addressData?.data?.operationalTimeZone ||
+    addressData?.data?.ianaTimeZone ||
     orderData?.rescheduleData?.timeZone ||
     orderData?.collectionData?.timeZone ||
     orderData?.timeZone ||
@@ -307,13 +347,110 @@ export default function Payment() {
     };
   }, [activePoliciesData]);
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
+  const {
+    isOpen: isBagsWarningOpen,
+    onOpen: onBagsWarningOpen,
+    onClose: onBagsWarningClose,
+    onOpenChange: onBagsWarningOpenChange,
+  } = useDisclosure();
+  const skipBagsCheckRef = useRef(false);
+  const proceedAfterWarningRef = useRef(null);
+  const stripeSubmitRef = useRef(null);
+  const [missingQuantityServices, setMissingQuantityServices] = useState([]);
   const [modalScroll, setModalScroll] = useState(false);
   const [modal, setModal] = useState({
     modType: "wash",
     page: "stripe",
   });
+  const [paymentType, setPaymentType] = useState("card");
+  const [isCashBooking, setIsCashBooking] = useState(false);
+  const [mobileStep, setMobileStep] = useState("summary");
+
+  const cashEstimateDue = useMemo(() => {
+    const effectiveMin = Math.max(minimumOrderCharge, 0);
+    return Math.max(
+      0,
+      effectiveMin + serviceFee + driverTip - couponDiscount
+    );
+  }, [minimumOrderCharge, serviceFee, driverTip, couponDiscount]);
+
+  const payNowAmount = paymentType === "cash" ? 0 : payableTotal;
+
+  const getMissingQuantityServices = useCallback(
+    () =>
+      getServicesMissingBagsOrItems({
+        preferencesData,
+        serviceList,
+        orderData,
+        useSharedBags,
+      }),
+    [preferencesData, serviceList, orderData, useSharedBags]
+  );
+
+  const runWithBagsCheck = useCallback(
+    (action) => {
+      if (skipBagsCheckRef.current) {
+        skipBagsCheckRef.current = false;
+        return action();
+      }
+
+      const missing = getMissingQuantityServices();
+      if (missing.length === 0) {
+        return action();
+      }
+
+      setMissingQuantityServices(missing);
+      proceedAfterWarningRef.current = action;
+      onBagsWarningOpen();
+    },
+    [getMissingQuantityServices, onBagsWarningOpen]
+  );
+
+  const handleBeforePay = useCallback(() => {
+    if (skipBagsCheckRef.current) {
+      skipBagsCheckRef.current = false;
+      return true;
+    }
+
+    const missing = getMissingQuantityServices();
+    if (missing.length === 0) {
+      return true;
+    }
+
+    setMissingQuantityServices(missing);
+    proceedAfterWarningRef.current = () => {
+      stripeSubmitRef.current?.requestSubmit();
+    };
+    onBagsWarningOpen();
+    return false;
+  }, [getMissingQuantityServices, onBagsWarningOpen]);
+
+  const handleBagsWarningGoBack = () => {
+    proceedAfterWarningRef.current = null;
+    onBagsWarningClose();
+    router.push("/checkout/order");
+  };
+
+  const handleBagsWarningProceed = () => {
+    skipBagsCheckRef.current = true;
+    const action = proceedAfterWarningRef.current;
+    proceedAfterWarningRef.current = null;
+    onBagsWarningClose();
+    action?.();
+  };
 
   const handleModalScroll = (e) => { };
+
+  const handleCashBooking = () => {
+    runWithBagsCheck(async () => {
+      setIsCashBooking(true);
+      try {
+        await handleCreateBooking({});
+      } finally {
+        setIsCashBooking(false);
+      }
+    });
+  };
 
   const handleCreateBooking = async (payData) => {
     try {
@@ -342,18 +479,16 @@ export default function Payment() {
         const prefRow = preferencesData?.find(
           (p) => Number(p.serviceId) === Number(svc.serviceId)
         );
-        const instructionParts = [];
-        if (prefRow?.bagsCount != null && prefRow.bagsCount !== "") {
-          instructionParts.push(`Number of bags: ${prefRow.bagsCount}`);
-        }
         const extra = (prefRow?.additionalInstructions || "").trim();
-        if (extra) instructionParts.push(extra);
+        const bags = !useSharedBags
+          ? parseQuantityCount(prefRow?.bagsCount)
+          : 0;
+        const items = parseQuantityCount(prefRow?.itemsCount);
         return {
           ...svc,
-          serviceInstruction: instructionParts.join("\n"),
-          ...(prefRow?.itemsCount != null && prefRow.itemsCount !== ""
-            ? { items: Number(prefRow.itemsCount) }
-            : {}),
+          ...(extra ? { serviceInstruction: extra } : {}),
+          ...(!useSharedBags && bags > 0 ? { bags } : {}),
+          ...(items > 0 ? { items } : {}),
         };
       });
 
@@ -415,18 +550,16 @@ export default function Payment() {
         services: preferencesData
           ?.filter((item) => item?.serviceId)
           ?.map((item) => {
-            const instructionParts = [];
-            if (item.bagsCount != null && item.bagsCount !== "") {
-              instructionParts.push(`Number of bags: ${item.bagsCount}`);
-            }
             const extra = (item.additionalInstructions || "").trim();
-            if (extra) instructionParts.push(extra);
+            const bags = !useSharedBags
+              ? parseQuantityCount(item.bagsCount)
+              : 0;
+            const items = parseQuantityCount(item.itemsCount);
             return {
               serviceId: item.serviceId,
-              serviceInstruction: instructionParts.join("\n"),
-              ...(item.itemsCount != null && item.itemsCount !== ""
-                ? { items: Number(item.itemsCount) }
-                : {}),
+              ...(extra ? { serviceInstruction: extra } : {}),
+              ...(!useSharedBags && bags > 0 ? { bags } : {}),
+              ...(items > 0 ? { items } : {}),
             };
           }),
         totalItems: (() => {
@@ -434,16 +567,23 @@ export default function Payment() {
             const n = Number(item?.itemsCount);
             return sum + (Number.isFinite(n) && n > 0 ? n : 0);
           }, 0);
-          return fromPrefs > 0 ? fromPrefs : 5;
+          return fromPrefs > 0 ? fromPrefs : undefined;
         })(),
+        totalBags: resolvedTotalBags,
+        sameBagForAllServices: useSharedBags,
         tipAmount: Number.isFinite(driverTip) ? driverTip : 0,
         timeZone: serviceTimeZone,
         clientTimeZone,
         paymentIntentId: payData?.paymentIntentId ?? null,
         setupIntentId: payData?.setupIntentId ?? null,
-        paymentMethodId: payData?.paymentMethodId,
-        stripeCustomerId: localStorage.getItem("stripeCustomerId"),
+        paymentMethodId:
+          paymentType === "card" ? payData?.paymentMethodId : undefined,
+        stripeCustomerId:
+          paymentType === "card"
+            ? localStorage.getItem("stripeCustomerId")
+            : undefined,
         couponCode: appliedCoupon?.code || undefined,
+        paymentType,
       };
 
       const finalPayload = isRescheduleFlow
@@ -462,6 +602,15 @@ export default function Payment() {
               "My plans changed",
             services: rescheduleServicesWithInstructions,
             preferencesArray: flattenedPreferences,
+            totalBags: resolvedTotalBags,
+            sameBagForAllServices: useSharedBags,
+            totalItems: (() => {
+              const fromPrefs = (preferencesData || []).reduce((sum, item) => {
+                const n = Number(item?.itemsCount);
+                return sum + (Number.isFinite(n) && n > 0 ? n : 0);
+              }, 0);
+              return fromPrefs > 0 ? fromPrefs : undefined;
+            })(),
           }
         : bookingData;
 
@@ -491,7 +640,7 @@ export default function Payment() {
           color: "success",
         });
 
-        router.replace("/");
+        router.replace("/profile?tab=order-history");
       } else {
         const errorMsg = response?.error ?? response?.message ?? "Booking failed. Please try again.";
         addToast({
@@ -532,11 +681,21 @@ export default function Payment() {
         <div className="w-full px-5 sm:px-[45px]">
           <div className="w-full max-w-[1290px] mx-auto pt-32 lg:pb-[50px] 2xl:py-[70px]">
             <h4 className="font-bold font-youth text-3xl 2xl:text-6xl">
-              Add a payment method
+              <span className="lg:hidden">
+                {mobileStep === "summary"
+                  ? "Order summary"
+                  : paymentType === "cash"
+                  ? "Confirm your order"
+                  : "Add a payment method"}
+              </span>
+              <span className="hidden lg:inline">
+                {paymentType === "cash"
+                  ? "Confirm your order"
+                  : "Add a payment method"}
+              </span>
             </h4>
 
             <div className="flex flex-col lg:flex-row gap-10 2xl:gap-20 pt-10">
-              {/* PAYMENT - Stripe sheet only */}
               {isRescheduleFlow ? (
                 <div className="w-full rounded-2xl border border-theme-gray overflow-hidden bg-white shadow-theme-shadow-light p-6 space-y-4">
                   <h4 className="font-sf font-bold text-base sm:text-lg text-black">
@@ -549,7 +708,54 @@ export default function Payment() {
                     </p>
                   </div>
                 </div>
-              ) : modal?.page === "stripe" ? (
+              ) : (
+                <div
+                  className={`w-full space-y-6 ${
+                    mobileStep === "summary" ? "hidden lg:block" : ""
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setMobileStep("summary")}
+                    className="lg:hidden font-sf text-sm text-theme-blue font-semibold"
+                  >
+                    ← Back to order summary
+                  </button>
+                  <div className="rounded-2xl border border-theme-gray bg-white p-4 shadow-theme-shadow-light space-y-3">
+                    <p className="font-sf font-semibold text-base">Payment method</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentType("card")}
+                        className={`rounded-xl border-2 px-4 py-3 text-left transition-colors ${
+                          paymentType === "card"
+                            ? "border-theme-blue bg-theme-blue/5"
+                            : "border-theme-gray"
+                        }`}
+                      >
+                        <p className="font-sf font-semibold text-sm">Card</p>
+                        <p className="font-sf text-xs text-theme-psGray mt-1">
+                          Pay minimum + fees at pickup
+                        </p>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentType("cash")}
+                        className={`rounded-xl border-2 px-4 py-3 text-left transition-colors ${
+                          paymentType === "cash"
+                            ? "border-theme-blue bg-theme-blue/5"
+                            : "border-theme-gray"
+                        }`}
+                      >
+                        <p className="font-sf font-semibold text-sm">Cash</p>
+                        <p className="font-sf text-xs text-theme-psGray mt-1">
+                          Pay nothing now — cash on delivery
+                        </p>
+                      </button>
+                    </div>
+                  </div>
+
+                  {paymentType === "card" && modal?.page === "stripe" ? (
                 <div className="w-full space-y-6">
                   <StripeCheckout
                     paymentMethod={modal?.paymentMethod}
@@ -559,6 +765,8 @@ export default function Payment() {
                     totalAmount={payableTotal}
                     onOpen={onOpen}
                     customerId={customerId}
+                    beforePay={handleBeforePay}
+                    stripeSubmitRef={stripeSubmitRef}
                   />
                   {/* How much do I pay? - policy box */}
                   <div className="w-full rounded-2xl border border-theme-gray overflow-hidden bg-white shadow-theme-shadow-light">
@@ -593,12 +801,77 @@ export default function Payment() {
                     </div>
                   </div>
                 </div>
+                  ) : paymentType === "cash" ? (
+                <div className="w-full space-y-6">
+                  <div className="w-full rounded-2xl border border-theme-gray overflow-hidden bg-white shadow-theme-shadow-light p-6 space-y-4">
+                    <h4 className="font-sf font-bold text-base sm:text-lg text-black">
+                      Pay with cash on delivery
+                    </h4>
+                    <p className="font-sf text-sm text-theme-psGray">
+                      No card required. You will pay the full bill in cash when your
+                      order is delivered. Minimum order, service fee, and tip are
+                      all collected at delivery.
+                    </p>
+                    <div className="rounded-xl bg-theme-gray/40 px-4 py-3 space-y-2 font-sf text-sm">
+                      <div className="flex justify-between">
+                        <span>Pay now</span>
+                        <span className="font-semibold">{currencySymbol}0.00</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Estimated on delivery</span>
+                        <span className="font-semibold">
+                          {currencySymbol}{cashEstimateDue.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                    <PurpleButton
+                      text={isCashBooking ? "Booking..." : "Confirm cash booking"}
+                      bg="bg-theme-blue"
+                      color="text-white"
+                      onClick={handleCashBooking}
+                      disabled={isCashBooking}
+                    />
+                  </div>
+                  <div className="w-full rounded-2xl border border-theme-gray overflow-hidden bg-white shadow-theme-shadow-light">
+                    <div className="bg-theme-gray px-4 py-3">
+                      <h4 className="font-sf font-bold text-base sm:text-lg text-black">
+                        How much do I pay?
+                      </h4>
+                    </div>
+                    <div className="px-4 py-4 space-y-4 font-sf text-sm sm:text-base text-black">
+                      <div className="flex items-start gap-3">
+                        <span className="shrink-0 mt-0.5 text-theme-gray-3">
+                          <IoHandLeftOutline className="size-5" />
+                        </span>
+                        <p>You pay nothing when placing the order.</p>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <span className="shrink-0 mt-0.5 text-theme-gray-3">
+                          <IoWalletOutline className="size-5" />
+                        </span>
+                        <p>
+                          After cleaning, you pay cash for laundry (minimum{" "}
+                          {currencySymbol}
+                          {minimumOrderCharge.toFixed(2)} if items are below minimum),
+                          service fee {currencySymbol}
+                          {serviceFee.toFixed(2)}, and tip {currencySymbol}
+                          {driverTip.toFixed(2)}.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ) : (
                 <div className="w-full">Thanks for payement</div>
               )}
-              {/* Order */}
+              </div>
+              )}
 
-              <div className="lg:w-[600px] space-y-8">
+              <div
+                className={`lg:w-[600px] space-y-8 ${
+                  mobileStep === "payment" ? "hidden lg:block" : ""
+                }`}
+              >
                 {/* ///////////////Order summary///////////// */}
 
                 <div className="px-4 py-4 shadow-theme-shadow-light rounded-[20px] space-y-5">
@@ -740,12 +1013,20 @@ export default function Payment() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <h4 className="font-youth font-bold">
-                        Pay now (incl. tax)
+                        {paymentType === "cash" ? "Pay now" : "Pay now (incl. tax)"}
                       </h4>
                       <h4 className="font-youth font-bold">
-                        {currencySymbol}{payableTotal?.toFixed(2)}
+                        {currencySymbol}{payNowAmount.toFixed(2)}
                       </h4>
                     </div>
+                    {paymentType === "cash" ? (
+                      <div className="flex justify-between font-sf">
+                        <h4 className="">Estimated on delivery</h4>
+                        <p className="font-semibold">
+                          {currencySymbol}{cashEstimateDue.toFixed(2)}
+                        </p>
+                      </div>
+                    ) : null}
                     <div className="flex justify-between font-sf">
                       <h4 className="">Minimum order charge</h4>
                       <p className="">
@@ -958,6 +1239,15 @@ export default function Payment() {
                     </div>
                   </div>
                 </div>
+
+                <div className="lg:hidden pt-2">
+                  <PurpleButton
+                    text="Proceed"
+                    bg="bg-theme-blue"
+                    color="text-white"
+                    onClick={() => setMobileStep("payment")}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -974,6 +1264,15 @@ export default function Payment() {
       </div>
 
       {/* =======================Modal======================== */}
+
+      <BagsItemsWarningModal
+        isOpen={isBagsWarningOpen}
+        onOpenChange={onBagsWarningOpenChange}
+        onClose={onBagsWarningClose}
+        missingServices={missingQuantityServices}
+        onGoBack={handleBagsWarningGoBack}
+        onProceedAnyway={handleBagsWarningProceed}
+      />
 
       <ReusableModal
         isDismissable={true}
@@ -1049,10 +1348,11 @@ export default function Payment() {
                   placeholder="Enter your instructions"
                 />
 
-                <p className="font-sf pb-5 text-sm text-theme-psGray">
-                  The user is responsible if the clothes color bleeds due to the
-                  selected wash settings and temperature.
-                </p>
+                {showWashBleedDisclaimerInCart && (
+                  <p className="font-sf pb-5 text-sm text-theme-psGray">
+                    {WASH_BLEED_DISCLAIMER_TEXT}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1141,10 +1441,6 @@ export default function Payment() {
                   }
                 />
 
-                <p className="font-sf pb-5 text-sm text-theme-psGray">
-                  The user is responsible if the clothes color bleeds due to the
-                  selected wash settings and temperature.
-                </p>
               </div>
             </div>
           </div>

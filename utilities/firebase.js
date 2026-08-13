@@ -21,6 +21,7 @@ const firebaseConfig = {
   messagingSenderId: "880600214434",
   appId: "1:880600214434:web:1c36e828fbcb66ff5ee0fb",
   measurementId: "G-PXSBBGRXRF",
+  databaseURL: "https://laundry-app-bf43c-default-rtdb.firebaseio.com",
 };
 
 const app = initializeApp(firebaseConfig);

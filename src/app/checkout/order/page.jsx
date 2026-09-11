@@ -24,7 +24,10 @@ import {
   updatePreference,
   setOrderData,
 } from "@/app/store/slices/cartItemSlice";
-import { generateCollectionSlots } from "../../../../utilities/generateSlots";
+import {
+  fetchBookingSlots,
+  fetchZoneForCoordinates,
+} from "../../../../utilities/bookingSlotsApi";
 import {
   buildDeliveryUpdateForMinDate,
   formatIsoDateLong,
@@ -105,9 +108,14 @@ export default function Order() {
     clientTimeZone;
   const router = useRouter();
   const [rescheduleBooking, { isLoading: isRescheduling }] = useRescheduleBookingMutation();
-  const { data, isLoading } = useGetServicesQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
+  const collectionLat = orderData?.collectionData?.lat;
+  const collectionLng = orderData?.collectionData?.lng;
+  const { data, isLoading } = useGetServicesQuery(
+    { lat: collectionLat, lng: collectionLng },
+    {
+      refetchOnMountOrArgChange: true,
+    }
+  );
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const [modalScroll, setModalScroll] = useState(false);
   const [currentServiceId, setCurrentServiceId] = useState(null);
@@ -125,17 +133,38 @@ export default function Order() {
   const [pendingContinueAfterTurnaround, setPendingContinueAfterTurnaround] =
     useState(false);
 
-  const slotsDeliveryForTurnaround = useMemo(
-    () =>
-      generateCollectionSlots({
-        daysCount: 21,
-        slotDurationInHours: 1,
-        lastHour: 19,
-        startAfterHours: 24,
-        includeWeekends: true,
-      }),
+  const [slotsDeliveryForTurnaround, setSlotsDeliveryForTurnaround] = useState(
     []
   );
+
+  useEffect(() => {
+    const lat = orderData?.collectionData?.lat;
+    const lng = orderData?.collectionData?.lng;
+    if (lat == null || lng == null) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const zone = await fetchZoneForCoordinates(lat, lng);
+        const delData = await fetchBookingSlots({
+          countryId: zone.countryId,
+          zoneId: zone.zoneId,
+          clientTimeZone,
+          type: "delivery",
+          daysCount: 21,
+        });
+        if (!cancelled) setSlotsDeliveryForTurnaround(delData.days || []);
+      } catch (err) {
+        console.warn("Could not load platform delivery slots for turnaround", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    orderData?.collectionData?.lat,
+    orderData?.collectionData?.lng,
+    clientTimeZone,
+  ]);
 
   const cartServiceIds = useMemo(() => {
     const ids = new Set();
@@ -278,10 +307,17 @@ export default function Order() {
     isLoading: isLoadingPreferences,
     isFetching: isFetchingPreferences,
     isError: isPreferencesQueryError,
-  } = useGetServiceWithPreferenceDetailsQuery(currentServiceId, {
-    skip: !currentServiceId,
-    refetchOnMountOrArgChange: true,
-  });
+  } = useGetServiceWithPreferenceDetailsQuery(
+    {
+      serviceId: currentServiceId,
+      lat: orderData?.collectionData?.lat,
+      lng: orderData?.collectionData?.lng,
+    },
+    {
+      skip: !currentServiceId,
+      refetchOnMountOrArgChange: true,
+    }
+  );
 
   const servicePreferencesData = preferencesResponse?.data?.preferencesData;
   const preferenceServiceMeta = preferencesResponse?.data;

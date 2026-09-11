@@ -106,10 +106,23 @@ export const api = createApi({
     }),
 
     getServices: builder.query({
-      query: () => ({
-        url: "customer/allServices",
-        method: "GET",
-      }),
+      query: (params) => {
+        const searchParams = new URLSearchParams();
+        if (params?.lat !== undefined && params?.lat !== null && params?.lat !== "") {
+          searchParams.set("lat", params.lat);
+        }
+        if (params?.lng !== undefined && params?.lng !== null && params?.lng !== "") {
+          searchParams.set("lng", params.lng);
+        }
+        if (params?.zoneId) {
+          searchParams.set("zoneId", params.zoneId);
+        }
+        const query = searchParams.toString();
+        return {
+          url: `customer/allServices${query ? `?${query}` : ""}`,
+          method: "GET",
+        };
+      },
       keepUnusedDataFor: 30,
     }),
     getServiceById: builder.query({
@@ -139,10 +152,24 @@ export const api = createApi({
     }),
 
     getServiceWithPreferenceDetails: builder.query({
-      query: (serviceId) => ({
-        url: `customer/getAllServiceWithPreferenceDetails/${serviceId}`,
-        method: "GET",
-      }),
+      query: (arg) => {
+        const serviceId = typeof arg === "object" && arg != null ? arg.serviceId : arg;
+        const searchParams = new URLSearchParams();
+        if (arg && typeof arg === "object") {
+          if (arg.lat !== undefined && arg.lat !== null && arg.lat !== "") {
+            searchParams.set("lat", arg.lat);
+          }
+          if (arg.lng !== undefined && arg.lng !== null && arg.lng !== "") {
+            searchParams.set("lng", arg.lng);
+          }
+          if (arg.zoneId) searchParams.set("zoneId", arg.zoneId);
+        }
+        const query = searchParams.toString();
+        return {
+          url: `customer/getAllServiceWithPreferenceDetails/${serviceId}${query ? `?${query}` : ""}`,
+          method: "GET",
+        };
+      },
     }),
 
     createBooking: builder.mutation({
@@ -294,8 +321,11 @@ export const api = createApi({
       }),
     }),
     getCustomerActivePolicies: builder.query({
-      query: () => ({
-        url: "customer/getActivePolicies",
+      query: (zoneId) => ({
+        url:
+          zoneId != null
+            ? `customer/getActivePolicies?zoneId=${zoneId}`
+            : "customer/getActivePolicies",
         method: "GET",
       }),
     }),

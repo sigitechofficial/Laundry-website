@@ -212,8 +212,10 @@ export default function OrderHistory() {
     }
   }, [manageOrder?.manage]);
 
-  // Fetch active customer policies as soon as Order History tab/page is loaded.
-  const { data: activePoliciesData } = useGetCustomerActivePoliciesQuery();
+  const policyZoneId =
+    bookingDtails?.data?.zoneId ?? bookingDtails?.data?.zone?.id ?? undefined;
+  const { data: activePoliciesData } =
+    useGetCustomerActivePoliciesQuery(policyZoneId);
   const { data: reasonsData, isLoading: isLoadingReasons } = useGetAllReasonsQuery();
   const [cancelBooking, { isLoading: isCancelling }] = useCancelBookingMutation();
 

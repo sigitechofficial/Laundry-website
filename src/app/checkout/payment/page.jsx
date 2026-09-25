@@ -169,6 +169,7 @@ export default function Payment() {
       const response = await applyCoupon({
         code,
         laundryCartAmount: 0,
+        zoneId: addressData?.data?.zoneId ?? addressData?.data?.zone?.id,
       }).unwrap();
 
       if (String(response?.status) !== "1") {
@@ -189,25 +190,23 @@ export default function Payment() {
         ? parsedDiscountAmount
         : 0;
       const codeFromApi = data?.code || code;
-      const deferred = Boolean(data?.minOrderDeferred);
+      const deferred = Boolean(data?.minOrderDeferred) || data?.appliesAt === "invoice";
+      const customerMessage =
+        data?.customerMessage ||
+        `${codeFromApi} saved. Discount applies on your invoice after inspection — Pay Now unchanged.`;
       setAppliedCoupon({
         code: codeFromApi,
-        discountAmount,
+        discountAmount: 0,
         discountType: data?.discountType,
         discountValue: data?.discountValue,
         minOrderDeferred: deferred,
         minOrderAmount: data?.minOrderAmount,
         prepaidUnchanged: true,
+        customerMessage,
       });
       addToast({
-        title: "Coupon applied",
-        description: deferred
-          ? `${codeFromApi} reserved. Discount applies on final laundry total after inspection${
-              data?.minOrderAmount
-                ? ` (min ${currencySymbol}${Number(data.minOrderAmount).toFixed(2)})`
-                : ""
-            }.`
-          : `${codeFromApi} applied. Estimated laundry discount ${currencySymbol}${discountAmount.toFixed(2)} (Pay Now unchanged).`,
+        title: "Promo saved",
+        description: customerMessage,
         color: "success",
       });
 

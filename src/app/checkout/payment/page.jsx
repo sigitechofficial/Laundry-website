@@ -17,7 +17,7 @@ import {
 import {
   useApplyCouponMutation,
   useCreateBookingMutation,
-  useGetActivePoliciesQuery,
+  useGetCustomerActivePoliciesQuery,
   useGetChargesQuery,
   useRescheduleBookingMutation,
   useGetServicesQuery,
@@ -107,7 +107,7 @@ export default function Payment() {
     }
   );
   const zoneId = addressData?.data?.zoneId;
-  const { data: activePoliciesData } = useGetActivePoliciesQuery(zoneId, {
+  const { data: activePoliciesData } = useGetCustomerActivePoliciesQuery(zoneId, {
     skip: zoneId == null,
   });
   const serviceTimeZone =
@@ -148,24 +148,11 @@ export default function Payment() {
     if (Number.isFinite(discountAmount) && discountAmount >= 0) {
       return discountAmount;
     }
+    return 0;
+  }, [appliedCoupon]);
 
-    const discountValue = Number.parseFloat(appliedCoupon?.discountValue);
-    if (!Number.isFinite(discountValue) || discountValue <= 0) return 0;
-
-    const normalizedType = String(appliedCoupon?.discountType || "")
-      .toLowerCase()
-      .trim();
-    if (normalizedType === "percentage" || normalizedType === "percent") {
-      return (totalAmount * discountValue) / 100;
-    }
-
-    return discountValue;
-  }, [appliedCoupon, totalAmount]);
-
-  const payableTotal = useMemo(
-    () => Math.max(0, totalAmount - couponDiscount),
-    [totalAmount, couponDiscount]
-  );
+  // Pay Now = full prepaid. Laundry promo does not reduce Stripe hold.
+  const payableTotal = useMemo(() => totalAmount, [totalAmount]);
 
   const handleApplyCoupon = async () => {
     const code = promoCode.trim();
@@ -181,7 +168,7 @@ export default function Payment() {
     try {
       const response = await applyCoupon({
         code,
-        orderAmount: Number(totalAmount.toFixed(2)),
+        laundryCartAmount: 0,
       }).unwrap();
 
       if (String(response?.status) !== "1") {
@@ -195,33 +182,32 @@ export default function Payment() {
       }
 
       const data = response?.data || {};
-      const normalizedDiscountType = String(data?.discountType || "")
-        .toLowerCase()
-        .trim();
       const parsedDiscountAmount = Number.parseFloat(
         data?.discountAmt ?? data?.discountAmount ?? data?.discount
       );
-      const parsedDiscountValue = Number.parseFloat(data?.discountValue);
       const discountAmount = Number.isFinite(parsedDiscountAmount)
         ? parsedDiscountAmount
-        : Number.isFinite(parsedDiscountValue)
-          ? normalizedDiscountType === "percentage" ||
-            normalizedDiscountType === "percent"
-            ? (totalAmount * parsedDiscountValue) / 100
-            : parsedDiscountValue
-          : 0;
+        : 0;
       const codeFromApi = data?.code || code;
+      const deferred = Boolean(data?.minOrderDeferred);
       setAppliedCoupon({
         code: codeFromApi,
         discountAmount,
         discountType: data?.discountType,
         discountValue: data?.discountValue,
+        minOrderDeferred: deferred,
+        minOrderAmount: data?.minOrderAmount,
+        prepaidUnchanged: true,
       });
       addToast({
         title: "Coupon applied",
-        description:
-          response?.message ||
-          `${codeFromApi} applied successfully. You saved ${currencySymbol}${discountAmount.toFixed(2)}.`,
+        description: deferred
+          ? `${codeFromApi} reserved. Discount applies on final laundry total after inspection${
+              data?.minOrderAmount
+                ? ` (min ${currencySymbol}${Number(data.minOrderAmount).toFixed(2)})`
+                : ""
+            }.`
+          : `${codeFromApi} applied. Estimated laundry discount ${currencySymbol}${discountAmount.toFixed(2)} (Pay Now unchanged).`,
         color: "success",
       });
 
@@ -367,12 +353,10 @@ export default function Payment() {
   const [mobileStep, setMobileStep] = useState("summary");
 
   const cashEstimateDue = useMemo(() => {
+    // Cash: full prepaid estimate at delivery; laundry promo settles on final invoice.
     const effectiveMin = Math.max(minimumOrderCharge, 0);
-    return Math.max(
-      0,
-      effectiveMin + serviceFee + driverTip - couponDiscount
-    );
-  }, [minimumOrderCharge, serviceFee, driverTip, couponDiscount]);
+    return Math.max(0, effectiveMin + serviceFee + driverTip);
+  }, [minimumOrderCharge, serviceFee, driverTip]);
 
   const payNowAmount = paymentType === "cash" ? 0 : payableTotal;
 
@@ -897,8 +881,13 @@ export default function Payment() {
                     />
                     {appliedCoupon?.code ? (
                       <p className="mt-2 font-sf text-xs text-green-600">
-                        Coupon {appliedCoupon.code} applied: -{currencySymbol}
-                        {couponDiscount.toFixed(2)}
+                        {appliedCoupon.minOrderDeferred || couponDiscount <= 0
+                          ? `Coupon ${appliedCoupon.code} reserved — applies on final laundry invoice${
+                              appliedCoupon.minOrderAmount
+                                ? ` (min ${currencySymbol}${Number(appliedCoupon.minOrderAmount).toFixed(2)})`
+                                : ""
+                            }. Pay Now unchanged.`
+                          : `Coupon ${appliedCoupon.code}: estimated invoice discount -${currencySymbol}${couponDiscount.toFixed(2)}. Pay Now unchanged.`}
                       </p>
                     ) : null}
                   </div>
@@ -1055,12 +1044,17 @@ export default function Payment() {
                       <h4 className="">Collection & delivery</h4>
                       <p className="">Free</p>
                     </div>
-                    {couponDiscount > 0 && (
+                    {(couponDiscount > 0 || appliedCoupon?.code) && (
                       <div className="flex justify-between font-sf text-green-700">
-                        <h4 className="">Coupon discount</h4>
+                        <h4 className="">
+                          {couponDiscount > 0
+                            ? "Invoice discount (est.)"
+                            : "Promo reserved"}
+                        </h4>
                         <p>
-                          -{currencySymbol}
-                          {couponDiscount.toFixed(2)}
+                          {couponDiscount > 0
+                            ? `-${currencySymbol}${couponDiscount.toFixed(2)}`
+                            : "At invoice"}
                         </p>
                       </div>
                     )}

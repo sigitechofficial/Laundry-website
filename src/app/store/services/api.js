@@ -207,6 +207,15 @@ export const api = createApi({
         body,
       }),
     }),
+    getCustomerCredit: builder.query({
+      query: () => ({ url: "customer/credit", method: "GET" }),
+    }),
+    getPromotionOffers: builder.query({
+      query: (zoneId) => ({
+        url: `customer/promotions/offers?zoneId=${encodeURIComponent(zoneId)}`,
+        method: "GET",
+      }),
+    }),
     getAllOrders: builder.query({
       query: () => ({
         url: "customer/allBookings",
@@ -427,6 +436,8 @@ export const {
   useGetAllAddressQuery,
   useGetChargesQuery,
   useApplyCouponMutation,
+  useGetPromotionOffersQuery,
+  useGetCustomerCreditQuery,
   useGetAllOrdersQuery,
   useCreateIntentMutation,
   useBookingDetailByIdQuery,

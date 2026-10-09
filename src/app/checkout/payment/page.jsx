@@ -21,6 +21,8 @@ import {
   useGetChargesQuery,
   useRescheduleBookingMutation,
   useGetServicesQuery,
+  useGetPromotionOffersQuery,
+  useGetCustomerCreditQuery,
 } from "@/app/store/services/api";
 import { addToast, Spinner, useDisclosure } from "@heroui/react";
 import ReusableModal from "../../../../components/Modal";
@@ -110,6 +112,21 @@ export default function Payment() {
   const { data: activePoliciesData } = useGetCustomerActivePoliciesQuery(zoneId, {
     skip: zoneId == null,
   });
+  const promotionZoneId = addressData?.data?.zoneId ?? addressData?.data?.zone?.id;
+  const { data: promotionOffersData } = useGetPromotionOffersQuery(promotionZoneId, {
+    skip: promotionZoneId == null,
+  });
+  // Customer credit (cashback): used automatically on the invoice. Display only.
+  const { data: creditData } = useGetCustomerCreditQuery();
+  const creditBalance = Number.parseFloat(creditData?.data?.balance) || 0;
+  // Display only: offers are applied by the shop on the final invoice, never to Pay Now.
+  const promotionOffers = useMemo(
+    () =>
+      (Array.isArray(promotionOffersData?.data) ? promotionOffersData.data : []).filter(
+        (offer) => offer && (offer.label || offer.name)
+      ),
+    [promotionOffersData]
+  );
   const serviceTimeZone =
     orderData?.collectionData?.operationalTimeZone ||
     addressData?.data?.operationalTimeZone ||
@@ -203,6 +220,10 @@ export default function Payment() {
         minOrderAmount: data?.minOrderAmount,
         prepaidUnchanged: true,
         customerMessage,
+        offerLabel:
+          typeof data?.offerLabel === "string" && data.offerLabel.trim()
+            ? data.offerLabel.trim()
+            : null,
       });
       addToast({
         title: "Promo saved",
@@ -878,6 +899,11 @@ export default function Payment() {
                         </button>
                       }
                     />
+                    {appliedCoupon?.code && appliedCoupon?.offerLabel ? (
+                      <p className="mt-2 font-sf text-xs font-semibold text-green-700">
+                        {appliedCoupon.offerLabel}
+                      </p>
+                    ) : null}
                     {appliedCoupon?.code ? (
                       <p className="mt-2 font-sf text-xs text-green-600">
                         {appliedCoupon.minOrderDeferred || couponDiscount <= 0
@@ -890,6 +916,43 @@ export default function Payment() {
                       </p>
                     ) : null}
                   </div>
+
+                  {creditBalance > 0 ? (
+                    <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 font-sf">
+                      <p className="text-sm font-semibold text-violet-900">
+                        You have £{creditBalance.toFixed(2)} credit
+                      </p>
+                      <p className="text-xs text-violet-800 mt-0.5">
+                        Used automatically on your invoice. Pay Now stays the same.
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {promotionOffers.length > 0 ? (
+                    <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 space-y-2 font-sf">
+                      <div className="flex items-center gap-2">
+                        <AiOutlinePercentage className="size-4 text-green-700" />
+                        <p className="text-sm font-semibold text-green-900">
+                          Offers on this order
+                        </p>
+                      </div>
+                      <ul className="space-y-1.5">
+                        {promotionOffers.map((offer, index) => (
+                          <li key={offer.id ?? `offer-${index}`} className="text-sm">
+                            {offer.name ? (
+                              <p className="font-semibold text-green-900">{offer.name}</p>
+                            ) : null}
+                            {offer.label ? (
+                              <p className="text-green-800">{offer.label}</p>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-xs text-green-700">
+                        Applied automatically when the shop finalises your invoice after inspection.
+                      </p>
+                    </div>
+                  ) : null}
 
                   <h4 className="font-sf font-semibold">Frequency</h4>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 my-4">

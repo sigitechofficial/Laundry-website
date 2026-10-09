@@ -22,6 +22,7 @@ import {
   useRescheduleBookingMutation,
   useGetServicesQuery,
   useGetPromotionOffersQuery,
+  useGetCustomerCreditQuery,
 } from "@/app/store/services/api";
 import { addToast, Spinner, useDisclosure } from "@heroui/react";
 import ReusableModal from "../../../../components/Modal";
@@ -115,6 +116,9 @@ export default function Payment() {
   const { data: promotionOffersData } = useGetPromotionOffersQuery(promotionZoneId, {
     skip: promotionZoneId == null,
   });
+  // Customer credit (cashback): used automatically on the invoice. Display only.
+  const { data: creditData } = useGetCustomerCreditQuery();
+  const creditBalance = Number.parseFloat(creditData?.data?.balance) || 0;
   // Display only: offers are applied by the shop on the final invoice, never to Pay Now.
   const promotionOffers = useMemo(
     () =>
@@ -912,6 +916,17 @@ export default function Payment() {
                       </p>
                     ) : null}
                   </div>
+
+                  {creditBalance > 0 ? (
+                    <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 font-sf">
+                      <p className="text-sm font-semibold text-violet-900">
+                        You have £{creditBalance.toFixed(2)} credit
+                      </p>
+                      <p className="text-xs text-violet-800 mt-0.5">
+                        Used automatically on your invoice. Pay Now stays the same.
+                      </p>
+                    </div>
+                  ) : null}
 
                   {promotionOffers.length > 0 ? (
                     <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 space-y-2 font-sf">

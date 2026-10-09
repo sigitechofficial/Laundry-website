@@ -4,13 +4,17 @@ import { MdMyLocation, MdOutlineMap } from "react-icons/md";
 
 export function isLiveTrackingStatus(bookingStatusId) {
   const id = Number(bookingStatusId);
-  return id === 4 || id === 13;
+  return id === 3 || id === 4 || id === 12 || id === 13;
 }
 
 function statusHint(bookingStatusId) {
   switch (Number(bookingStatusId)) {
+    case 3:
+      return "Your driver can start live tracking before they tap “On the way”.";
     case 4:
       return "Your driver is on the way to collect your laundry.";
+    case 12:
+      return "Your driver can start live tracking before going out for delivery.";
     case 13:
       return "Your driver is on the way with your laundry.";
     case 5:
@@ -25,7 +29,7 @@ function statusHint(bookingStatusId) {
 
 /**
  * Mirrors the Flutter LiveTrackingAction CTA.
- * Active button for status 4 (pickup on the way) / 13 (out for delivery).
+ * Active button for status 3/4 (pickup) and 12/13 (delivery).
  */
 export default function LiveTrackingAction({
   bookingStatusId,

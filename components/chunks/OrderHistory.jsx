@@ -212,8 +212,10 @@ export default function OrderHistory() {
     }
   }, [manageOrder?.manage]);
 
-  // Fetch active customer policies as soon as Order History tab/page is loaded.
-  const { data: activePoliciesData } = useGetCustomerActivePoliciesQuery();
+  const policyZoneId =
+    bookingDtails?.data?.zoneId ?? bookingDtails?.data?.zone?.id ?? undefined;
+  const { data: activePoliciesData } =
+    useGetCustomerActivePoliciesQuery(policyZoneId);
   const { data: reasonsData, isLoading: isLoadingReasons } = useGetAllReasonsQuery();
   const [cancelBooking, { isLoading: isCancelling }] = useCancelBookingMutation();
 
@@ -845,6 +847,55 @@ export default function OrderHistory() {
     );
     const cardPaymentSubtext = getCardPaymentSubtext(cardDetails);
 
+    // Promotions (display only): the total is already inside the discount row and
+    // amount due, so nothing here feeds back into the money above.
+    const promotionSummary =
+      bookingDtails?.data?.promotionSummary ?? bookingDtails?.promotionSummary ?? null;
+    // Cashback (credited after delivery) and customer credit used on this invoice.
+    const promotionCashback =
+      promotionSummary?.cashback && typeof promotionSummary.cashback === "object"
+        ? promotionSummary.cashback
+        : null;
+    const creditUsed =
+      promotionSummary?.creditUsed && Number.parseFloat(promotionSummary.creditUsed.amount) > 0
+        ? promotionSummary.creditUsed
+        : null;
+    const showPromotions =
+      Boolean(promotionSummary) &&
+      typeof promotionSummary?.state === "string" &&
+      (promotionSummary.state !== "none" || Boolean(promotionCashback) || Boolean(creditUsed));
+    const promotionList =
+      showPromotions && Array.isArray(promotionSummary?.promotions)
+        ? promotionSummary.promotions.filter(Boolean)
+        : [];
+    const promotionLineByKey = (() => {
+      const map = new Map();
+      if (!showPromotions || !Array.isArray(promotionSummary?.lines)) return map;
+      // Count how many rows show each item; per-item amounts are only shown when
+      // the item appears once, so a booking-level total is never split by guesswork.
+      const rowCounts = new Map();
+      const countRow = (key) => rowCounts.set(key, (rowCounts.get(key) || 0) + 1);
+      selectedServices.forEach((item) => {
+        if (item?.subCategoryId != null) countRow(`item:${item.subCategoryId}`);
+        (Array.isArray(item?.addOns) ? item.addOns : []).forEach((addOn) => {
+          const addOnId = addOn?.addOnServiceId ?? addOn?.addOnService?.id;
+          if (addOnId != null) countRow(`addon:${addOnId}`);
+        });
+      });
+      promotionSummary.lines.forEach((line) => {
+        if (!line || line.itemId == null) return;
+        const lineType = line.lineType === "addon" ? "addon" : "item";
+        const key = `${lineType}:${line.itemId}`;
+        const discount = Number.parseFloat(line.discount);
+        if (!Number.isFinite(discount) || discount <= 0) return;
+        if (rowCounts.get(key) !== 1) return;
+        map.set(key, line);
+      });
+      return map;
+    })();
+    const getPromotionLine = (lineType, itemId) =>
+      itemId == null ? null : promotionLineByKey.get(`${lineType}:${itemId}`) || null;
+
     const groupedSelectedServices = selectedServices.reduce((acc, item) => {
       const serviceName = item?.service?.name || "Service";
       if (!acc[serviceName]) {
@@ -1089,6 +1140,10 @@ export default function OrderHistory() {
                           const lineTotal =
                             hasQty && hasPrice ? unitPrice * quantity : unitPrice;
                           const addOns = Array.isArray(item?.addOns) ? item.addOns : [];
+                          const itemPromotionLine = getPromotionLine(
+                            "item",
+                            item?.subCategoryId
+                          );
 
                           return (
                             <div
@@ -1128,7 +1183,18 @@ export default function OrderHistory() {
                                     Qty: {quantity}
                                   </p>
                                 )}
-                                {(formatItemAmount(lineTotal, bookingCurrencySymbol) ||
+                                {itemPromotionLine &&
+                                formatItemAmount(itemPromotionLine.originalAmount, bookingCurrencySymbol) &&
+                                formatItemAmount(itemPromotionLine.finalAmount, bookingCurrencySymbol) ? (
+                                  <p className="text-sm font-semibold">
+                                    <span className="mr-1 text-xs font-normal text-theme-psGray line-through">
+                                      {formatItemAmount(itemPromotionLine.originalAmount, bookingCurrencySymbol)}
+                                    </span>
+                                    <span className="text-green-700">
+                                      {formatItemAmount(itemPromotionLine.finalAmount, bookingCurrencySymbol)}
+                                    </span>
+                                  </p>
+                                ) : (formatItemAmount(lineTotal, bookingCurrencySymbol) ||
                                   formatItemAmount(unitPrice, bookingCurrencySymbol)) && (
                                   <p className="text-sm font-semibold">
                                     {formatItemAmount(lineTotal, bookingCurrencySymbol) ||
@@ -1160,6 +1226,10 @@ export default function OrderHistory() {
                                       : Number.isFinite(addOnUnitPrice)
                                         ? addOnUnitPrice * addOnQty
                                         : null;
+                                    const addOnPromotionLine = getPromotionLine(
+                                      "addon",
+                                      addOn?.addOnServiceId ?? addOn?.addOnService?.id
+                                    );
 
                                     return (
                                       <div
@@ -1176,7 +1246,18 @@ export default function OrderHistory() {
                                             </p>
                                           )}
                                         </div>
-                                        {formatItemAmount(
+                                        {addOnPromotionLine &&
+                                        formatItemAmount(addOnPromotionLine.originalAmount, bookingCurrencySymbol) &&
+                                        formatItemAmount(addOnPromotionLine.finalAmount, bookingCurrencySymbol) ? (
+                                          <p className="text-xs font-semibold shrink-0">
+                                            <span className="mr-1 font-normal text-theme-psGray line-through">
+                                              {formatItemAmount(addOnPromotionLine.originalAmount, bookingCurrencySymbol)}
+                                            </span>
+                                            <span className="text-green-700">
+                                              {formatItemAmount(addOnPromotionLine.finalAmount, bookingCurrencySymbol)}
+                                            </span>
+                                          </p>
+                                        ) : formatItemAmount(
                                           addOnLineTotal,
                                           bookingCurrencySymbol
                                         ) && (
@@ -1261,6 +1342,106 @@ export default function OrderHistory() {
                     {formatBillingLine(displayTotalOrderAmount)}
                   </p>
                 </div>
+              </div>
+            ) : null}
+
+            {showPromotions ? (
+              <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 space-y-2">
+                <p className="text-sm font-semibold text-green-900">
+                  {promotionList.length ? "Promotions" : "Credit"}
+                </p>
+                {promotionSummary?.message ? (
+                  <p className="text-xs text-green-800">{promotionSummary.message}</p>
+                ) : null}
+                {promotionList.map((promotion, index) => {
+                  const promotionAmount = Number.parseFloat(promotion?.amount);
+                  const isPaidPromotion = promotion?.status === "paid";
+                  const isCashback = promotion?.benefitType === "cashback";
+                  const cashbackAmount = Number.parseFloat(promotion?.cashback);
+                  const cashbackStatus = promotionCashback?.status;
+                  return (
+                    <div
+                      key={`${promotion?.promotionId ?? "promotion"}-${promotion?.couponCode ?? ""}-${index}`}
+                      className="flex justify-between items-start gap-4 pt-2 border-t border-green-200 first:border-t-0 first:pt-0"
+                    >
+                      <div className="space-y-0.5">
+                        <p className="text-sm text-green-900">
+                          {promotion?.name || "Promotion"}
+                        </p>
+                        {promotion?.label ? (
+                          <p className="text-xs text-green-700">{promotion.label}</p>
+                        ) : null}
+                        {promotion?.couponCode ? (
+                          <p className="text-xs text-green-700">
+                            Code: {promotion.couponCode}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="text-right shrink-0">
+                        {isCashback ? (
+                          <>
+                            {Number.isFinite(cashbackAmount) && cashbackAmount > 0 ? (
+                              <p className="text-sm font-semibold text-violet-800">
+                                +{formatBillingLine(cashbackAmount)} cashback
+                              </p>
+                            ) : null}
+                            <span
+                              className={`inline-block mt-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                cashbackStatus === "credited"
+                                  ? "bg-green-200 text-green-900"
+                                  : cashbackStatus === "taken_back"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-violet-100 text-violet-900"
+                              }`}
+                            >
+                              {cashbackStatus === "credited"
+                                ? "Credited"
+                                : cashbackStatus === "taken_back"
+                                  ? "Taken back"
+                                  : "After delivery"}
+                            </span>
+                          </>
+                        ) : Number.isFinite(promotionAmount) && promotionAmount > 0 ? (
+                          <p className="text-sm font-semibold text-green-900">
+                            {formatBillingLine(-promotionAmount, { signed: true })}
+                          </p>
+                        ) : null}
+                        {!isCashback && promotion?.status ? (
+                          <span
+                            className={`inline-block mt-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              isPaidPromotion
+                                ? "bg-green-200 text-green-900"
+                                : "bg-amber-100 text-amber-900"
+                            }`}
+                          >
+                            {isPaidPromotion ? "Paid" : "Holding"}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+                {promotionCashback?.message && promotionCashback.message !== promotionSummary?.message ? (
+                  <p className="text-xs text-green-800">{promotionCashback.message}</p>
+                ) : null}
+                {creditUsed ? (
+                  <div className="flex justify-between items-center gap-4 pt-2 border-t border-green-200">
+                    <p className="text-sm text-green-900">
+                      {creditUsed.status === "paid" ? "Credit used" : "Credit used (taken when paid)"}
+                    </p>
+                    <p className="text-sm font-semibold text-green-900">
+                      {formatBillingLine(-Number.parseFloat(creditUsed.amount), { signed: true })}
+                    </p>
+                  </div>
+                ) : null}
+                {creditUsed && Number.parseFloat(creditUsed.returned) > 0 ? (
+                  <div className="flex justify-between items-center gap-4">
+                    <p className="text-sm text-green-900">Credit returned (refund)</p>
+                    <p className="text-sm font-semibold text-green-900">
+                      +{formatBillingLine(Number.parseFloat(creditUsed.returned))}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             ) : null}
 

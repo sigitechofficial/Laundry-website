@@ -17,10 +17,12 @@ import {
 import {
   useApplyCouponMutation,
   useCreateBookingMutation,
-  useGetActivePoliciesQuery,
+  useGetCustomerActivePoliciesQuery,
   useGetChargesQuery,
   useRescheduleBookingMutation,
   useGetServicesQuery,
+  useGetPromotionOffersQuery,
+  useGetCustomerCreditQuery,
 } from "@/app/store/services/api";
 import { addToast, Spinner, useDisclosure } from "@heroui/react";
 import ReusableModal from "../../../../components/Modal";
@@ -107,9 +109,24 @@ export default function Payment() {
     }
   );
   const zoneId = addressData?.data?.zoneId;
-  const { data: activePoliciesData } = useGetActivePoliciesQuery(zoneId, {
+  const { data: activePoliciesData } = useGetCustomerActivePoliciesQuery(zoneId, {
     skip: zoneId == null,
   });
+  const promotionZoneId = addressData?.data?.zoneId ?? addressData?.data?.zone?.id;
+  const { data: promotionOffersData } = useGetPromotionOffersQuery(promotionZoneId, {
+    skip: promotionZoneId == null,
+  });
+  // Customer credit (cashback): used automatically on the invoice. Display only.
+  const { data: creditData } = useGetCustomerCreditQuery();
+  const creditBalance = Number.parseFloat(creditData?.data?.balance) || 0;
+  // Display only: offers are applied by the shop on the final invoice, never to Pay Now.
+  const promotionOffers = useMemo(
+    () =>
+      (Array.isArray(promotionOffersData?.data) ? promotionOffersData.data : []).filter(
+        (offer) => offer && (offer.label || offer.name)
+      ),
+    [promotionOffersData]
+  );
   const serviceTimeZone =
     orderData?.collectionData?.operationalTimeZone ||
     addressData?.data?.operationalTimeZone ||
@@ -148,24 +165,11 @@ export default function Payment() {
     if (Number.isFinite(discountAmount) && discountAmount >= 0) {
       return discountAmount;
     }
+    return 0;
+  }, [appliedCoupon]);
 
-    const discountValue = Number.parseFloat(appliedCoupon?.discountValue);
-    if (!Number.isFinite(discountValue) || discountValue <= 0) return 0;
-
-    const normalizedType = String(appliedCoupon?.discountType || "")
-      .toLowerCase()
-      .trim();
-    if (normalizedType === "percentage" || normalizedType === "percent") {
-      return (totalAmount * discountValue) / 100;
-    }
-
-    return discountValue;
-  }, [appliedCoupon, totalAmount]);
-
-  const payableTotal = useMemo(
-    () => Math.max(0, totalAmount - couponDiscount),
-    [totalAmount, couponDiscount]
-  );
+  // Pay Now = full prepaid. Laundry promo does not reduce Stripe hold.
+  const payableTotal = useMemo(() => totalAmount, [totalAmount]);
 
   const handleApplyCoupon = async () => {
     const code = promoCode.trim();
@@ -181,7 +185,8 @@ export default function Payment() {
     try {
       const response = await applyCoupon({
         code,
-        orderAmount: Number(totalAmount.toFixed(2)),
+        laundryCartAmount: 0,
+        zoneId: addressData?.data?.zoneId ?? addressData?.data?.zone?.id,
       }).unwrap();
 
       if (String(response?.status) !== "1") {
@@ -195,33 +200,34 @@ export default function Payment() {
       }
 
       const data = response?.data || {};
-      const normalizedDiscountType = String(data?.discountType || "")
-        .toLowerCase()
-        .trim();
       const parsedDiscountAmount = Number.parseFloat(
         data?.discountAmt ?? data?.discountAmount ?? data?.discount
       );
-      const parsedDiscountValue = Number.parseFloat(data?.discountValue);
       const discountAmount = Number.isFinite(parsedDiscountAmount)
         ? parsedDiscountAmount
-        : Number.isFinite(parsedDiscountValue)
-          ? normalizedDiscountType === "percentage" ||
-            normalizedDiscountType === "percent"
-            ? (totalAmount * parsedDiscountValue) / 100
-            : parsedDiscountValue
-          : 0;
+        : 0;
       const codeFromApi = data?.code || code;
+      const deferred = Boolean(data?.minOrderDeferred) || data?.appliesAt === "invoice";
+      const customerMessage =
+        data?.customerMessage ||
+        `${codeFromApi} saved. Discount applies on your invoice after inspection — Pay Now unchanged.`;
       setAppliedCoupon({
         code: codeFromApi,
-        discountAmount,
+        discountAmount: 0,
         discountType: data?.discountType,
         discountValue: data?.discountValue,
+        minOrderDeferred: deferred,
+        minOrderAmount: data?.minOrderAmount,
+        prepaidUnchanged: true,
+        customerMessage,
+        offerLabel:
+          typeof data?.offerLabel === "string" && data.offerLabel.trim()
+            ? data.offerLabel.trim()
+            : null,
       });
       addToast({
-        title: "Coupon applied",
-        description:
-          response?.message ||
-          `${codeFromApi} applied successfully. You saved ${currencySymbol}${discountAmount.toFixed(2)}.`,
+        title: "Promo saved",
+        description: customerMessage,
         color: "success",
       });
 
@@ -367,12 +373,10 @@ export default function Payment() {
   const [mobileStep, setMobileStep] = useState("summary");
 
   const cashEstimateDue = useMemo(() => {
+    // Cash: full prepaid estimate at delivery; laundry promo settles on final invoice.
     const effectiveMin = Math.max(minimumOrderCharge, 0);
-    return Math.max(
-      0,
-      effectiveMin + serviceFee + driverTip - couponDiscount
-    );
-  }, [minimumOrderCharge, serviceFee, driverTip, couponDiscount]);
+    return Math.max(0, effectiveMin + serviceFee + driverTip);
+  }, [minimumOrderCharge, serviceFee, driverTip]);
 
   const payNowAmount = paymentType === "cash" ? 0 : payableTotal;
 
@@ -895,13 +899,60 @@ export default function Payment() {
                         </button>
                       }
                     />
+                    {appliedCoupon?.code && appliedCoupon?.offerLabel ? (
+                      <p className="mt-2 font-sf text-xs font-semibold text-green-700">
+                        {appliedCoupon.offerLabel}
+                      </p>
+                    ) : null}
                     {appliedCoupon?.code ? (
                       <p className="mt-2 font-sf text-xs text-green-600">
-                        Coupon {appliedCoupon.code} applied: -{currencySymbol}
-                        {couponDiscount.toFixed(2)}
+                        {appliedCoupon.minOrderDeferred || couponDiscount <= 0
+                          ? `Coupon ${appliedCoupon.code} reserved — applies on final laundry invoice${
+                              appliedCoupon.minOrderAmount
+                                ? ` (min ${currencySymbol}${Number(appliedCoupon.minOrderAmount).toFixed(2)})`
+                                : ""
+                            }. Pay Now unchanged.`
+                          : `Coupon ${appliedCoupon.code}: estimated invoice discount -${currencySymbol}${couponDiscount.toFixed(2)}. Pay Now unchanged.`}
                       </p>
                     ) : null}
                   </div>
+
+                  {creditBalance > 0 ? (
+                    <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 font-sf">
+                      <p className="text-sm font-semibold text-violet-900">
+                        You have £{creditBalance.toFixed(2)} credit
+                      </p>
+                      <p className="text-xs text-violet-800 mt-0.5">
+                        Used automatically on your invoice. Pay Now stays the same.
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {promotionOffers.length > 0 ? (
+                    <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 space-y-2 font-sf">
+                      <div className="flex items-center gap-2">
+                        <AiOutlinePercentage className="size-4 text-green-700" />
+                        <p className="text-sm font-semibold text-green-900">
+                          Offers on this order
+                        </p>
+                      </div>
+                      <ul className="space-y-1.5">
+                        {promotionOffers.map((offer, index) => (
+                          <li key={offer.id ?? `offer-${index}`} className="text-sm">
+                            {offer.name ? (
+                              <p className="font-semibold text-green-900">{offer.name}</p>
+                            ) : null}
+                            {offer.label ? (
+                              <p className="text-green-800">{offer.label}</p>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="text-xs text-green-700">
+                        Applied automatically when the shop finalises your invoice after inspection.
+                      </p>
+                    </div>
+                  ) : null}
 
                   <h4 className="font-sf font-semibold">Frequency</h4>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 my-4">
@@ -1055,12 +1106,17 @@ export default function Payment() {
                       <h4 className="">Collection & delivery</h4>
                       <p className="">Free</p>
                     </div>
-                    {couponDiscount > 0 && (
+                    {(couponDiscount > 0 || appliedCoupon?.code) && (
                       <div className="flex justify-between font-sf text-green-700">
-                        <h4 className="">Coupon discount</h4>
+                        <h4 className="">
+                          {couponDiscount > 0
+                            ? "Invoice discount (est.)"
+                            : "Promo reserved"}
+                        </h4>
                         <p>
-                          -{currencySymbol}
-                          {couponDiscount.toFixed(2)}
+                          {couponDiscount > 0
+                            ? `-${currencySymbol}${couponDiscount.toFixed(2)}`
+                            : "At invoice"}
                         </p>
                       </div>
                     )}

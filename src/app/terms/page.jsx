@@ -2,6 +2,7 @@ import React from "react";
 import Header from "../../../components/Header";
 import Footer from "../../../components/Footer";
 import HomeClientWrapper from "../../../utilities/Test";
+import CancellationTermsBody from "../../../components/CancellationTermsBody";
 
 export const metadata = {
   title: "Terms & Conditions | Just Dry Cleaners",
@@ -50,7 +51,7 @@ We are not liable for items left in pockets, damage to leather or suede, shrinka
   },
   {
     heading: "8. Cancellations and rescheduling",
-    body: `You may cancel or reschedule a collection free of charge up to 2 hours before the scheduled collection window. Cancellations within 2 hours may be subject to a cancellation fee as shown at the time of booking. Once items have been collected, the order cannot be cancelled.`,
+    body: null,
   },
   {
     heading: "9. Promotional codes",
@@ -112,7 +113,7 @@ export default function Terms() {
                   {section.heading}
                 </h2>
                 <p className="text-base sm:text-lg text-black/70 leading-relaxed whitespace-pre-line">
-                  {section.body}
+                  {section.body == null ? <CancellationTermsBody /> : section.body}
                 </p>
               </div>
             ))}

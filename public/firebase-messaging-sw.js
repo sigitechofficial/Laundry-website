@@ -6,12 +6,13 @@ importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-com
 
 // Initialize Firebase inside the Service Worker
 firebase.initializeApp({
-  apiKey: "AIzaSyDdZLCsf0CQN_DIkE0mAOmRv9_pvlRq2qg",
-  authDomain: "laundry-app-bf43c.firebaseapp.com",
-  projectId: "laundry-app-bf43c",
-  storageBucket: "laundry-app-bf43c",
-  messagingSenderId: "880600214434",
-  appId: "1:880600214434:web:1c36e828fbcb66ff5ee0fb",
+  apiKey: "AIzaSyApYXQsPo4aMFo3tEsOg1enAo707Bxq5pQ",
+  authDomain: "justdrycleansltd.firebaseapp.com",
+  projectId: "justdrycleansltd",
+  storageBucket: "justdrycleansltd.firebasestorage.app",
+  messagingSenderId: "475975874912",
+  appId: "1:475975874912:web:de3b0055f6467d0762c605",
+  measurementId: "G-1RC12F3PH2",
 });
 
 // Get messaging instance

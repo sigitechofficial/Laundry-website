@@ -113,6 +113,16 @@ const CheckoutForm = forwardRef(function CheckoutForm(
   const peWrapRef = useRef(null);
   const openTypeRef = useRef(null);
   const peSeenRef = useRef(false);
+  // Is a Payment Element method open? Stripe's accordion can't be closed by tapping it,
+  // so we show our own "Close" link while one is open.
+  const [peOpen, setPeOpen] = useState(false);
+  const closePaymentElement = () => {
+    elements?.getElement(PaymentElement)?.collapse();
+    setPeOpen(false);
+    const back = usable.find((c) => c.paymentMethodId === defaultCardId) || usable[0];
+    if (back) choose(back.paymentMethodId); // back to the saved (default) card
+  };
+
   const revealOpenedMethod = (event) => {
     const type = event?.collapsed === false ? event?.value?.type || "open" : null;
     const changed = type && type !== openTypeRef.current;
@@ -325,7 +335,20 @@ const CheckoutForm = forwardRef(function CheckoutForm(
 
       {/* 3) Card, 4) other methods. Closed while a saved card is chosen; opening one selects it. */}
       <div ref={peWrapRef} className="grid scroll-mt-3 gap-2.5">
-        {usable.length || walletsAvailable ? <p className={LABEL}>{usable.length ? "Or pay another way" : "Card or other ways to pay"}</p> : null}
+        {usable.length || walletsAvailable || peOpen ? (
+          <div className="flex items-center justify-between gap-3">
+            <p className={LABEL}>{usable.length ? "Or pay another way" : "Card or other ways to pay"}</p>
+            {peOpen ? (
+              <button
+                type="button"
+                className="cursor-pointer border-0 bg-transparent p-0 text-[13.5px] font-bold text-jdc-blue hover:underline"
+                onClick={closePaymentElement}
+              >
+                {usable.length ? "Close · use saved card" : "Close"}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {/* mounted after the saved cards have loaded, so it starts closed when there is a saved card */}
         {!cardsReady ? (
           <p className="m-0 text-[13.5px] text-jdc-muted">Loading payment options…</p>
@@ -338,6 +361,7 @@ const CheckoutForm = forwardRef(function CheckoutForm(
           }}
           onChange={(event) => {
             setPeComplete(Boolean(event?.complete));
+            setPeOpen(event?.collapsed === false);
             if (event && event.collapsed === false && selected !== "new") choose("new");
             revealOpenedMethod(event);
           }}

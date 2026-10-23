@@ -100,7 +100,13 @@ export default function SiteHeader({ variant = "overlay" }) {
             {signedIn ? null : (
               <Link
                 href={ROUTES.signIn}
-                className="text-inherit no-underline hover:underline hover:underline-offset-4 max-[1080px]:hidden"
+                className={cx(
+                  // a real button: white pill over the hero, navy pill once the header is solid
+                  "inline-flex h-[42px] items-center rounded-jdc-pill border px-[22px] no-underline transition-colors max-[1080px]:hidden",
+                  solid
+                    ? "border-jdc-navy bg-jdc-navy text-white hover:bg-[#13265A]"
+                    : "border-white bg-white text-jdc-navy hover:bg-white/90"
+                )}
               >
                 Log in
               </Link>

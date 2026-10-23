@@ -1288,7 +1288,7 @@ export default function PlaceOrderPage() {
 
                 <fieldset className={FIELDSET} data-slot="Col">
                   <legend className={LEGEND}>Collection</legend>
-                  <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-[18px] max-[720px]:grid-cols-[minmax(0,1fr)] max-[720px]:gap-3.5">
+                  <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-[18px] max-[720px]:grid-cols-[minmax(0,1fr)] max-[720px]:gap-3.5">
                     <div className={FIELD}>
                       <label htmlFor="bkColWhen" className={FIELD_LABEL}>Date &amp; time</label>
                       <div className={CTRL}>
@@ -1330,7 +1330,7 @@ export default function PlaceOrderPage() {
 
                 <fieldset className={FIELDSET} data-slot="Del">
                   <legend className={LEGEND}>Delivery</legend>
-                  <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-[18px] max-[720px]:grid-cols-[minmax(0,1fr)] max-[720px]:gap-3.5">
+                  <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-[18px] max-[720px]:grid-cols-[minmax(0,1fr)] max-[720px]:gap-3.5">
                     <div className={FIELD}>
                       <label htmlFor="bkDelWhen" className={FIELD_LABEL}>Date &amp; time</label>
                       <div className={CTRL}>

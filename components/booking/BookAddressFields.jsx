@@ -260,7 +260,13 @@ export default function BookAddressFields({
     else onPickAddress?.({ ...a, postcode: formatSpacedPostcode(normalizePostcode(a?.postcode || code)) || code });
     setOpen(false);
     setQuery(null);
-    addrRef.current?.focus({ preventScroll: true });
+    // One click / Enter closes the list and moves on to the collection time.
+    // (Focusing the address box again reopened the list, so it took two clicks.)
+    requestAnimationFrame(() => {
+      const next = [document.getElementById("bkColWhen"), document.getElementById("bkDelWhen")].find((el) => el && !el.disabled);
+      if (next) next.focus();
+      else addrRef.current?.blur();
+    });
   };
 
   const onListKey = (e) => {
@@ -358,7 +364,7 @@ export default function BookAddressFields({
             </div>
             <button
               type="button"
-              className="flex h-[58px] w-[58px] flex-none items-center justify-center rounded-xl border-0 bg-jdc-blue text-white hover:bg-jdc-blue-dark [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:h-14 [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:w-14 [@media(min-width:901px)_and_(max-height:860px)]:h-12 [@media(min-width:901px)_and_(max-height:860px)]:w-12 max-[720px]:h-14 max-[720px]:w-14"
+              className="flex h-[58px] w-[58px] flex-none items-center justify-center rounded-xl border-0 bg-jdc-blue text-white hover:bg-jdc-blue-dark [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:h-14 [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:w-14 [@media(min-width:901px)_and_(max-height:860px)]:h-14 [@media(min-width:901px)_and_(max-height:860px)]:w-14 max-[720px]:h-14 max-[720px]:w-14"
               aria-label="Find my address"
               disabled={disabled || isFetching}
               onClick={() => void search()}

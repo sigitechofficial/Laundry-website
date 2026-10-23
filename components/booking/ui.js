@@ -53,7 +53,7 @@ export const CTRL_CHEV =
   "pointer-events-none absolute right-3.5 top-1/2 flex -translate-y-1/2 text-[#8A93A6] transition-colors duration-200 group-focus-within/c:text-jdc-blue";
 /* .bk2-in text input / select / slot button */
 export const CTRL_INPUT =
-  "h-[58px] w-full appearance-none text-ellipsis rounded-xl border border-jdc-line bg-white py-0 pl-[46px] pr-4 text-[16px] text-jdc-text [box-shadow:0_1px_3px_rgba(27,34,48,0.05)] [transition:border-color_0.2s,box-shadow_0.2s] placeholder:text-[#8A93A6] hover:border-[#C5CEDD] focus:border-jdc-blue focus:[box-shadow:0_0_0_4px_rgba(2,120,254,0.14)] focus:[outline:none] [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:h-14 [@media(min-width:901px)_and_(max-height:860px)]:h-12 max-[720px]:h-14 max-[720px]:pl-11";
+  "h-[58px] w-full appearance-none text-ellipsis rounded-xl border border-jdc-line bg-white py-0 pl-[46px] pr-4 text-[16px] text-jdc-text [box-shadow:0_1px_3px_rgba(27,34,48,0.05)] [transition:border-color_0.2s,box-shadow_0.2s] placeholder:text-[#8A93A6] hover:border-[#C5CEDD] focus:border-jdc-blue focus:[box-shadow:0_0_0_4px_rgba(2,120,254,0.14)] focus:[outline:none] [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:h-14 [@media(min-width:901px)_and_(max-height:860px)]:h-14 max-[720px]:h-14 max-[720px]:pl-11";
 /* .bk2-sel */
 export const CTRL_SELECT = "cursor-pointer pr-[38px]";
 

@@ -4,12 +4,29 @@
  */
 
 export const PRICING_HERO = {
-  titleA: "Simple prices.",
-  titleB: "No surprises.",
-  lead: "Every price is shown before you pay. Pick a service below.",
+  title: "Prices",
+  lead: "Choose a service to see its full price list. Collection and delivery are free.",
 };
 
-export const LIST_NOTE = "Select a service to see its prices. Collection and delivery are free.";
+/**
+ * One-line summaries for the price list cards (the full descriptions stay on each
+ * service page). Matched on the normalised service name, first match wins.
+ */
+export const SERVICE_TAGLINES = [
+  { match: ["wash & iron"], text: "Washed, ironed, ready to wear" },
+  { match: ["press"], text: "Pressing for clean clothes" },
+  { match: ["jewish"], text: "Specialist dry cleaning" },
+  { match: ["leather"], text: "Leather jackets and coats" },
+  { match: ["duvet", "bulky"], text: "Duvets, pillows and blankets" },
+  { match: ["ski", "curtain"], text: "Ski wear and curtains" },
+  { match: ["alteration", "repair"], text: "Hems, zips and repairs" },
+  { match: ["dry clean"], text: "Suits, dresses and delicates" },
+  { match: ["wash"], text: "Everyday clothes and linens" },
+];
+export const serviceTagline = (name) => {
+  const n = String(name || "").toLowerCase();
+  return SERVICE_TAGLINES.find((b) => b.match.some((m) => n.includes(m)))?.text ?? "";
+};
 
 /** Short descriptions used when the API has none, matched on normalised name. */
 export const SERVICE_BLURBS = [

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Button from "../ds/Button";
 import Icon from "../ds/Icon";
+import ProtoIcon, { serviceIconName } from "../proto/ProtoIcon";
 import PageShell from "../ds/PageShell";
 import { Container } from "../ds/Layout";
 import { cx } from "../ds/cx";
@@ -101,7 +102,11 @@ export default function PriceDetailView() {
               action={<Button onClick={refetch}>Try again</Button>}
             />
           ) : !service ? (
-            <StatusCard title="Service not found" body="Choose a service from the list." />
+            <StatusCard
+              title="Service not found"
+              body="Choose a service from the list."
+              action={<Button href="/pricing">See all prices</Button>}
+            />
           ) : (
             <>
               <nav className="flex gap-[10px] overflow-x-auto m-[14px_0_22px] pt-[2px] px-0 pb-[6px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-[720px]:m-[10px_calc(var(--jdc-gutter)*-1)_16px] max-[720px]:pl-jdc-gutter max-[720px]:pr-jdc-gutter" aria-label="Services" ref={tabsRef}>
@@ -210,13 +215,13 @@ export default function PriceDetailView() {
                   <div className="p-5 border border-jdc-line rounded-[18px] bg-jdc-white max-[720px]:p-[14px]">
                     <div className="flex items-center gap-3">
                       <span className={IC}>
-                        <Icon name={service.icon} size={22} />
+                        <ProtoIcon name={serviceIconName(service.name)} size={24} />
                       </span>
                       <div>
                         <h2 className="m-0 font-display font-bold text-[20px] text-jdc-navy max-[720px]:text-[18px]">{service.name}</h2>
                         {service.turnaround ? (
                           <small className="inline-flex items-center gap-[5px] mt-[3px] text-[13px] text-jdc-muted">
-                            <Icon name="clockBold" size={13} /> {service.turnaround}
+                            <ProtoIcon name="clock" size={13} /> {service.turnaround}
                           </small>
                         ) : null}
                       </div>

@@ -83,6 +83,8 @@ module.exports = {
           "on-dark": "var(--jdc-on-dark)",
           "on-dark-muted": "var(--jdc-on-dark-muted)",
           "on-dark-line": "var(--jdc-on-dark-line)",
+          // dimmed page behind every popup, sheet and drawer (bg-jdc-scrim)
+          scrim: "rgba(15,20,28,0.5)",
         },
       },
       // Type scale from tokens.css: text-jdc-sm, text-jdc-h2 ...
@@ -102,6 +104,17 @@ module.exports = {
         "jdc-gutter": "var(--jdc-gutter)",
         "jdc-header": "var(--jdc-header-h)",
         "jdc-section": "var(--jdc-section-y)",
+      },
+      // Stacking order, lowest to highest. Everything that floats uses one of these.
+      zIndex: {
+        "jdc-bar": "40", // fixed bottom bars (booking ServiceBar, price detail bar)
+        "jdc-header": "50", // site header
+        "jdc-dropdown": "60", // menus and suggestion lists that may cover the header
+        "jdc-menu": "80", // site menu drawer
+        "jdc-dialog": "100", // popups and bottom sheets (components/ds/Dialog)
+        "jdc-progress": "120", // page-change progress line
+        "jdc-alert": "130", // a check that opens over another popup (e.g. bags warning)
+        "jdc-toast": "140", // toasts: never blocking, so always on top (e.g. a card error over the card popup)
       },
       transitionTimingFunction: {
         jdc: "var(--jdc-ease)",
@@ -153,6 +166,23 @@ module.exports = {
       keyframes: {
         "jdc-shimmer": { to: { backgroundPosition: "-200% 0" } },
         "jdc-marquee": { to: { transform: "translateX(calc(-50% - 17px))" } },
+        // booking journey: content fades in over its loading placeholders
+        "jdc-fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
+        // thin progress line under the header while moving between pages
+        "jdc-progress": {
+          "0%": { transform: "scaleX(0)" },
+          "40%": { transform: "scaleX(0.55)" },
+          "100%": { transform: "scaleX(0.9)" },
+        },
+        // Popups (components/ds/Dialog): centred popup rises and fades; bottom sheet and
+        // side drawer slide. Exits are shorter than entrances.
+        "jdc-fade-out": { from: { opacity: "1" }, to: { opacity: "0" } },
+        "jdc-pop-in": { from: { opacity: "0", transform: "translateY(12px)" }, to: { opacity: "1", transform: "none" } },
+        "jdc-pop-out": { from: { opacity: "1", transform: "none" }, to: { opacity: "0", transform: "translateY(12px)" } },
+        "jdc-sheet-in": { from: { transform: "translateY(100%)" }, to: { transform: "none" } },
+        "jdc-sheet-out": { from: { transform: "none" }, to: { transform: "translateY(100%)" } },
+        "jdc-side-in": { from: { transform: "translateX(100%)" }, to: { transform: "none" } },
+        "jdc-side-out": { from: { transform: "none" }, to: { transform: "translateX(100%)" } },
         "jdc-addrs-in": { from: { opacity: "0", transform: "translateY(-6px)" }, to: { opacity: "1", transform: "none" } },
         // Three-dot button loader (was an inline <style> in components/Loader.jsx)
         "bounce-ball": {
@@ -181,6 +211,15 @@ module.exports = {
         "jdc-addrs-in": "jdc-addrs-in 0.22s ease-out",
         "jdc-shimmer": "jdc-shimmer 1.4s ease-in-out infinite",
         "jdc-marquee": "jdc-marquee 38s linear infinite",
+        "jdc-fade-in": "jdc-fade-in 0.18s ease-out",
+        "jdc-fade-out": "jdc-fade-out 0.16s ease-in forwards",
+        "jdc-pop-in": "jdc-pop-in 0.18s ease-out",
+        "jdc-pop-out": "jdc-pop-out 0.14s ease-in forwards",
+        "jdc-sheet-in": "jdc-sheet-in 0.28s cubic-bezier(0.2,0.8,0.2,1)",
+        "jdc-sheet-out": "jdc-sheet-out 0.2s ease-in forwards",
+        "jdc-side-in": "jdc-side-in 0.28s cubic-bezier(0.2,0.8,0.2,1)",
+        "jdc-side-out": "jdc-side-out 0.2s ease-in forwards",
+        "jdc-progress": "jdc-progress 2.4s cubic-bezier(0.2,0.8,0.2,1) forwards",
       },
       backgroundImage: {
         // Navy chevron used by design-system <select> fields (was Form.module.css)

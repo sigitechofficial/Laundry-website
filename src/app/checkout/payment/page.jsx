@@ -19,8 +19,9 @@ import StripeCheckout from "../../../../utilities/StripeCheckout";
 import ProtoIcon from "../../../../components/proto/ProtoIcon";
 import ServiceBar from "../../../../components/booking/ServiceBar";
 import * as ui from "../../../../components/booking/ui";
+import { BoneText } from "../../../../components/ds/Skeleton";
 import { cx } from "../../../../components/ds/cx";
-import { lockPageScroll } from "../../../../utilities/scrollLock";
+import Dialog from "../../../../components/ds/Dialog";
 import { useFitsViewport } from "../../../../components/ds/useFitsViewport";
 import { useRouter } from "next/navigation";
 import BagsItemsWarningModal from "../../../../components/BagsItemsWarningModal";
@@ -70,7 +71,7 @@ export default function Payment() {
     }, 0);
     return sum > 0 ? sum : null;
   }, [useSharedBags, sharedBagCount, preferencesData]);
-  const { data: addressData, refetch: refetchCharges } = useGetChargesQuery(
+  const { data: addressData, isError: chargesError, refetch: refetchCharges } = useGetChargesQuery(
     {
       lat: orderData?.collectionData?.lat,
       lng: orderData?.collectionData?.lng,
@@ -80,6 +81,9 @@ export default function Payment() {
     }
   );
   const zoneId = addressData?.data?.zoneId;
+  // prices come from the charges for the pickup address; until then show placeholders
+  // instead of £0.00 that then jumps to the real amount
+  const chargesReady = Boolean(addressData?.data);
   const { data: activePoliciesData } = useGetCustomerActivePoliciesQuery(zoneId, {
     skip: zoneId == null,
   });
@@ -324,6 +328,8 @@ export default function Payment() {
     onOpenChange: onBagsWarningOpenChange,
   } = useDisclosure();
   const skipBagsCheckRef = useRef(false);
+  // the customer already chose "continue anyway" on the bags warning for this order
+  const bagsAckRef = useRef(false);
   const proceedAfterWarningRef = useRef(null);
   const stripeSubmitRef = useRef(null);
   const [missingQuantityServices, setMissingQuantityServices] = useState([]);
@@ -353,7 +359,6 @@ export default function Payment() {
   const goToOrder = () => {
     if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
     doneTimerRef.current = null;
-    lockPageScroll(false);
     dispatch(clearCartData());
     router.replace(doneUrlRef.current);
   };
@@ -382,6 +387,7 @@ export default function Payment() {
 
   const runWithBagsCheck = useCallback(
     (action) => {
+      if (bagsAckRef.current) return action();
       if (skipBagsCheckRef.current) {
         skipBagsCheckRef.current = false;
         return action();
@@ -400,6 +406,7 @@ export default function Payment() {
   );
 
   const handleBeforePay = useCallback(() => {
+    if (bagsAckRef.current) return true;
     if (skipBagsCheckRef.current) {
       skipBagsCheckRef.current = false;
       return true;
@@ -414,10 +421,8 @@ export default function Payment() {
     // The card popup sits above the warning, so hide it (it stays mounted, so the
     // card details are kept) and bring it back to finish placing the order.
     setPayOpen(false);
-    lockPageScroll(false);
     proceedAfterWarningRef.current = () => {
       setPayOpen(true);
-      lockPageScroll(true);
       stripeSubmitRef.current?.requestSubmit();
     };
     onBagsWarningOpen();
@@ -431,6 +436,7 @@ export default function Payment() {
   };
 
   const handleBagsWarningProceed = () => {
+    bagsAckRef.current = true;
     skipBagsCheckRef.current = true;
     const action = proceedAfterWarningRef.current;
     proceedAfterWarningRef.current = null;
@@ -644,7 +650,6 @@ export default function Payment() {
         } else {
           setPayOpen(false);
           setOrderDone(true);
-          lockPageScroll(true);
           // show the confirmation briefly, then open the new order's details
           doneTimerRef.current = setTimeout(goToOrder, 2000);
         }
@@ -697,30 +702,28 @@ export default function Payment() {
   const TIP_PRESETS = [0, 1, 2, 5];
   const tipIsOther = tipOtherActive || (!TIP_PRESETS.includes(Number(orderData?.driverTip || 0)) && Number(orderData?.driverTip) > 0);
   const totalText = `${currencySymbol}${payNowAmount.toFixed(2)}`;
-  const lockScroll = (v) => {
-    lockPageScroll(v);
-  };
   const openCard = (forPlace) => {
     setPayForPlace(Boolean(forPlace));
     setPayOpen(true);
-    lockScroll(true);
   };
   const closeCard = () => {
     setPayOpen(false);
-    lockScroll(false);
   };
   const submitCard = () => {
     if (!cardComplete) return;
     stripeSubmitRef.current?.requestSubmit();
   };
+  // The bags / items check runs first, before the card details or cash confirmation,
+  // so the customer can go back and add them instead of meeting it after typing a card.
   const placeOrder = () => {
     if (paymentType === "cash") {
-      setCashOpen(true);
-      lockScroll(true);
+      runWithBagsCheck(() => {
+        setCashOpen(true);
+      });
       return;
     }
     if (!cardSaved) {
-      openCard(true);
+      runWithBagsCheck(() => openCard(true));
       return;
     }
     submitCard();
@@ -729,7 +732,7 @@ export default function Payment() {
 
   return (
     <>
-      <PageShell header="solid">
+      <PageShell header="solid" clientOnly>
         {/* Checkout: layout from the prototype (checkout.html), styled with Tailwind */}
         <div id="jdcCheckoutRoot" className={ui.ROOT}>
           <div className={ui.PAGE_BG}>
@@ -847,9 +850,7 @@ export default function Payment() {
                             <ProtoIcon name="wallet" size={18} />
                           </span>
                           <span>
-                            You pay the order total after we clean your items. Service fee {currencySymbol}
-                            {money(addressData?.data?.zoneSeviceCharge)}, minimum order {currencySymbol}
-                            {money(addressData?.data?.zoneUpfrontAmount)}.
+                            You pay the order total after we clean your items. Service fee {chargesReady ? <>{currencySymbol}{money(addressData?.data?.zoneSeviceCharge)}</> : chargesError ? "–" : <BoneText />}, minimum order {chargesReady ? <>{currencySymbol}{money(addressData?.data?.zoneUpfrontAmount)}</> : chargesError ? "–" : <BoneText />}.
                           </span>
                         </li>
                       </ul>
@@ -1046,15 +1047,13 @@ export default function Payment() {
                           <div className="flex justify-between gap-4 p-0 text-[14.5px] text-jdc-muted [&>span:last-child]:font-medium [&>span:last-child]:text-jdc-text">
                             <span>Minimum order</span>
                             <span>
-                              {currencySymbol}
-                              {money(addressData?.data?.zoneUpfrontAmount)}
+                              {chargesReady ? <>{currencySymbol}{money(addressData?.data?.zoneUpfrontAmount)}</> : chargesError ? "–" : <BoneText />}
                             </span>
                           </div>
                           <div className="flex justify-between gap-4 p-0 text-[14.5px] text-jdc-muted [&>span:last-child]:font-medium [&>span:last-child]:text-jdc-text">
                             <span>Service fee</span>
                             <span>
-                              {currencySymbol}
-                              {money(addressData?.data?.zoneSeviceCharge)}
+                              {chargesReady ? <>{currencySymbol}{money(addressData?.data?.zoneSeviceCharge)}</> : chargesError ? "–" : <BoneText />}
                             </span>
                           </div>
                           <div className="flex justify-between gap-4 p-0 text-[14.5px] text-jdc-muted [&>span:last-child]:font-medium [&>span:last-child]:text-jdc-text">
@@ -1089,8 +1088,16 @@ export default function Payment() {
                             <span>
                               Pay now {paymentType === "cash" ? null : <small>incl. tax</small>}
                             </span>
-                            <b id="coTotal">{totalText}</b>
+                            <b id="coTotal">{chargesReady ? totalText : chargesError ? "–" : <BoneText className="h-6 w-20" />}</b>
                           </div>
+                          {chargesError && !chargesReady ? (
+                            <p className="m-0 mt-2 flex flex-wrap items-center gap-x-2 text-[13.5px] text-[#C0392B]" role="alert">
+                              We couldn&apos;t load the prices for this address.
+                              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 font-bold text-jdc-blue underline" onClick={() => refetchCharges()}>
+                                Try again
+                              </button>
+                            </p>
+                          ) : null}
                         </div>
                         <a
                           className="mx-0 mb-0 mt-3.5 inline-block text-[13.5px] font-semibold text-jdc-navy underline"
@@ -1098,7 +1105,6 @@ export default function Payment() {
                           onClick={(e) => {
                             e.preventDefault();
                             setChargesOpen(true);
-                            lockScroll(true);
                           }}
                         >
                           How do charges work?
@@ -1264,7 +1270,7 @@ export default function Payment() {
                 label={
                   <span className={cx(ui.BAR_TXT, ui.BAR_TXT_TOTAL)}>
                     <small>Pay now</small>
-                    <strong id="coBarTotal">{totalText}</strong>
+                    <strong id="coBarTotal">{chargesReady ? totalText : chargesError ? "–" : <BoneText className="h-6 w-20" />}</strong>
                   </span>
                 }
                 goText={orderBusy ? "Placing order…" : "Place order"}
@@ -1274,185 +1280,148 @@ export default function Payment() {
               />
             )}
 
-            {/* Card details (Stripe) — prototype #payModal shell. Kept mounted so the card stays entered. */}
+            {/* Card details (Stripe). Kept mounted so the card stays entered. */}
             {!isRescheduleFlow && paymentType === "card" && modal?.page === "stripe" ? (
-              <div className={cx(cx(ui.MODAL, "min-[721px]:!items-center min-[721px]:!p-5"), !(payOpen) && "hidden")} id="payModal" hidden={!payOpen}>
-                <div className={ui.MODAL_OVERLAY} onClick={closeCard} />
-                <div className={cx(ui.MODAL_PANEL, "min-[721px]:m-auto min-[721px]:!max-h-[calc(100vh-40px)] min-[721px]:!max-w-[440px] min-[721px]:!rounded-[22px]")} role="dialog" aria-modal="true" aria-labelledby="payModalTitle">
-                  {/* phones: bottom sheet (ui.MODAL) with a grab bar; tablet/desktop: centred popup */}
-                  <span className="mx-auto mb-0 mt-2.5 hidden h-1 w-10 flex-none rounded-full bg-[#DDE3EE] max-[720px]:block" aria-hidden="true" />
-                  <div className={ui.MODAL_HEAD}>
-                    <b id="payModalTitle">Payment method</b>
-                    <button type="button" className={ui.MODAL_X} onClick={closeCard}>
-                      Cancel
-                    </button>
-                  </div>
-                  <div className={cx(ui.MODAL_BODY, "gap-[18px]")}>
-                    <StripeCheckout
-                      paymentMethod={modal?.paymentMethod}
-                      setModal={setModal}
-                      modal={modal}
-                      booking={handleCreateBooking}
-                      totalAmount={payableTotal}
-                      onOpen={() => {}}
-                      customerId={customerId}
-                      beforePay={handleBeforePay}
-                      stripeSubmitRef={stripeSubmitRef}
-                      hideSubmit
-                      onCompleteChange={setCardComplete}
-                      onProcessingChange={setStripeProcessing}
-                    />
-                    <p className="mx-0 mb-0 mt-0.5 flex items-start gap-2 text-[13px] leading-[1.5] text-jdc-muted [&>svg]:mt-px [&>svg]:flex-none [&>svg]:text-[#8A93A6]">
-                      <ProtoIcon name="lock" size={15} />
-                      <span>Payments are processed securely by Stripe. Nothing is charged until your items are checked.</span>
-                    </p>
-                  </div>
-                  <div className={ui.MODAL_FOOT}>
-                    <button
-                      type="button"
-                      className={cx(ui.BTN, ui.BTN_BLOCK)}
-                      id="payModalSave"
-                      disabled={!cardComplete || stripeProcessing}
-                      onClick={() => {
-                        setCardSaved(true);
-                        setPaymentType("card");
-                        if (payForPlace) {
-                          setPayForPlace(false);
-                          submitCard();
-                        } else {
-                          closeCard();
-                          addToast({ title: "Card saved", color: "success" });
-                        }
-                      }}
-                    >
-                      {stripeProcessing ? <span className={ui.SPIN} aria-hidden="true" /> : null}
-                      {stripeProcessing ? "Placing order…" : payForPlace ? "Pay & place order" : "Save card"}
-                      <ProtoIcon name="arrow" size={18} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            <div className={cx(cx(ui.MODAL, "min-[721px]:!items-center min-[721px]:!p-5"), !(cashOpen) && "hidden")} id="cashConfirm" hidden={!cashOpen}>
-              <div
-                className={ui.MODAL_OVERLAY}
-                onClick={() => {
-                  setCashOpen(false);
-                  lockScroll(false);
-                }}
-              />
-              <div className={cx(ui.MODAL_PANEL, "min-[721px]:m-auto min-[721px]:!max-h-[calc(100vh-40px)] min-[721px]:!max-w-[440px] min-[721px]:!rounded-[22px]", "min-[721px]:!max-w-[400px]")} role="dialog" aria-modal="true" aria-labelledby="cashTitle">
-                <div className="px-7 pb-7 pt-8 text-center [&_h3]:mx-0 [&_h3]:mb-2 [&_h3]:mt-0 [&_h3]:font-display [&_h3]:text-[22px] [&_h3]:tracking-[-0.01em] [&_h3]:text-jdc-navy [&_p]:m-0 [&_p]:text-[15px] [&_p]:leading-[1.55] [&_p]:text-jdc-muted [&_p_b]:text-jdc-navy">
-                  <span className={cx("mx-auto mb-[18px] mt-0 flex h-16 w-16 items-center justify-center rounded-[50%]", "bg-jdc-blue-tint text-jdc-blue")}>
-                    <ProtoIcon name="cashMsg" size={26} />
-                  </span>
-                  <h3 id="cashTitle">Confirm your order</h3>
-                  <p>
-                    You&rsquo;ll pay{" "}
-                    <b id="cashAmt">
-                      {currencySymbol}
-                      {cashEstimateDue.toFixed(2)}
-                    </b>{" "}
-                    in cash when we collect &mdash; nothing is charged now.
-                  </p>
-                  <div className="mt-[22px] flex gap-3">
-                    <button
-                      type="button"
-                      className={cx(ui.BTN, ui.BTN_GHOST, "mt-0 h-[52px] w-auto min-w-0 flex-1 justify-center px-4", "min-w-[104px] flex-[0_0_auto]")}
-                      onClick={() => {
-                        setCashOpen(false);
-                        lockScroll(false);
-                      }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className={cx(ui.BTN, ui.BTN_BLOCK, "mt-0 h-[52px] w-auto min-w-0 flex-1 justify-center px-4")}
-                      id="cashConfirmBtn"
-                      disabled={isCashBooking}
-                      onClick={() => {
-                        setCashOpen(false);
-                        lockScroll(false);
-                        handleCashBooking();
-                      }}
-                    >
-                      {isCashBooking ? "Booking…" : "Confirm order"}
-                      <ProtoIcon name="arrow" size={18} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className={cx(cx(ui.MODAL, "min-[721px]:!items-center min-[721px]:!p-5"), !(orderDone) && "hidden")} id="orderDone" hidden={!orderDone}>
-              <div className={ui.MODAL_OVERLAY} />
-              <div className={cx(ui.MODAL_PANEL, "min-[721px]:m-auto min-[721px]:!max-h-[calc(100vh-40px)] min-[721px]:!max-w-[440px] min-[721px]:!rounded-[22px]", "min-[721px]:!max-w-[400px]")} role="dialog" aria-modal="true" aria-labelledby="doneTitle">
-                <div className="px-7 pb-7 pt-8 text-center [&_h3]:mx-0 [&_h3]:mb-2 [&_h3]:mt-0 [&_h3]:font-display [&_h3]:text-[22px] [&_h3]:tracking-[-0.01em] [&_h3]:text-jdc-navy [&_p]:m-0 [&_p]:text-[15px] [&_p]:leading-[1.55] [&_p]:text-jdc-muted [&_p_b]:text-jdc-navy">
-                  <span className={cx("mx-auto mb-[18px] mt-0 flex h-16 w-16 items-center justify-center rounded-[50%]", "bg-[#E7F6EE] text-[#1A7F43]")}>
-                    <ProtoIcon name="check" size={30} />
-                  </span>
-                  <h3 id="doneTitle">Order placed successfully</h3>
-                  <p>Thanks! We&rsquo;ll confirm your pickup by text. Nothing is charged until your items are checked and weighed.</p>
-                  <p className="!mt-3 !text-[13.5px]">Taking you to your order&hellip;</p>
-                  <button
-                    type="button"
-                    className={cx(ui.BTN, ui.BTN_BLOCK, "mt-[22px] h-[52px] w-full justify-center")}
-                    id="orderDoneBtn"
-                    onClick={goToOrder}
-                  >
-                    View my order
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className={cx(cx(ui.MODAL, "min-[721px]:!items-center min-[721px]:!p-5"), !(chargesOpen) && "hidden")} id="chargesInfo" hidden={!chargesOpen}>
-              <div
-                className={ui.MODAL_OVERLAY}
-                onClick={() => {
-                  setChargesOpen(false);
-                  lockScroll(false);
-                }}
-              />
-              <div className={cx(ui.MODAL_PANEL, "min-[721px]:m-auto min-[721px]:!max-h-[calc(100vh-40px)] min-[721px]:!max-w-[440px] min-[721px]:!rounded-[22px]")} role="dialog" aria-modal="true" aria-labelledby="chargesTitle">
+              <Dialog open={payOpen} onClose={closeCard} labelledBy="payModalTitle" width="md" keepMounted>
                 <div className={ui.MODAL_HEAD}>
-                  <b id="chargesTitle">How do charges work?</b>
-                  <button
-                    type="button"
-                    className={ui.MODAL_X}
-                    onClick={() => {
-                      setChargesOpen(false);
-                      lockScroll(false);
-                    }}
-                  >
-                    Close
+                  <b id="payModalTitle">Payment method</b>
+                  <button type="button" className={ui.MODAL_X} onClick={closeCard}>
+                    Cancel
                   </button>
                 </div>
                 <div className={cx(ui.MODAL_BODY, "gap-[18px]")}>
-                  <p className="m-0 text-[12.5px] leading-[1.5] text-jdc-muted">
-                    Minimum order {currencySymbol}
-                    {money(addressData?.data?.zoneUpfrontAmount)} and service fee {currencySymbol}
-                    {money(addressData?.data?.zoneSeviceCharge)}. Your final total is confirmed on an itemised receipt after
-                    your items are checked and weighed.
+                  <StripeCheckout
+                    paymentMethod={modal?.paymentMethod}
+                    setModal={setModal}
+                    modal={modal}
+                    booking={handleCreateBooking}
+                    totalAmount={payableTotal}
+                    onOpen={() => {}}
+                    customerId={customerId}
+                    beforePay={handleBeforePay}
+                    stripeSubmitRef={stripeSubmitRef}
+                    hideSubmit
+                    onCompleteChange={setCardComplete}
+                    onProcessingChange={setStripeProcessing}
+                  />
+                  <p className="mx-0 mb-0 mt-0.5 flex items-start gap-2 text-[13px] leading-[1.5] text-jdc-muted [&>svg]:mt-px [&>svg]:flex-none [&>svg]:text-[#8A93A6]">
+                    <ProtoIcon name="lock" size={15} />
+                    <span>Payments are processed securely by Stripe. Nothing is charged until your items are checked.</span>
                   </p>
-                  {policyContent?.hasAnyPolicy ? (
-                    <>
-                      <p className="m-0 text-[12.5px] leading-[1.5] text-jdc-muted">
-                        {policyContent.cancellationLine1} {policyContent.cancellationLine2}
-                      </p>
-                      <p className="m-0 text-[12.5px] leading-[1.5] text-jdc-muted">
-                        {policyContent.rescheduleLine1} {policyContent.rescheduleLine2}
-                      </p>
-                      <p className="m-0 text-[12.5px] leading-[1.5] text-jdc-muted">
-                        {policyContent.noShowLine}
-                      </p>
-                    </>
-                  ) : null}
+                </div>
+                <div className={ui.MODAL_FOOT}>
+                  <button
+                    type="button"
+                    className={cx(ui.BTN, ui.BTN_BLOCK)}
+                    id="payModalSave"
+                    disabled={!cardComplete || stripeProcessing}
+                    onClick={() => {
+                      setCardSaved(true);
+                      setPaymentType("card");
+                      if (payForPlace) {
+                        setPayForPlace(false);
+                        submitCard();
+                      } else {
+                        closeCard();
+                        addToast({ title: "Card saved", color: "success" });
+                      }
+                    }}
+                  >
+                    {stripeProcessing ? <span className={ui.SPIN} aria-hidden="true" /> : null}
+                    {stripeProcessing ? "Placing order…" : payForPlace ? "Pay & place order" : "Save card"}
+                    <ProtoIcon name="arrow" size={18} />
+                  </button>
+                </div>
+              </Dialog>
+            ) : null}
+
+            <Dialog open={cashOpen} onClose={() => setCashOpen(false)} labelledBy="cashTitle" width="sm">
+              <div className={ui.CONFIRM_BODY}>
+                <span className={cx(ui.CONFIRM_ICON, "bg-jdc-blue-tint text-jdc-blue")}>
+                  <ProtoIcon name="cashMsg" size={26} />
+                </span>
+                <h3 id="cashTitle">Confirm your order</h3>
+                <p>
+                  You&rsquo;ll pay{" "}
+                  <b id="cashAmt">
+                    {currencySymbol}
+                    {cashEstimateDue.toFixed(2)}
+                  </b>{" "}
+                  in cash when we collect &mdash; nothing is charged now.
+                </p>
+                <div className="mt-[22px] flex gap-3">
+                  <button
+                    type="button"
+                    className={cx(ui.BTN, ui.BTN_GHOST, "mt-0 h-[52px] w-auto min-w-0 flex-1 justify-center px-4", "min-w-[104px] flex-[0_0_auto]")}
+                    onClick={() => setCashOpen(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className={cx(ui.BTN, ui.BTN_BLOCK, "mt-0 h-[52px] w-auto min-w-0 flex-1 justify-center px-4")}
+                    id="cashConfirmBtn"
+                    disabled={isCashBooking}
+                    onClick={() => {
+                      setCashOpen(false);
+                      handleCashBooking();
+                    }}
+                  >
+                    {isCashBooking ? "Booking…" : "Confirm order"}
+                    <ProtoIcon name="arrow" size={18} />
+                  </button>
                 </div>
               </div>
-            </div>
+            </Dialog>
+
+            {/* Not dismissible: it moves on to the new order by itself */}
+            <Dialog open={orderDone} dismissible={false} labelledBy="doneTitle" width="sm">
+              <div className={ui.CONFIRM_BODY}>
+                <span className={cx(ui.CONFIRM_ICON, "bg-[#E7F6EE] text-[#1A7F43]")}>
+                  <ProtoIcon name="check" size={30} />
+                </span>
+                <h3 id="doneTitle">Order placed successfully</h3>
+                <p>Thanks! We&rsquo;ll confirm your pickup by text. Nothing is charged until your items are checked and weighed.</p>
+                <p className="!mt-3 !text-[13.5px]">Taking you to your order&hellip;</p>
+                <button
+                  type="button"
+                  className={cx(ui.BTN, ui.BTN_BLOCK, "mt-[22px] h-[52px] w-full justify-center")}
+                  id="orderDoneBtn"
+                  data-autofocus
+                  onClick={goToOrder}
+                >
+                  View my order
+                </button>
+              </div>
+            </Dialog>
+
+            <Dialog open={chargesOpen} onClose={() => setChargesOpen(false)} labelledBy="chargesTitle" width="md">
+              <div className={ui.MODAL_HEAD}>
+                <b id="chargesTitle">How do charges work?</b>
+                <button type="button" className={ui.MODAL_X} onClick={() => setChargesOpen(false)}>
+                  Close
+                </button>
+              </div>
+              <div className={cx(ui.MODAL_BODY, "gap-[18px]")}>
+                <p className="m-0 text-[12.5px] leading-[1.5] text-jdc-muted">
+                  Minimum order {chargesReady ? <>{currencySymbol}{money(addressData?.data?.zoneUpfrontAmount)}</> : chargesError ? "–" : <BoneText />} and service fee {chargesReady ? <>{currencySymbol}{money(addressData?.data?.zoneSeviceCharge)}</> : chargesError ? "–" : <BoneText />}. Your final total is confirmed on an itemised receipt after
+                  your items are checked and weighed.
+                </p>
+                {policyContent?.hasAnyPolicy ? (
+                  <>
+                    <p className="m-0 text-[12.5px] leading-[1.5] text-jdc-muted">
+                      {policyContent.cancellationLine1} {policyContent.cancellationLine2}
+                    </p>
+                    <p className="m-0 text-[12.5px] leading-[1.5] text-jdc-muted">
+                      {policyContent.rescheduleLine1} {policyContent.rescheduleLine2}
+                    </p>
+                    <p className="m-0 text-[12.5px] leading-[1.5] text-jdc-muted">
+                      {policyContent.noShowLine}
+                    </p>
+                  </>
+                ) : null}
+              </div>
+            </Dialog>
           </div>
         </div>
       </PageShell>

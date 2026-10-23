@@ -63,7 +63,7 @@ export default function SiteHeader({ variant = "overlay" }) {
     <>
       <header
         className={cx(
-          "fixed inset-x-0 top-0 z-50 bg-transparent [transition:background_0.3s,box-shadow_0.3s]",
+          "fixed inset-x-0 top-0 z-jdc-header bg-transparent [transition:background_0.3s,box-shadow_0.3s]",
           solid && "bg-white/[0.94] backdrop-blur-[14px] [box-shadow:0_1px_0_var(--jdc-line)]"
         )}
       >
@@ -224,13 +224,13 @@ function MobileDrawer({ open, onClose, pathname, signedIn, onAccount }) {
   useEffect(() => {
     if (!open) return undefined;
     lastFocused.current = document.activeElement;
-    lockPageScroll(true);
+    lockPageScroll(true, "site-menu");
     const t = window.setTimeout(() => {
       panelRef.current?.querySelector(FOCUSABLE)?.focus();
     }, 50);
     return () => {
       window.clearTimeout(t);
-      lockPageScroll(false);
+      lockPageScroll(false, "site-menu");
       lastFocused.current?.focus?.();
     };
   }, [open]);
@@ -246,7 +246,7 @@ function MobileDrawer({ open, onClose, pathname, signedIn, onAccount }) {
   return (
     <div
       className={cx(
-        "pointer-events-none fixed inset-0 z-[80] bg-[rgba(15,20,28,0.38)] opacity-0 backdrop-blur-[3px] transition-opacity duration-[350ms]",
+        "pointer-events-none fixed inset-0 z-jdc-menu bg-jdc-scrim opacity-0 transition-opacity duration-[350ms]",
         open && "pointer-events-auto opacity-100"
       )}
       aria-hidden={!open}
@@ -259,7 +259,7 @@ function MobileDrawer({ open, onClose, pathname, signedIn, onAccount }) {
         id="site-drawer"
         ref={panelRef}
         className={cx(
-          "absolute inset-y-0 right-0 flex w-[min(300px,78vw)] max-[720px]:w-[max(270px,72vw)] max-[720px]:max-w-[320px] flex-col overflow-y-auto border-l border-white/60 bg-[linear-gradient(180deg,rgba(238,241,246,0.92)_0%,rgba(221,226,236,0.94)_100%)] px-[22px] pb-[30px] pt-5 text-jdc-navy backdrop-blur-[20px] backdrop-saturate-[1.4] transition-transform duration-[440ms] ease-jdc",
+          "thin-scroll absolute inset-y-0 right-0 flex w-[min(300px,78vw)] max-[720px]:w-[max(270px,72vw)] max-[720px]:max-w-[320px] flex-col overflow-y-auto border-l border-white/60 bg-[linear-gradient(180deg,#EEF1F6_0%,#DDE2EC_100%)] px-[22px] pb-[30px] pt-5 text-jdc-navy transition-transform duration-[440ms] ease-jdc",
           open ? "transform-none" : "translate-x-full"
         )}
         role="dialog"

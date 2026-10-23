@@ -5,6 +5,7 @@ import { Spinner } from "@heroui/react";
 import { MdMyLocation, MdZoomOutMap } from "react-icons/md";
 import { useLazyGetLiveTrackingQuery } from "@/app/store/services/api";
 import { decodePolyline } from "../utilities/decodePolyline";
+import { useGoogleMaps } from "../utilities/GoogleMapsProvider";
 import {
   getLiveTrackingDatabase,
   signInForLiveTracking,
@@ -55,6 +56,7 @@ function buildAgentIcon() {
 }
 
 export default function LiveTrackingMap({ bookingId, orderTrackId, onClose }) {
+  const { isLoaded: mapsReady, loadError: mapsError } = useGoogleMaps();
   const [fetchLiveTracking] = useLazyGetLiveTrackingQuery();
   const mapRef = useRef(null);
   const unsubsRef = useRef([]);
@@ -390,7 +392,7 @@ export default function LiveTrackingMap({ bookingId, orderTrackId, onClose }) {
     .filter(Boolean)
     .join(" · ");
 
-  if (loading) {
+  if (loading || (!mapsReady && !mapsError)) {
     return (
       <div className="w-full h-[70vh] min-h-[420px] flex items-center justify-center bg-white">
         <Spinner />
@@ -398,14 +400,14 @@ export default function LiveTrackingMap({ bookingId, orderTrackId, onClose }) {
     );
   }
 
-  if (error) {
+  if (error || mapsError) {
     return (
       <div className="w-full h-[70vh] min-h-[420px] flex flex-col items-center justify-center px-8 text-center bg-white">
         <MdZoomOutMap size={48} className="text-gray-300 mb-4" />
         <h4 className="font-youth font-bold text-xl text-gray-900">
           Tracking unavailable
         </h4>
-        <p className="font-sf text-sm text-gray-500 mt-2 max-w-sm">{error}</p>
+        <p className="font-sf text-sm text-gray-500 mt-2 max-w-sm">{error || "The map could not load. Please try again."}</p>
         {onClose ? (
           <button
             type="button"

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import AuthLayout, { AuthAlt, AuthDivider, AuthFine, AuthHeading, AuthLink, authStyles } from "../../../../components/auth/AuthLayout";
+import Dialog from "../../../../components/ds/Dialog";
 import InputHeroUi from "../../../../components/InputHeroUi";
 import {
   ButtonContinueWith,
@@ -2350,8 +2351,15 @@ export default function SignInPage() {
       </AuthLayout>
 
       {/* Account merge modal */}
-      {showMergeModal && (
-        <div className={authStyles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="merge-title">
+      <Dialog
+        open={showMergeModal}
+        onClose={() => {
+          setShowMergeModal(false);
+          setMergeOtp("");
+        }}
+        labelledBy="merge-title"
+        width="md"
+      >
           <div className={authStyles.modal}>
             <h2 id="merge-title">Link your accounts</h2>
             <p>
@@ -2398,8 +2406,7 @@ export default function SignInPage() {
               )}
             </p>
           </div>
-        </div>
-      )}
+      </Dialog>
     </>
   );
 }

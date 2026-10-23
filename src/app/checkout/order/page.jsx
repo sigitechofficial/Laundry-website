@@ -1,12 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import Header from "../../../../components/Header";
 import CategoryCard from "../../../../components/CategoryCard";
-import { MdKeyboardArrowRight, MdKeyboardArrowDown, MdKeyboardArrowUp, MdOutlineDryCleaning } from "react-icons/md";
-import { TbIroning, TbWash, TbIroningSteam } from "react-icons/tb";
-import { AiOutlinePercentage } from "react-icons/ai";
-import { ButtonYouth70018, PurpleButton } from "../../../../components/Buttons";
-import { IoBagCheck, IoLocation, IoShirt, IoCalendarOutline, IoTimeOutline, IoInformationCircleOutline, IoLocationOutline, IoBagOutline } from "react-icons/io5";
+import { ButtonYouth70018 } from "../../../../components/Buttons";
 import {
   useRescheduleBookingMutation,
   useGetServicesQuery,
@@ -19,10 +14,10 @@ import {
   clearCartData,
   setDeliveryData,
   setDriverInstruction,
-  setDriverTip,
   setPage,
   updatePreference,
   setOrderData,
+  removePreference,
 } from "@/app/store/slices/cartItemSlice";
 import {
   fetchBookingSlots,
@@ -32,16 +27,27 @@ import {
   buildDeliveryUpdateForMinDate,
   formatIsoDateLong,
   getTurnaroundConflict,
-  parseTimeRequiredDays,
 } from "../../../../utilities/turnaroundTime";
-import { FaTruck, FaCheck, FaChevronDown, FaChevronUp } from "react-icons/fa6";
 import { formatDate, to24Hour } from "../../../../utilities/ConversionFunction";
-import FAQs from "../../../../components/FAQs";
-import Footer from "../../../../components/Footer";
+import { groupServicePrefs } from "../../../../utilities/serviceChips";
+import PageShell from "../../../../components/ds/PageShell";
+import ServiceBar from "../../../../components/booking/ServiceBar";
+import ProtoIcon from "../../../../components/proto/ProtoIcon";
+import { cx } from "../../../../components/ds/cx";
+import { lockPageScroll } from "../../../../utilities/scrollLock";
+import { useFitsViewport } from "../../../../components/ds/useFitsViewport";
+import * as ui from "../../../../components/booking/ui";
+
+// "Good to know." questions from the prototype's services page.
+const SERVICES_FAQ = [
+  { q: "How is each service priced?", a: "Every service is priced by item. You’ll see the price for each item, and nothing is charged until your things are checked and counted." },
+  { q: "Can I add more than one service?", a: "Yes — add as many as you need. They’re all collected together in a single pickup." },
+  { q: "Not sure exactly what you need?", a: "Just add the service and leave a note. Our team checks your items and confirms everything with you before any charge." },
+  { q: "When do I pay?", a: "There’s no charge now. We confirm your items and the total after collection, and you pay then." },
+  { q: "Can I still change my pickup?", a: "Of course. Use the Edit or Modify links in your pickup summary to change your times, address or driver instructions." },
+];
 import { useRouter } from "next/navigation";
-import HomeClientWrapper from "../../../../utilities/Test";
 import { MiniLoader } from "../../../../components/Loader";
-import { BASE_URL } from "../../../../utilities/URL";
 import {
   parseServiceBooleanFlag,
   shouldShowWashBleedDisclaimer,
@@ -53,49 +59,33 @@ const parseQuantityCount = (value) => {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 };
 
-function EstimatedQuantityStepper({ label, icon, value, onChange, disabled = false }) {
+// Quantity stepper (bags / items) in the preferences popup
+function ProtoStepper({ label, icon, value, onChange, disabled = false }) {
   const count = parseQuantityCount(value);
-
   return (
-    <div
-      className={`flex items-center justify-between gap-3 ${disabled ? "opacity-50 pointer-events-none" : ""}`}
-    >
-      <div className="flex items-center gap-2.5 min-w-0">
-        <div className="size-9 shrink-0 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-theme-gray-3">
-          {icon}
-        </div>
-        <span className="font-sf font-medium text-sm text-gray-900">{label}</span>
-      </div>
-
-      <div className="flex items-center h-9 rounded-full border border-gray-200 bg-white shrink-0 overflow-hidden">
-        <button
-          type="button"
-          aria-label={`Decrease ${label}`}
-          onClick={() => onChange(Math.max(0, count - 1))}
-          className="h-full px-3 font-sf text-base text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-40"
-          disabled={disabled || count <= 0}
-        >
-          −
-        </button>
-        <span className="min-w-[1.75rem] text-center font-sf text-sm font-medium text-gray-900 tabular-nums">
-          {count}
+    <div className={cx(ui.STEP, disabled && "pointer-events-none opacity-50")}>
+      <span className={ui.STEP_LBL}>
+        <span className={ui.STEP_IC}>
+          <ProtoIcon name={icon} size={18} />
         </span>
-        <button
-          type="button"
-          aria-label={`Increase ${label}`}
-          onClick={() => onChange(count + 1)}
-          className="h-full px-3 font-sf text-base text-gray-700 hover:bg-gray-50 transition-colors"
-          disabled={disabled}
-        >
+        <b>{label}</b>
+      </span>
+      <span className={ui.STEPPER}>
+        <button type="button" className={ui.STEPPER_BTN} aria-label="Decrease" disabled={disabled} onClick={() => onChange(Math.max(0, count - 1))}>
+          &minus;
+        </button>
+        <input className={ui.STEPPER_VAL} value={count} readOnly aria-label={label} />
+        <button type="button" className={ui.STEPPER_BTN} aria-label="Increase" disabled={disabled} onClick={() => onChange(count + 1)}>
           +
         </button>
-      </div>
+      </span>
     </div>
   );
 }
 
 export default function Order() {
   const dispatch = useDispatch();
+  const [asideRef, asideFits] = useFitsViewport(108 + 16);
   const orderData = useSelector((state) => state.cart.orderData);
   const preferencesData = useSelector((state) => state.cart.preferences) || [];
   const isRescheduleFlow = Boolean(orderData?.rescheduleData?.isReschedule);
@@ -117,13 +107,12 @@ export default function Order() {
     }
   );
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
-  const [modalScroll, setModalScroll] = useState(false);
+  const [modalScroll] = useState(false);
   const [currentServiceId, setCurrentServiceId] = useState(null);
   const [modal, setModal] = useState({
     modType: "wash",
     step: "",
   });
-  const [showMobileSummary, setShowMobileSummary] = useState(false);
   const [turnaroundModal, setTurnaroundModal] = useState({
     open: false,
     minDeliveryDate: "",
@@ -256,8 +245,6 @@ export default function Order() {
   );
   const modalScrollRef = useRef(null);
   const openModalTimeoutRef = useRef(null);
-  const [isModalAtBottom, setIsModalAtBottom] = useState(false);
-  const [hasModalOverflow, setHasModalOverflow] = useState(false);
 
   // Initialize preferences state based on fetched data
   const [preferences, setPreferences] = useState({});
@@ -620,34 +607,13 @@ export default function Order() {
     };
   }, []);
 
-  function handleModalScroll(e) {
-    const { scrollTop, clientHeight, scrollHeight } = e.target;
-    const isScrolled = scrollTop > 50;
-    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 8;
-    const hasOverflow = scrollHeight > clientHeight + 8;
-    setModalScroll((prev) => {
-      if (prev !== isScrolled) return isScrolled;
-      return prev;
-    });
-    setIsModalAtBottom((prev) => {
-      if (prev !== isAtBottom) return isAtBottom;
-      return prev;
-    });
-    setHasModalOverflow((prev) => {
-      if (prev !== hasOverflow) return hasOverflow;
-      return prev;
-    });
-  }
-
   useEffect(() => {
-    if (!isOpen || modal?.modType !== "servicePreferences") return;
-    const modalEl = modalScrollRef.current;
-    if (!modalEl) return;
-
-    const { scrollTop, clientHeight, scrollHeight } = modalEl;
-    setIsModalAtBottom(scrollTop + clientHeight >= scrollHeight - 8);
-    setHasModalOverflow(scrollHeight > clientHeight + 8);
-  }, [isOpen, modal?.modType, isLoadingPreferences, preferences]);
+    const on = isOpen && modal?.modType === "servicePreferences";
+    lockPageScroll(on);
+    return () => {
+      lockPageScroll(false);
+    };
+  }, [isOpen, modal?.modType]);
 
   const handleRescheduleSubmit = async (deliveryOverride) => {
     const delivery = {
@@ -963,380 +929,706 @@ export default function Order() {
     onClose();
   }
 
+  // Editing a service already in the order: show "Remove service" and "Update".
+  const removable = preferencesData.some((p) => Number(p?.serviceId) === Number(currentServiceId));
+
   return (
     <>
-      <HomeClientWrapper>
-        <div className="w-full relative">
-          <div className="max-xl:fixed max-xl:z-50 w-full">
-            <Header type="order" />
-          </div>
-
-          <div className="w-full px-5 sm:px-[45px]">
-            <div className="w-full max-w-[1290px] mx-auto pt-32 md:pb-[50px] 2xl:py-[70px]">
-              <h4 className="font-bold font-youth text-3xl 2xl:text-6xl">
-                Let us know which services you need:
-              </h4>
-
-              <div className="flex flex-col lg:flex-row gap-10 2xl:gap-20 pt-10">
-                {/* Cards - Hide on mobile when summary is shown */}
-                <div className={`w-full space-y-5 ${showMobileSummary ? 'lg:block hidden' : ''}`}>
-                  {!isLoading ? (
-                    data?.data?.serviceData?.map((item) => {
-                      // Construct dynamic image URL from API response
-                      const imageUrl = item?.image
-                        ? `${BASE_URL}${item.image}`
-                        : "/images/pricing/clothes.png"; // Fallback image if no image provided
-
-                      // Determine icon based on service name
-                      const getIcon = (serviceName) => {
-                        const name = serviceName?.toLowerCase() || "";
-                        if (name.includes("iron")) return TbIroning;
-                        if (name.includes("dry clean")) return MdOutlineDryCleaning;
-                        if (name.includes("press")) return TbIroningSteam;
-                        return TbWash;
-                      };
-
-                      // Determine background color based on service ID
-                      const getBg = (id) => {
-                        if (id === 1) return "2";
-                        if (id === 2) return "1";
-                        if (id === 3) return "4";
-                        if (id === 4) return "4";
-                        if (id === 5) return "5";
-                        return "1";
-                      };
-
-                      // Determine right positioning based on service ID
-                      const getRight = (id) => {
-                        if (id === 1) return "right-0";
-                        if (id === 2) return "-right-16";
-                        if (id === 3 || id === 4) return "-right-10";
-                        if (id === 5) return "-right-6";
-                        return "right-0";
-                      };
-
-                      // Check if service is selected
-                      const isSelected = Array.isArray(preferencesData) &&
-                        preferencesData?.some((elem) => elem?.serviceId === item?.id);
-
-                      return (
-                        <CategoryCard
-                          key={item?.id}
-                          onClick={() => {
-                            setCurrentServiceId(item?.id);
-                            setModal((m) => ({ ...m, modType: "servicePreferences" }));
-                            if (openModalTimeoutRef.current) {
-                              clearTimeout(openModalTimeoutRef.current);
-                            }
-                            openModalTimeoutRef.current = setTimeout(() => {
-                              onOpen();
-                              openModalTimeoutRef.current = null;
-                            }, 250);
-                          }}
-                          bg={getBg(item?.id)}
-                          h={item?.name}
-                          p={item?.description}
-                          turnaroundDays={parseTimeRequiredDays(item?.timeRequired)}
-                          Icon={getIcon(item?.name)}
-                          src={imageUrl}
-                          right={getRight(item?.id)}
-                          type={isSelected ? "check" : "plus"}
-                          serviceId={item?.id}
-                        />
-                      );
-                    })
-                  ) : (
-                    <div className="col-span-2 text-xl font-semibold w-max mx-auto">
-                      <MiniLoader />
-                    </div>
-                  )}
-
-                  {/* Mobile Continue Button - Shows summary (only visible when services are shown) */}
-                  {!showMobileSummary && (
-                    <div className="lg:hidden sticky bottom-4 left-0 right-0 z-50 mt-6 pb-4">
-                      <ButtonYouth70018
-                        isDisabled={
-                          isRescheduling ||
-                          !preferencesData?.length ||
-                          (!isRescheduleFlow &&
-                            !orderData?.collectionData?.streetAddress)
-                        }
-                        text="Continue"
-                        onClick={() => {
-                          setShowMobileSummary(true);
-                        }}
-                        className="w-full"
-                      />
-                    </div>
-                  )}
+      <PageShell header="solid">
+        {/* Add services: layout from the prototype (services.html), styled with Tailwind */}
+        <div id="jdcServicesRoot" className={ui.ROOT}>
+          <div className={ui.PAGE_BG}>
+            <section className={ui.HERO_SECTION}>
+              <div className={ui.WRAP}>
+                <div className={ui.PG_HEAD}>
+                  <div className={ui.TITLE_ROW}>
+                    <a
+                      className={cx(ui.BACK, "mb-3.5", ui.BACK_ROUND)}
+                      href="/place-order"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        router.push("/place-order");
+                      }}
+                    >
+                      <ProtoIcon name="back" size={16} />
+                      <span className={ui.BACK_LABEL}>Back</span>
+                    </a>
+                    <h1 className={ui.H2}>
+                      Add your <em>services.</em>
+                    </h1>
+                  </div>
+                  <p className={ui.LEAD}>
+                    Pick what you&rsquo;d like cleaned. You only pay after we weigh it.
+                  </p>
                 </div>
 
-                {/* Order Summary - Hidden on mobile by default, shown when Continue is clicked */}
-                <div className={`lg:w-[600px] space-y-4 ${showMobileSummary ? 'block' : 'hidden lg:block'}`}>
-                  <div className="px-4 py-4 shadow-theme-shadow-light rounded-[20px]">
-                    <div className="flex items-center gap-x-3 my-2">
-                      <IoBagOutline size={16} />
-
-                      <p className="font-sf font-semibold">Pickup</p>
+                <div className="mt-[34px] grid grid-cols-[minmax(0,1fr)_310px] [align-items:start] gap-7 min-[1200px]:grid-cols-[minmax(0,1fr)_330px] min-[1200px]:gap-8 max-[980px]:block max-[980px]:grid-cols-[minmax(0,1fr)] max-[980px]:gap-[22px]">
+                  <div className="min-w-0 max-[980px]:mx-auto max-[980px]:max-w-[760px]">
+                    <div className="flex flex-col gap-4">
+                      {!isLoading ? (
+                        data?.data?.serviceData?.map((item) => {
+                          const selectedEntry = Array.isArray(preferencesData)
+                            ? preferencesData.find((elem) => elem?.serviceId === item?.id)
+                            : null;
+                          return (
+                            <CategoryCard
+                              key={item?.id}
+                              onClick={() => {
+                                setCurrentServiceId(item?.id);
+                                setModal((m) => ({ ...m, modType: "servicePreferences" }));
+                                if (openModalTimeoutRef.current) {
+                                  clearTimeout(openModalTimeoutRef.current);
+                                }
+                                openModalTimeoutRef.current = setTimeout(() => {
+                                  onOpen();
+                                  openModalTimeoutRef.current = null;
+                                }, 250);
+                              }}
+                              h={item?.name}
+                              p={item?.description}
+                              type={selectedEntry ? "check" : "plus"}
+                              serviceId={item?.id}
+                              prefs={selectedEntry?.preferencesDisplay}
+                            />
+                          );
+                        })
+                      ) : (
+                        <div className="flex justify-center py-10">
+                          <MiniLoader />
+                        </div>
+                      )}
                     </div>
+                  </div>
 
-                    <div className="space-y-4">
-                      <div className="font-sf space-y-3">
-                        <p className="text-theme-psGray">Scheduled for</p>
-                        <p className="text-theme-psGray">Collection</p>
-                        <div className="flex gap-2 items-center">
-                          <div className="flex items-center justify-center">
-                            <IoCalendarOutline size="16" />
-                          </div>
-                          <p className="text-sm font-medium">
-                            {formatDate(
-                              orderData?.collectionData?.collectionDate
-                            )}
-                          </p>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <div className="flex items-center justify-center">
-                            <IoTimeOutline size="16" />
-                          </div>
-                          <p className="text-sm font-medium">
-                            {to24Hour(
-                              orderData?.collectionData?.collectionTimeFrom
-                            )}{" "}
-                            -{" "}
-                            {to24Hour(
-                              orderData?.collectionData?.collectionTimeTo
-                            )}
-                          </p>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <div className="flex items-center justify-center">
-                            <IoInformationCircleOutline size="16" />
-                          </div>
-                          <p className="text-sm font-medium">
-                            {
-                              orderData?.collectionData
-                                ?.driverInstructionOptions
-                            }
-                          </p>
-                        </div>
+                  <aside ref={asideRef} className={cx(asideFits && "sticky top-[108px]", "flex flex-col gap-[18px] max-[980px]:static max-[980px]:!hidden max-[980px]:min-w-0 max-[980px]:max-w-full")}>
+                    <div className={ui.SUM}>
+                      <div className={ui.SUM_HEAD}>
+                        <ProtoIcon name="truck" size={18} />
+                        <b>Pickup</b>
+                        <a
+                          className={cx(ui.SUM_EDIT, "ml-auto")}
+                          href="/place-order"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            router.push("/place-order");
+                          }}
+                        >
+                          Edit
+                        </a>
                       </div>
-                      <div className="font-sf space-y-3">
-                        <p className="text-theme-psGray">Delivery</p>
-                        <div className="flex gap-2 items-center">
-                          <div className="flex items-center justify-center">
-                            <IoCalendarOutline size="16" />
-                          </div>
-                          <p className="text-sm font-medium">
-                            {formatDate(orderData?.deliveryData?.deliveryDate)}
-                          </p>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <div className="flex items-center justify-center">
-                            <IoTimeOutline size="16" />
-                          </div>
-                          <p className="text-sm font-medium">
-                            {to24Hour(
-                              orderData?.deliveryData?.deliveryTimeFrom
-                            )}{" "}
-                            -{" "}
-                            {to24Hour(orderData?.deliveryData?.deliveryTimeTo)}
-                          </p>
-                        </div>
-                        <div className="flex gap-2 items-center">
-                          <div className="flex items-center justify-center">
-                            <IoInformationCircleOutline size="16" />
-                          </div>
-                          <p className="text-sm font-medium">
-                            {orderData?.deliveryData?.driverInstructionOptions1}
-                          </p>
-                        </div>
+                      <p className={ui.SUM_LEAD}>Scheduled for</p>
+                      <div className={ui.SUM_BLOCK}>
+                        <p className={ui.SUM_SUB}>Collection</p>
+                        <p className={ui.SUM_ROW}>
+                          <ProtoIcon name="calendar" size={16} />
+                          <span>{formatDate(orderData?.collectionData?.collectionDate) || "Not set"}</span>
+                        </p>
+                        <p className={ui.SUM_ROW}>
+                          <ProtoIcon name="clock" size={16} />
+                          <span>
+                            {orderData?.collectionData?.collectionTimeFrom
+                              ? `${to24Hour(orderData?.collectionData?.collectionTimeFrom)} – ${to24Hour(
+                                  orderData?.collectionData?.collectionTimeTo
+                                )}`
+                              : "—"}
+                          </span>
+                        </p>
+                        <p className={ui.SUM_ROW}>
+                          <ProtoIcon name="door" size={16} />
+                          <span>{orderData?.collectionData?.driverInstructionOptions || "—"}</span>
+                        </p>
                       </div>
-                      <div className="font-sf space-y-3">
-                        <p className="text-theme-psGray">Address</p>
-
-                        <div className="flex gap-4 items-center justify-between">
-                          <div className="flex gap-2 items-center">
-                            <div className="flex items-center justify-center">
-                              <IoLocationOutline size="16" />
-                            </div>
-                            <p className="text-sm font-medium line-clamp-1">
-                              {orderData?.collectionData?.streetAddress}
-                            </p>
-                          </div>
-
-                          <p
-                            onClick={() => {
+                      <div className={ui.SUM_BLOCK}>
+                        <p className={ui.SUM_SUB}>Delivery</p>
+                        <p className={ui.SUM_ROW}>
+                          <ProtoIcon name="calendar" size={16} />
+                          <span>{formatDate(orderData?.deliveryData?.deliveryDate) || "Not set"}</span>
+                        </p>
+                        <p className={ui.SUM_ROW}>
+                          <ProtoIcon name="clock" size={16} />
+                          <span>
+                            {orderData?.deliveryData?.deliveryTimeFrom
+                              ? `${to24Hour(orderData?.deliveryData?.deliveryTimeFrom)} – ${to24Hour(
+                                  orderData?.deliveryData?.deliveryTimeTo
+                                )}`
+                              : "—"}
+                          </span>
+                        </p>
+                        <p className={ui.SUM_ROW}>
+                          <ProtoIcon name="door" size={16} />
+                          <span>{orderData?.deliveryData?.driverInstructionOptions1 || "—"}</span>
+                        </p>
+                      </div>
+                      <div className={ui.SUM_BLOCK}>
+                        <p className={ui.SUM_SUB}>Address</p>
+                        <p className={cx(ui.SUM_ROW, ui.SUM_ROW_BETWEEN)}>
+                          <span className={ui.SUM_ADDR}>
+                            <ProtoIcon name="pin" size={16} />
+                            <span>{orderData?.collectionData?.streetAddress || "Not set"}</span>
+                          </span>
+                          <a
+                            className={ui.SUM_EDIT}
+                            href="/place-order"
+                            onClick={(e) => {
+                              e.preventDefault();
                               router.push("/place-order");
                             }}
-                            className="uppercase cursor-pointer text-theme-blue font-sf font-normal px-2 py-1 border border-black rounded-full shrink-0 text-sm"
                           >
                             Modify
-                          </p>
-                        </div>
+                          </a>
+                        </p>
                       </div>
-                      <div className="font-sf space-y-3">
-                        <p className="text-theme-psGray">Driver instructions</p>
-
-                        <div className="flex gap-4 items-center justify-between">
-                          <div className="flex gap-2 items-center">
-                            <div className="flex items-center justify-center">
-                              <IoInformationCircleOutline size="16" />
-                            </div>
-                            <p className="text-sm font-medium">
-                              {orderData?.driverInstruction}
-                            </p>
-                          </div>
-
-                          <p
-                            onClick={() => {
-                              setModal({
-                                ...modal,
-                                modType: "driverInstructions",
-                              });
-                              onOpen();
+                      <div className={ui.SUM_BLOCK}>
+                        <p className={ui.SUM_SUB}>Driver instructions</p>
+                        <p className={cx(ui.SUM_ROW, ui.SUM_ROW_BETWEEN)}>
+                          <span className={ui.SUM_ADDR}>
+                            <ProtoIcon name="note" size={16} />
+                            <span className={orderData?.driverInstruction ? "" : ui.SUM_MUTED}>
+                              {orderData?.driverInstruction || "None"}
+                            </span>
+                          </span>
+                          <a
+                            className={ui.SUM_EDIT}
+                            href="/place-order"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              router.push("/place-order");
                             }}
-                            className="text-white font-sf font-normal px-3 capitalize py-1 bg-black rounded-full shrink-0 text-sm cursor-pointer"
                           >
-                            {orderData?.driverInstruction ? "update" : "add"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="font-sf space-y-3">
-                        <p className="text-theme-psGray">Collection Method</p>
-
-                        <p className="text-sm font-medium font-sf">
-                          {orderData?.collectionData?.driverInstructionOptions}
+                            {orderData?.driverInstruction ? "Edit" : "Add"}
+                          </a>
                         </p>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Mobile Continue Button - Sticky at bottom of summary section */}
-                  <div className="lg:hidden sticky bottom-4 left-0 right-0 z-50 mt-6 pb-4">
-                    <ButtonYouth70018
-                      isDisabled={
-                        isRescheduling ||
-                        !preferencesData?.length ||
-                        (!isRescheduleFlow &&
-                          !orderData?.collectionData?.streetAddress)
-                      }
-                      text="Continue"
-                      onClick={handleContinue}
-                      className="w-full"
-                    />
-                  </div>
-
-                  {/* ///////////////service preferences///////////// */}
-
-                  <div className="px-4 py-4 shadow-theme-shadow-light rounded-[20px]">
-                    <div className="flex items-center justify-center gap-x-3 my-2">
-                      <IoShirt size={20} />
-
-                      <p className="font-sf font-semibold">
-                        Services Requested
-                      </p>
-                    </div>
-
-                    {preferencesData?.length > 0 ? (
-                      <div>
-                        {preferencesData?.map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="font-sf pt-3 border-b-2 border-theme-gray pb-3"
-                          >
-                            <p className="text-theme-psGray font-sf">Service</p>
-                            <p className="text-sm font-medium capitalize">
-                              {item?.serviceName || "Selected"}
-                            </p>
-
-                            {Array.isArray(item?.preferencesDisplay) &&
-                              item.preferencesDisplay.length > 0 && (
-                                <div className="mt-1.5 space-y-1">
-                                  {item.preferencesDisplay.map((pref, prefIdx) => (
-                                    <div
-                                      key={`${idx}-${prefIdx}`}
-                                      className="rounded-md border border-theme-gray/70 px-2 py-1.5"
-                                    >
-                                      <p className="text-theme-psGray font-sf text-[11px] leading-tight">
-                                        {pref?.preferenceTypeName || "Preference"}
-                                      </p>
-                                      <p className="text-xs font-semibold leading-tight">
-                                        {pref?.value || "-"}
-                                      </p>
-                                    </div>
-                                  ))}
+                    <div className={ui.SUM}>
+                      <div className={cx(ui.SUM_HEAD, "mb-0.5")}>
+                        <ProtoIcon name="basket" size={18} />
+                        <b>Services requested</b>
+                        <span className={ui.REQ_COUNT}>{preferencesData?.length || 0}</span>
+                      </div>
+                      <div className={ui.REQ_LIST}>
+                        {preferencesData?.length > 0 ? (
+                          <>
+                            {preferencesData.map((item, idx) => (
+                              <div key={item?.serviceId ?? idx} className={ui.REQ_ITEM}>
+                                <div className={ui.REQ_HEAD}>
+                                  <span className={ui.REQ_NAME}>{item?.serviceName || "Selected"}</span>
+                                  <button
+                                    type="button"
+                                    className={ui.REQ_X}
+                                    aria-label={`Remove ${item?.serviceName || "service"}`}
+                                    onClick={() => dispatch(removePreference(item?.serviceId))}
+                                  >
+                                    ×
+                                  </button>
                                 </div>
-                              )}
-
-                            {item?.additionalInstructions && (
-                              <div className="mt-1.5 rounded-md border border-theme-gray/70 px-2 py-1.5">
-                                <p className="text-theme-psGray font-sf text-[11px] leading-tight">
-                                  Instructions
-                                </p>
-                                <p className="text-xs font-semibold leading-tight">
-                                  {item?.additionalInstructions}
-                                </p>
+                                {(Array.isArray(item?.preferencesDisplay) && item.preferencesDisplay.length > 0) ||
+                                item?.additionalInstructions ? (
+                                  <div className={ui.REQ_PREFS}>
+                                    {groupServicePrefs(item?.preferencesDisplay).map((group, gIdx) => (
+                                      <div key={`${idx}-${gIdx}`} className={ui.REQ_GROUP}>
+                                        {group.title && (
+                                          <div className={ui.REQ_GROUP_HEAD}>
+                                            <span>{group.title}</span>
+                                            {group.detail && <span className={ui.REQ_GROUP_DETAIL}>{group.detail}</span>}
+                                          </div>
+                                        )}
+                                        {group.rows.length > 0 && (
+                                          <div className={ui.REQ_ROWS}>
+                                            {group.rows.map((row, rIdx) => (
+                                              <div key={rIdx} className={ui.REQ_ROW}>
+                                                <span className={ui.REQ_ROW_L}>{row.label}</span>
+                                                <span className={ui.REQ_ROW_V}>{row.value}</span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                        {group.note && (
+                                          <p className={ui.REQ_GROUP_NOTE}>
+                                            <span className="text-jdc-muted">Note: </span>
+                                            {group.note}
+                                          </p>
+                                        )}
+                                      </div>
+                                    ))}
+                                    {item?.additionalInstructions && (
+                                      <div className={ui.REQ_PREF}>
+                                        <span className={ui.REQ_PREF_L}>Instructions</span>
+                                        <span className={ui.REQ_PREF_V}>{item?.additionalInstructions}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : null}
+                              </div>
+                            ))}
+                            {sharedBagsApply && parseQuantityCount(orderData?.totalBags) > 0 && (
+                              <div className={ui.REQ_ITEM}>
+                                <div className={cx(ui.REQ_PREFS, "mt-0")}>
+                                  <div className={ui.REQ_PREF}>
+                                    <span className={ui.REQ_PREF_L}>Number of bags (all services)</span>
+                                    <span className={ui.REQ_PREF_V}>{parseQuantityCount(orderData?.totalBags)}</span>
+                                  </div>
+                                </div>
                               </div>
                             )}
-                          </div>
-                        ))}
-                        {sharedBagsApply &&
-                          parseQuantityCount(orderData?.totalBags) > 0 && (
-                            <div className="font-sf pt-3 border-b-2 border-theme-gray pb-3">
-                              <div className="mt-1.5 rounded-md border border-theme-gray/70 px-2 py-1.5">
-                                <p className="text-theme-psGray font-sf text-[11px] leading-tight">
-                                  Number of bags (all services)
-                                </p>
-                                <p className="text-xs font-semibold leading-tight">
-                                  {parseQuantityCount(orderData?.totalBags)}
-                                </p>
-                              </div>
-                            </div>
-                          )}
+                          </>
+                        ) : (
+                          <p className={ui.REQ_EMPTY}>No service selected yet. Pick one on the left to get started.</p>
+                        )}
                       </div>
-                    ) : (
-                      <div className="font-sf pt-3">
-                        <p className="text-theme-psGray">Service</p>
-                        <p className="text-sm font-medium">Not selected</p>
-                      </div>
-                    )}
-
-                    {/* Continue Button - Desktop Only */}
-                    <div className="hidden lg:block py-3">
-                      <ButtonYouth70018
-                        isDisabled={
+                      <p className={ui.REQ_NOTE}>
+                        <ProtoIcon name="shield" size={16} />
+                        <span>No charge now &mdash; you pay after your items are weighed and confirmed.</span>
+                      </p>
+                      <button
+                        type="button"
+                        className={cx(ui.BTN, ui.BTN_BLOCK, "h-[52px] disabled:cursor-not-allowed disabled:opacity-50")}
+                        id="svcCheckout"
+                        disabled={
                           isRescheduling ||
                           !preferencesData?.length ||
-                          (!isRescheduleFlow &&
-                            !orderData?.collectionData?.streetAddress)
+                          (!isRescheduleFlow && !orderData?.collectionData?.streetAddress)
                         }
-                        text="Continue"
                         onClick={handleContinue}
-                        className="w-full"
-                      />
+                      >
+                        Continue to checkout
+                        <ProtoIcon name="arrow" size={18} />
+                      </button>
+                    </div>
+                  </aside>
+                </div>
+              </div>
+            </section>
+
+            <section className={ui.FAQ_SECTION} id="svcFaq">
+              <div className={ui.WRAP}>
+                <div className={cx(ui.PG_HEAD, ui.PG_HEAD_CENTER, "mb-[26px] max-[720px]:mb-[26px]")}>
+                  <h2 className={ui.H2}>
+                    Good to <em>know.</em>
+                  </h2>
+                </div>
+                <div className={ui.FAQ_CARD}>
+                  <div>
+                    <div className={ui.FAQ_LIST}>
+                      {SERVICES_FAQ.map((f) => (
+                        <details key={f.q} className={ui.FAQ_DETAILS}>
+                          <summary className={ui.FAQ_SUMMARY}>
+                            {f.q}
+                            <i aria-hidden="true" className={ui.FAQ_ICON}>
+                              <ProtoIcon name="chevDown" size={14} />
+                            </i>
+                          </summary>
+                          <p className={ui.FAQ_ANSWER}>{f.a}</p>
+                        </details>
+                      ))}
                     </div>
                   </div>
                 </div>
               </div>
+            </section>
+          </div>
+
+          {/* Service preferences popup */}
+          {modal?.modType === "servicePreferences" && currentServiceId ? (
+            <div className={cx(ui.MODAL, !(isOpen) && "hidden")} id="svcModal" hidden={!isOpen}>
+              <div className={ui.MODAL_OVERLAY} onClick={handleCancelModal} />
+              <div className={ui.MODAL_PANEL} role="dialog" aria-modal="true" aria-labelledby="svcModalTitle">
+                <div className={ui.MODAL_HEAD}>
+                  <b id="svcModalTitle">
+                    {currentServiceMeta?.name ? `${currentServiceMeta.name} preferences` : "Service preferences"}
+                  </b>
+                  <button type="button" className={ui.MODAL_X} onClick={handleCancelModal}>
+                    Cancel
+                  </button>
+                </div>
+                <div className={ui.MODAL_BODY} id="svcModalBody" ref={modalScrollRef}>
+                  {isLoadingPreferences || isFetchingPreferences ? (
+                    <div className="flex justify-center py-10">
+                      <MiniLoader />
+                    </div>
+                  ) : (Array.isArray(servicePreferencesData) && servicePreferencesData.length > 0) ||
+                    showBagsInput ||
+                    showItemsInput ? (
+                    <>
+                      {(servicePreferencesData || []).map((pref) => {
+                        const prefKey = getPreferenceKey(pref);
+                        const currentPref = preferences[prefKey];
+                        const values = getPreferenceValues(pref);
+                        const isWashTypePref = isWashTypePreference(prefKey);
+                        const isMultiPref = isMultiSelectPreferenceGroup(pref);
+                        if (isTemperaturePreference(prefKey) || isDetergentPreference(prefKey)) return null;
+
+                        const temperaturePref = getSettingPreference(servicePreferencesData, isTemperaturePreference);
+                        const detergentPref = getSettingPreference(servicePreferencesData, isDetergentPreference);
+                        const washWithSubs = isWashTypePref && !isDryCleanService;
+                        const hasWashSubPickOptions = washWithSubs && (Boolean(temperaturePref) || Boolean(detergentPref));
+                        const selectedList = Array.isArray(currentPref)
+                          ? currentPref
+                          : currentPref?.preferenceTypeId
+                            ? [currentPref]
+                            : [];
+                        const firstSelectedValueId = values.find((v) =>
+                          selectedList.some((s) => s.preferenceValueId === v.id)
+                        )?.id;
+
+                        const entryFor = (value) => ({
+                          preferenceTypeId: getPreferenceId(pref),
+                          preferenceTypeName: getPreferenceLabel(pref) || prefKey,
+                          preferenceValueId: value.id,
+                          value: value.value,
+                        });
+
+                        // tick / untick one option (wash types keep their own temperature + detergent)
+                        const toggle = (value) =>
+                          setPreferences((prev) => {
+                            if (isWashTypePref || isMultiPref) {
+                              const raw = prev[prefKey];
+                              const list = Array.isArray(raw) ? raw : raw?.preferenceTypeId ? [raw] : [];
+                              const already = list.some((s) => s.preferenceValueId === value.id);
+                              const nextList = already
+                                ? list.filter((s) => s.preferenceValueId !== value.id)
+                                : [...list, entryFor(value)];
+                              if (!washWithSubs) return { ...prev, [prefKey]: nextList };
+                              const nextSettings = { ...(prev.washTypeSettings || {}) };
+                              if (already) delete nextSettings[value.id];
+                              else nextSettings[value.id] = buildDefaultWashTypeSettings(servicePreferencesData || []);
+                              return { ...prev, [prefKey]: nextList, washTypeSettings: nextSettings };
+                            }
+                            if (prev[prefKey]?.preferenceValueId === value.id) {
+                              const next = { ...prev };
+                              delete next[prefKey];
+                              return next;
+                            }
+                            return { ...prev, [prefKey]: entryFor(value) };
+                          });
+
+                        const setWashSetting = (value, settingKey, settingPref, settingValue) =>
+                          setPreferences((prev) => {
+                            const existing = prev.washTypeSettings || {};
+                            return {
+                              ...prev,
+                              washTypeSettings: {
+                                ...existing,
+                                [value.id]: {
+                                  ...(existing[value.id] || {}),
+                                  [settingKey]: {
+                                    preferenceTypeId: getPreferenceId(settingPref),
+                                    preferenceTypeName:
+                                      getPreferenceLabel(settingPref) ||
+                                      (settingKey === "temperature" ? "Temperature" : "Detergent"),
+                                    preferenceValueId: settingValue.id,
+                                    value: settingValue.value,
+                                  },
+                                },
+                              },
+                            };
+                          });
+
+                        return (
+                          <div key={pref.id}>
+                            <h3 className={ui.SEC_H3}>{getPreferenceLabel(pref)}</h3>
+                            {getPreferenceInstruction(pref) ? (
+                              <p className={ui.QTY_HINT}>{getPreferenceInstruction(pref)}</p>
+                            ) : null}
+                            {values.map((value) => {
+                              const isSelected = selectedList.some((s) => s.preferenceValueId === value.id);
+                              const isExpanded =
+                                hasWashSubPickOptions &&
+                                isSelected &&
+                                (washAccordionOpenId === WASH_ACCORDION_ALL_COLLAPSED
+                                  ? false
+                                  : washAccordionOpenId === null
+                                    ? value.id === firstSelectedValueId
+                                    : washAccordionOpenId === value.id);
+                              const settings = preferences?.washTypeSettings?.[value.id] || {};
+                              const instrKey = String(value.id);
+                              const instrOpen =
+                                Boolean(washInstructionPanelOpen[instrKey]) ||
+                                Boolean((settings.preferenceInstruction ?? "").trim());
+                              const priceText = [
+                                value.price != null ? `£${value.price}` : null,
+                                value.weight != null ? `${value.weight}kg` : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" / ");
+                              // "Mixed Wash (£19.50 / 6kg)" → name in bold, price underneath (prototype)
+                              const split = /^(.*?)\s*\(([^()]+)\)\s*$/.exec(String(value.value || ""));
+                              const optName = split ? split[1] : value.value;
+                              const meta = value.temperature || value.meta || priceText || (split ? split[2] : "");
+
+                              return (
+                                <div className={cx(ui.OPT, isSelected && ui.OPT_ON)} key={value.id}>
+                                  <label
+                                    className={ui.OPT_ROW}
+                                    onClick={(e) => {
+                                      if (!hasWashSubPickOptions) return;
+                                      if (e.target.tagName === "INPUT") return;
+                                      // name / arrow: open or close the choices; ticks the option, never unticks
+                                      e.preventDefault();
+                                      if (!isSelected) {
+                                        toggle(value);
+                                        setWashAccordionOpenId(value.id);
+                                        return;
+                                      }
+                                      setWashAccordionOpenId(isExpanded ? WASH_ACCORDION_ALL_COLLAPSED : value.id);
+                                    }}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      className={ui.CHECKBOX}
+                                      name={prefKey}
+                                      value={value.value}
+                                      checked={isSelected}
+                                      onChange={() => {
+                                        toggle(value);
+                                        if (hasWashSubPickOptions) {
+                                          if (!isSelected) setWashAccordionOpenId(value.id);
+                                          else {
+                                            setWashAccordionOpenId(null);
+                                            setWashInstructionPanelOpen((prev) => {
+                                              const next = { ...prev };
+                                              delete next[instrKey];
+                                              return next;
+                                            });
+                                          }
+                                        }
+                                      }}
+                                    />
+                                    <span className={ui.OPT_MAIN}>
+                                      <b>{optName}</b>
+                                      {meta ? <small>{meta}</small> : null}
+                                    </span>
+                                    {hasWashSubPickOptions ? (
+                                      <button
+                                        type="button"
+                                        className={cx(ui.OPT_EXP, isExpanded && "rotate-180")}
+                                        aria-label={`Options for ${optName}`}
+                                        aria-expanded={isExpanded ? "true" : "false"}
+                                      >
+                                        <ProtoIcon name="chevDown" size={18} />
+                                      </button>
+                                    ) : null}
+                                  </label>
+                                  {hasWashSubPickOptions ? (
+                                    <div className={cx(ui.OPT_MORE, !(isExpanded) && "hidden")} hidden={!isExpanded}>
+                                      {shouldShowWashBleedDisclaimer(preferenceServiceMeta, value?.value) ? (
+                                        <p className={ui.QTY_HINT} role="note">
+                                          {WASH_BLEED_DISCLAIMER_TEXT}
+                                        </p>
+                                      ) : null}
+                                      {[
+                                        ["temperature", temperaturePref, "Wash temperature"],
+                                        ["detergent", detergentPref, "Detergent"],
+                                      ].map(([settingKey, settingPref, fallback]) =>
+                                        settingPref ? (
+                                          <div className={ui.SUB} key={settingKey}>
+                                            <p className={ui.SUB_LBL}>{getPreferenceLabel(settingPref) || fallback}</p>
+                                            <div className={ui.PILLS} data-sublabel={getPreferenceLabel(settingPref) || fallback}>
+                                              {getPreferenceValues(settingPref).map((sv) => (
+                                                <button
+                                                  key={sv.id}
+                                                  type="button"
+                                                  className={cx(
+                                                    ui.PILL,
+                                                    settings?.[settingKey]?.preferenceValueId === sv.id && ui.PILL_ON
+                                                  )}
+                                                  data-v={sv.value}
+                                                  onClick={() => setWashSetting(value, settingKey, settingPref, sv)}
+                                                >
+                                                  {sv.value}
+                                                </button>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        ) : null
+                                      )}
+                                      <button
+                                        type="button"
+                                        className={cx(ui.SUB_ADD, (instrOpen) && "hidden")}
+                                        hidden={instrOpen}
+                                        onClick={() => setWashInstructionPanelOpen((prev) => ({ ...prev, [instrKey]: true }))}
+                                      >
+                                        Add instruction
+                                      </button>
+                                      <div className={cx(ui.SUB_NOTE, !(instrOpen) && "hidden")} hidden={!instrOpen}>
+                                        <div className={ui.SUB_NOTE_H}>
+                                          <b>Preference instruction</b>
+                                          <span className={ui.SUB_TAG}>Optional</span>
+                                          <button
+                                            type="button"
+                                            className={ui.SUB_HIDE}
+                                            onClick={() =>
+                                              setWashInstructionPanelOpen((prev) => ({ ...prev, [instrKey]: false }))
+                                            }
+                                          >
+                                            Hide
+                                          </button>
+                                        </div>
+                                        <textarea
+                                          className={ui.SUB_TA}
+                                          rows={3}
+                                          placeholder="Add any special instructions for this wash type..."
+                                          value={settings.preferenceInstruction ?? ""}
+                                          onChange={(e) =>
+                                            setPreferences((prev) => {
+                                              const existing = prev.washTypeSettings || {};
+                                              return {
+                                                ...prev,
+                                                washTypeSettings: {
+                                                  ...existing,
+                                                  [value.id]: {
+                                                    ...(existing[value.id] || {}),
+                                                    preferenceInstruction: e.target.value,
+                                                  },
+                                                },
+                                              };
+                                            })
+                                          }
+                                        />
+                                      </div>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+
+                      {showBagsInput || showItemsInput ? (
+                        <div className={ui.QTY}>
+                          <b className={ui.QTY_H}>
+                            Estimated quantity <span>(optional)</span>
+                          </b>
+                          <p className={ui.QTY_HINT}>Help us prepare for collection &mdash; you can skip this if unsure.</p>
+                          {showPackingOptions && canEditPackingChoice ? (
+                            <>
+                              <p className={ui.QTY_Q}>How are you packing?</p>
+                              <label className={cx(ui.PACK, !isAllInOneBagSelected && ui.PACK_ON)}>
+                                <input
+                                  type="radio"
+                                  className={ui.RADIO}
+                                  name={`m-pack-${currentServiceId}`}
+                                  value="One bag per service"
+                                  checked={!isAllInOneBagSelected}
+                                  onChange={() => handlePackingModeChange("perService")}
+                                />
+                                <span>
+                                  <b>One bag per service</b>
+                                  <small>Recommended when mixing wash types</small>
+                                </span>
+                              </label>
+                              <label className={cx(ui.PACK, isAllInOneBagSelected && ui.PACK_ON)}>
+                                <input
+                                  type="radio"
+                                  className={ui.RADIO}
+                                  name={`m-pack-${currentServiceId}`}
+                                  value="All in one bag"
+                                  checked={isAllInOneBagSelected}
+                                  onChange={() => handlePackingModeChange("allInOne")}
+                                />
+                                <span>
+                                  <b>All in one bag</b>
+                                  <small>Everything in a single bag for collection</small>
+                                </span>
+                              </label>
+                              {isAllInOneBagSelected && !multiServiceInCart ? (
+                                <p className={ui.QTY_HINT}>
+                                  Add another service to your order for this option to apply at checkout.
+                                </p>
+                              ) : null}
+                            </>
+                          ) : null}
+                          {showPackingOptions && !canEditPackingChoice ? (
+                            <p className={ui.QTY_HINT}>
+                              All in one bag &mdash;{" "}
+                              {packingSourceServiceName
+                                ? `bag count is set on ${packingSourceServiceName}.`
+                                : "bag count is set on your first service."}
+                              {parseQuantityCount(orderData?.totalBags) > 0
+                                ? ` Total: ${parseQuantityCount(orderData?.totalBags)} bag(s).`
+                                : ""}
+                            </p>
+                          ) : null}
+                          {showBagsInput && !bagsStepperDisabled ? (
+                            <ProtoStepper
+                              label="Bags"
+                              icon="bag"
+                              value={useSharedBagStepper ? orderData?.totalBags : preferences.bagsCount}
+                              onChange={(next) => {
+                                if (useSharedBagStepper) dispatch(setOrderData({ totalBags: next }));
+                                else setPreferences((prev) => ({ ...prev, bagsCount: String(next) }));
+                              }}
+                            />
+                          ) : null}
+                          {showItemsInput ? (
+                            <ProtoStepper
+                              label="Items"
+                              icon="tshirt2"
+                              value={preferences.itemsCount}
+                              disabled={itemsStepperDisabled}
+                              onChange={(next) => setPreferences((prev) => ({ ...prev, itemsCount: String(next) }))}
+                            />
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      <div>
+                        <h3 className={ui.SEC_H3}>Additional service instructions</h3>
+                        <textarea
+                          className={ui.TA}
+                          placeholder="Enter your instructions"
+                          value={preferences.additionalInstructions || ""}
+                          onChange={(e) =>
+                            setPreferences((prev) => ({ ...prev, additionalInstructions: e.target.value }))
+                          }
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <p className={ui.REQ_EMPTY}>No preferences available for this service.</p>
+                  )}
+                </div>
+                <div className={cx(ui.MODAL_FOOT, removable && "flex items-center gap-3")}>
+                  <button
+                    type="button"
+                    className={cx(ui.MODAL_RM, !(removable) && "hidden")}
+                    hidden={!preferencesData.some((p) => Number(p?.serviceId) === Number(currentServiceId))}
+                    onClick={() => {
+                      const nm = currentServiceMeta?.name || "Service";
+                      dispatch(removePreference(currentServiceId));
+                      handleCancelModal();
+                      addToast({ title: `${nm} removed`, color: "success" });
+                    }}
+                  >
+                    Remove service
+                  </button>
+                  <button type="button" className={cx(ui.BTN, ui.BTN_BLOCK, removable && "flex-1")} onClick={closePreferenceModal}>
+                    {preferencesData.some((p) => Number(p?.serviceId) === Number(currentServiceId)) ? "Update" : "Continue"}
+                    <ProtoIcon name="arrow" size={18} />
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : null}
 
-          {/*FAQs section  */}
-
-          <div className="w-full px-5 sm:px-[45px]">
-            <FAQs />
-          </div>
-
-          {/*footer section  */}
-          <Footer width="max-w-[1200px]  px-[16px] sm:px-[30px] lg:w-[95%] largeDesktop:w-[95%] extraLargeDesktop:w-[62.5%] ultraLargeDesktop:w-[71%]" />
+          <ServiceBar
+            count={preferencesData?.length || 0}
+            targetId="svcCheckout"
+            fallbackId="svcFaq"
+            rootId="jdcServicesRoot"
+            isDisabled={isRescheduling || (!isRescheduleFlow && !orderData?.collectionData?.streetAddress)}
+            onContinue={handleContinue}
+          />
         </div>
-      </HomeClientWrapper>
+      </PageShell>
 
       {/* =======================Modal======================== */}
 
       <ReusableModal
         isDismissable={true}
-        isOpen={isOpen}
+        isOpen={isOpen && modal?.modType !== "servicePreferences"}
         onOpenChange={(open) => {
           onOpenChange(open);
           if (!open) {
@@ -1369,905 +1661,7 @@ export default function Order() {
         backdrop="blur"
         className="custom-modal-class max-h-[90vh] overflow-hidden"
       >
-        {modal?.modType === "servicePreferences" && currentServiceId ? (
-          <div className="modal-scroll relative flex min-h-0 max-h-[calc(90vh-6.5rem)] flex-col overflow-hidden">
-            <div className="h-[58px] shrink-0 flex items-center justify-center relative border-b border-theme-gray-2">
-              <h4 className="font-youth font-bold sm:text-[22px] text-center">
-                Service Preferences
-              </h4>
-
-              <p
-                onClick={handleCancelModal}
-                className="font-sf text-base absolute top-4 right-4 cursor-pointer"
-              >
-                Cancel
-              </p>
-            </div>
-
-            {isLoadingPreferences || isFetchingPreferences ? (
-              <div className="w-full px-6 py-6 font-sf flex justify-center items-center min-h-[200px]">
-                <MiniLoader />
-              </div>
-            ) : (Array.isArray(servicePreferencesData) &&
-                servicePreferencesData.length > 0) ||
-              showBagsInput ||
-              showItemsInput ? (
-              <>
-                <div
-                  ref={modalScrollRef}
-                  onScroll={handleModalScroll}
-                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
-                >
-                  <div className="w-full px-6 py-6 font-sf">
-                <div className="space-y-6">
-                  {(servicePreferencesData || []).map((pref) => {
-                    const prefName = getPreferenceKey(pref);
-                    const prefKey = prefName;
-                    const currentPref = preferences[prefKey];
-                    const values = getPreferenceValues(pref);
-                    const isTempPref = isTemperaturePreference(prefName);
-                    const isDetergentPref = isDetergentPreference(prefName);
-                    const isWashTypePref = isWashTypePreference(prefName);
-                    const isMultiPref = isMultiSelectPreferenceGroup(pref);
-
-                    if (isTempPref || isDetergentPref) {
-                      return null;
-                    }
-
-                    return (
-                      <div key={pref.id} className="space-y-3">
-                        <p className="font-sf font-semibold text-base sm:text-lg text-theme-gray-3">
-                          {getPreferenceLabel(pref)}
-                        </p>
-                        {isWashTypePref && !isDryCleanService ? (
-                          <>
-                            {getPreferenceInstruction(pref) ? (
-                              <p className="font-sf text-sm text-theme-psGray leading-relaxed">
-                                {getPreferenceInstruction(pref)}
-                              </p>
-                            ) : null}
-                            <div className="space-y-3">
-                              {values.map((value) => {
-                                const temperaturePref = getSettingPreference(
-                                  servicePreferencesData,
-                                  isTemperaturePreference
-                                );
-                                const detergentPref = getSettingPreference(
-                                  servicePreferencesData,
-                                  isDetergentPreference
-                                );
-                                const selectedWashList = Array.isArray(currentPref)
-                                  ? currentPref
-                                  : [];
-                                const isSelected = selectedWashList.some(
-                                  (sv) => sv.preferenceValueId === value.id
-                                );
-                                const firstSelectedInOrder = values.find((v) =>
-                                  selectedWashList.some((s) => s.preferenceValueId === v.id)
-                                );
-                                const firstSelectedValueId = firstSelectedInOrder?.id;
-
-                                const selectedSettings =
-                                  preferences?.washTypeSettings?.[value.id] || {};
-
-                                const washInstrKey = String(value.id);
-                                const washInstrOpen = Boolean(
-                                  washInstructionPanelOpen[washInstrKey]
-                                );
-                                const washHasInstr = Boolean(
-                                  (selectedSettings.preferenceInstruction ?? "").trim()
-                                );
-
-                                const hasWashSubPickOptions =
-                                  Boolean(temperaturePref) || Boolean(detergentPref);
-
-                                const isExpanded =
-                                  isSelected &&
-                                  (hasWashSubPickOptions
-                                    ? washAccordionOpenId === WASH_ACCORDION_ALL_COLLAPSED
-                                      ? false
-                                      : washAccordionOpenId === null
-                                        ? value.id === firstSelectedValueId
-                                        : washAccordionOpenId === value.id
-                                    : true);
-
-                                const runWashTypeToggle = () => {
-                                  setPreferences((prev) => {
-                                    const selectedWashTypes = Array.isArray(prev[prefKey])
-                                      ? prev[prefKey]
-                                      : [];
-                                    const alreadySelected = selectedWashTypes.some(
-                                      (selectedItem) =>
-                                        selectedItem.preferenceValueId === value.id
-                                    );
-                                    const nextSelectedWashTypes = alreadySelected
-                                      ? selectedWashTypes.filter(
-                                          (selectedItem) =>
-                                            selectedItem.preferenceValueId !== value.id
-                                        )
-                                      : [
-                                          ...selectedWashTypes,
-                                          {
-                                            preferenceTypeId: getPreferenceId(pref),
-                                            preferenceTypeName:
-                                              getPreferenceLabel(pref) || prefKey,
-                                            preferenceValueId: value.id,
-                                            value: value.value,
-                                          },
-                                        ];
-
-                                    const existingSettings = prev.washTypeSettings || {};
-                                    const nextSettings = { ...existingSettings };
-
-                                    if (!alreadySelected) {
-                                      nextSettings[value.id] = buildDefaultWashTypeSettings(
-                                        servicePreferencesData || []
-                                      );
-                                    } else {
-                                      delete nextSettings[value.id];
-                                    }
-
-                                    return {
-                                      ...prev,
-                                      [prefKey]: nextSelectedWashTypes,
-                                      washTypeSettings: nextSettings,
-                                    };
-                                  });
-                                };
-
-                                return (
-                                  <div
-                                    key={value.id}
-                                    className={`overflow-hidden rounded-lg border-2 bg-white transition-colors ${
-                                      isSelected &&
-                                      (!hasWashSubPickOptions || isExpanded)
-                                        ? "border-theme-blue shadow-sm"
-                                        : "border-gray-200"
-                                    }`}
-                                  >
-                                    <div className="flex items-stretch gap-3 px-3 py-3.5">
-                                      <button
-                                        type="button"
-                                        aria-pressed={isSelected}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          const wasSelected = isSelected;
-                                          runWashTypeToggle();
-                                          if (wasSelected) {
-                                            setWashInstructionPanelOpen((prev) => {
-                                              const next = { ...prev };
-                                              delete next[washInstrKey];
-                                              return next;
-                                            });
-                                          }
-                                          if (!wasSelected) {
-                                            setWashAccordionOpenId(value.id);
-                                          } else {
-                                            setWashAccordionOpenId(null);
-                                          }
-                                        }}
-                                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                                          isSelected
-                                            ? "border-theme-blue bg-theme-blue text-white"
-                                            : "border-gray-300 bg-white"
-                                        }`}
-                                      >
-                                        {isSelected ? (
-                                          <FaCheck className="h-3 w-3" aria-hidden />
-                                        ) : null}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
-                                        onClick={() => {
-                                          if (!hasWashSubPickOptions) {
-                                            runWashTypeToggle();
-                                            return;
-                                          }
-                                          if (!isSelected) {
-                                            runWashTypeToggle();
-                                            setWashAccordionOpenId(value.id);
-                                          } else {
-                                            setWashAccordionOpenId(
-                                              isExpanded
-                                                ? WASH_ACCORDION_ALL_COLLAPSED
-                                                : value.id
-                                            );
-                                          }
-                                        }}
-                                      >
-                                        <span
-                                          className={`font-sf text-base ${
-                                            isSelected
-                                              ? "font-semibold text-theme-blue"
-                                              : "font-medium text-gray-900"
-                                          }`}
-                                        >
-                                          {value.value}
-                                        </span>
-                                        {hasWashSubPickOptions ? (
-                                          <span className="shrink-0 text-gray-500">
-                                            {isExpanded ? (
-                                              <FaChevronUp className="h-4 w-4" aria-hidden />
-                                            ) : (
-                                              <FaChevronDown className="h-4 w-4" aria-hidden />
-                                            )}
-                                          </span>
-                                        ) : null}
-                                      </button>
-                                    </div>
-
-                                    {isSelected && isExpanded && (
-                                      <div className="space-y-4 border-t border-gray-100 px-3 pb-4 pt-3">
-                                        {shouldShowWashBleedDisclaimer(
-                                          preferenceServiceMeta,
-                                          value?.value
-                                        ) && (
-                                        <div
-                                          className="flex gap-2 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2.5 font-sf text-sm leading-snug text-amber-950"
-                                          role="note"
-                                        >
-                                          <IoInformationCircleOutline
-                                            className="mt-0.5 h-5 w-5 shrink-0 text-amber-700"
-                                            aria-hidden
-                                          />
-                                          <span>{WASH_BLEED_DISCLAIMER_TEXT}</span>
-                                        </div>
-                                        )}
-
-                                        {temperaturePref && (
-                                          <div>
-                                            <p className="pb-2 font-sf text-xs font-medium uppercase tracking-wide text-gray-500">
-                                              {getPreferenceLabel(temperaturePref) ||
-                                                "Wash temperature"}
-                                            </p>
-                                            <div className="flex flex-wrap gap-2">
-                                              {getPreferenceValues(temperaturePref).map(
-                                                (tempValue) => {
-                                                  const isTempSelected =
-                                                    selectedSettings?.temperature
-                                                      ?.preferenceValueId === tempValue.id;
-                                                  return (
-                                                    <button
-                                                      key={tempValue.id}
-                                                      type="button"
-                                                      className={`rounded-full border px-3 py-1.5 font-sf text-sm transition-colors ${
-                                                        isTempSelected
-                                                          ? "border-theme-blue bg-theme-blue text-white"
-                                                          : "border-gray-300 bg-white text-gray-900"
-                                                      }`}
-                                                      onClick={() =>
-                                                        setPreferences((prev) => {
-                                                          const existing =
-                                                            prev.washTypeSettings || {};
-                                                          const selectedWashSettings =
-                                                            existing[value.id] || {};
-                                                          const isAlreadySelected =
-                                                            selectedWashSettings?.temperature
-                                                              ?.preferenceValueId ===
-                                                            tempValue.id;
-                                                          const nextSettings = {
-                                                            ...selectedWashSettings,
-                                                          };
-                                                          if (isAlreadySelected) {
-                                                            delete nextSettings.temperature;
-                                                          } else {
-                                                            nextSettings.temperature = {
-                                                              preferenceTypeId: getPreferenceId(
-                                                                temperaturePref
-                                                              ),
-                                                              preferenceTypeName:
-                                                                getPreferenceLabel(
-                                                                  temperaturePref
-                                                                ) || "Temperature",
-                                                              preferenceValueId: tempValue.id,
-                                                              value: tempValue.value,
-                                                            };
-                                                          }
-                                                          return {
-                                                            ...prev,
-                                                            washTypeSettings: {
-                                                              ...existing,
-                                                              [value.id]: nextSettings,
-                                                            },
-                                                          };
-                                                        })
-                                                      }
-                                                    >
-                                                      {tempValue.value}
-                                                    </button>
-                                                  );
-                                                }
-                                              )}
-                                            </div>
-                                          </div>
-                                        )}
-
-                                        {detergentPref && (
-                                          <div>
-                                            <p className="pb-2 font-sf text-xs font-medium uppercase tracking-wide text-gray-500">
-                                              {getPreferenceLabel(detergentPref) || "Detergent"}
-                                            </p>
-                                            <div className="flex flex-wrap gap-2">
-                                              {getPreferenceValues(detergentPref).map(
-                                                (detergentValue) => {
-                                                  const isDetergentSelected =
-                                                    selectedSettings?.detergent
-                                                      ?.preferenceValueId ===
-                                                    detergentValue.id;
-                                                  return (
-                                                    <button
-                                                      key={detergentValue.id}
-                                                      type="button"
-                                                      className={`rounded-full border px-3 py-1.5 font-sf text-sm transition-colors ${
-                                                        isDetergentSelected
-                                                          ? "border-theme-blue bg-theme-blue text-white"
-                                                          : "border-gray-300 bg-white text-gray-900"
-                                                      }`}
-                                                      onClick={() =>
-                                                        setPreferences((prev) => {
-                                                          const existing =
-                                                            prev.washTypeSettings || {};
-                                                          const selectedWashSettings =
-                                                            existing[value.id] || {};
-                                                          const isAlreadySelected =
-                                                            selectedWashSettings?.detergent
-                                                              ?.preferenceValueId ===
-                                                            detergentValue.id;
-                                                          const nextSettings = {
-                                                            ...selectedWashSettings,
-                                                          };
-                                                          if (isAlreadySelected) {
-                                                            delete nextSettings.detergent;
-                                                          } else {
-                                                            nextSettings.detergent = {
-                                                              preferenceTypeId: getPreferenceId(
-                                                                detergentPref
-                                                              ),
-                                                              preferenceTypeName:
-                                                                getPreferenceLabel(
-                                                                  detergentPref
-                                                                ) || "Detergent",
-                                                              preferenceValueId:
-                                                                detergentValue.id,
-                                                              value: detergentValue.value,
-                                                            };
-                                                          }
-                                                          return {
-                                                            ...prev,
-                                                            washTypeSettings: {
-                                                              ...existing,
-                                                              [value.id]: nextSettings,
-                                                            },
-                                                          };
-                                                        })
-                                                      }
-                                                    >
-                                                      {detergentValue.value}
-                                                    </button>
-                                                  );
-                                                }
-                                              )}
-                                            </div>
-                                          </div>
-                                        )}
-
-                                        <div>
-                                          {!washInstrOpen && !washHasInstr ? (
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                setWashInstructionPanelOpen((prev) => ({
-                                                  ...prev,
-                                                  [washInstrKey]: true,
-                                                }))
-                                              }
-                                              className="rounded-full border border-gray-200 bg-white px-3 py-1.5 font-sf text-xs font-medium text-theme-gray-3 transition hover:bg-gray-50"
-                                            >
-                                              Add instruction
-                                            </button>
-                                          ) : null}
-                                          {!washInstrOpen && washHasInstr ? (
-                                            <button
-                                              type="button"
-                                              onClick={() =>
-                                                setWashInstructionPanelOpen((prev) => ({
-                                                  ...prev,
-                                                  [washInstrKey]: true,
-                                                }))
-                                              }
-                                              className="rounded-full border border-gray-200 bg-white px-3 py-1.5 font-sf text-xs font-medium text-theme-gray-3 transition hover:bg-gray-50"
-                                            >
-                                              Edit instruction
-                                            </button>
-                                          ) : null}
-                                          {washInstrOpen ? (
-                                            <>
-                                              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                  <span className="font-sf text-sm font-medium text-gray-700">
-                                                    Preference Instruction
-                                                  </span>
-                                                  <span className="rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 font-sf text-xs text-gray-500">
-                                                    Optional
-                                                  </span>
-                                                </div>
-                                                <button
-                                                  type="button"
-                                                  onClick={() =>
-                                                    setWashInstructionPanelOpen((prev) => ({
-                                                      ...prev,
-                                                      [washInstrKey]: false,
-                                                    }))
-                                                  }
-                                                  className="shrink-0 font-sf text-xs text-theme-psGray underline-offset-2 hover:text-theme-gray-3 hover:underline"
-                                                >
-                                                  Hide
-                                                </button>
-                                              </div>
-                                              <textarea
-                                                className="min-h-[100px] w-full resize-none rounded-2xl border border-gray-200 bg-white p-3 font-sf text-sm text-gray-900 outline-none transition placeholder:text-gray-400 focus:border-theme-blue focus:ring-1 focus:ring-theme-blue"
-                                                placeholder="Add any special instructions for this wash type..."
-                                                value={
-                                                  selectedSettings.preferenceInstruction ?? ""
-                                                }
-                                                onChange={(e) =>
-                                                  setPreferences((prev) => {
-                                                    const existing = prev.washTypeSettings || {};
-                                                    const row = existing[value.id] || {};
-                                                    return {
-                                                      ...prev,
-                                                      washTypeSettings: {
-                                                        ...existing,
-                                                        [value.id]: {
-                                                          ...row,
-                                                          preferenceInstruction: e.target.value,
-                                                        },
-                                                      },
-                                                    };
-                                                  })
-                                                }
-                                              />
-                                            </>
-                                          ) : null}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            {getPreferenceInstruction(pref) &&
-                            !(isWashTypePref && isDryCleanService) ? (
-                              <p className="font-sf text-sm text-theme-psGray leading-relaxed">
-                                {getPreferenceInstruction(pref)}
-                              </p>
-                            ) : null}
-                            <div className="space-y-3">
-                              {values.map((value) => {
-                                const isSelected = isWashTypePref
-                                  ? Array.isArray(currentPref) &&
-                                    currentPref.some(
-                                      (selectedValue) =>
-                                        selectedValue.preferenceValueId === value.id
-                                    )
-                                  : isMultiPref
-                                    ? Array.isArray(currentPref) &&
-                                      currentPref.some(
-                                        (selectedValue) =>
-                                          selectedValue.preferenceValueId === value.id
-                                      )
-                                    : currentPref?.preferenceValueId === value.id;
-
-                                const runToggle = () => {
-                                  if (isWashTypePref) {
-                                    setPreferences((prev) => {
-                                      const selectedWashTypes = Array.isArray(
-                                        prev[prefKey]
-                                      )
-                                        ? prev[prefKey]
-                                        : [];
-                                      const alreadySelected = selectedWashTypes.some(
-                                        (selectedItem) =>
-                                          selectedItem.preferenceValueId === value.id
-                                      );
-
-                                      const nextSelectedWashTypes = alreadySelected
-                                        ? selectedWashTypes.filter(
-                                            (selectedItem) =>
-                                              selectedItem.preferenceValueId !== value.id
-                                          )
-                                        : [
-                                            ...selectedWashTypes,
-                                            {
-                                              preferenceTypeId: getPreferenceId(pref),
-                                              preferenceTypeName:
-                                                getPreferenceLabel(pref) || prefKey,
-                                              preferenceValueId: value.id,
-                                              value: value.value,
-                                            },
-                                          ];
-
-                                      if (isDryCleanService) {
-                                        return {
-                                          ...prev,
-                                          [prefKey]: nextSelectedWashTypes,
-                                        };
-                                      }
-
-                                      const existingSettings = prev.washTypeSettings || {};
-                                      const nextSettings = { ...existingSettings };
-
-                                      if (!alreadySelected) {
-                                        nextSettings[value.id] =
-                                          buildDefaultWashTypeSettings(
-                                            servicePreferencesData || []
-                                          );
-                                      }
-                                      if (alreadySelected) {
-                                        delete nextSettings[value.id];
-                                      }
-
-                                      return {
-                                        ...prev,
-                                        [prefKey]: nextSelectedWashTypes,
-                                        washTypeSettings: nextSettings,
-                                      };
-                                    });
-                                    return;
-                                  }
-
-                                  if (isMultiPref) {
-                                    setPreferences((prev) => {
-                                      const raw = prev[prefKey];
-                                      const selected = Array.isArray(raw)
-                                        ? raw
-                                        : raw?.preferenceTypeId
-                                          ? [raw]
-                                          : [];
-                                      const alreadySelected = selected.some(
-                                        (item) => item.preferenceValueId === value.id
-                                      );
-                                      const nextSelected = alreadySelected
-                                        ? selected.filter(
-                                            (item) => item.preferenceValueId !== value.id
-                                          )
-                                        : [
-                                            ...selected,
-                                            {
-                                              preferenceTypeId: getPreferenceId(pref),
-                                              preferenceTypeName:
-                                                getPreferenceLabel(pref) || prefKey,
-                                              preferenceValueId: value.id,
-                                              value: value.value,
-                                            },
-                                          ];
-                                      return { ...prev, [prefKey]: nextSelected };
-                                    });
-                                    return;
-                                  }
-
-                                  setPreferences((prev) => {
-                                    const current = prev[prefKey];
-                                    const alreadyThis =
-                                      current?.preferenceTypeId &&
-                                      current?.preferenceValueId === value.id;
-                                    if (alreadyThis) {
-                                      const next = { ...prev };
-                                      delete next[prefKey];
-                                      return next;
-                                    }
-                                    return {
-                                      ...prev,
-                                      [prefKey]: {
-                                        preferenceTypeId: getPreferenceId(pref),
-                                        preferenceTypeName:
-                                          getPreferenceLabel(pref) || prefKey,
-                                        preferenceValueId: value.id,
-                                        value: value.value,
-                                      },
-                                    };
-                                  });
-                                };
-
-                                return (
-                                  <div
-                                    key={value.id}
-                                    className={`overflow-hidden rounded-lg border-2 bg-white transition-colors ${
-                                      isSelected
-                                        ? "border-theme-blue shadow-sm"
-                                        : "border-gray-200"
-                                    }`}
-                                  >
-                                    <div className="flex items-stretch gap-3 px-3 py-3.5">
-                                      <button
-                                        type="button"
-                                        aria-pressed={isSelected}
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          runToggle();
-                                        }}
-                                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors ${
-                                          isSelected
-                                            ? "border-theme-blue bg-theme-blue text-white"
-                                            : "border-gray-300 bg-white"
-                                        }`}
-                                      >
-                                        {isSelected ? (
-                                          <FaCheck className="h-3 w-3" aria-hidden />
-                                        ) : null}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="flex min-w-0 flex-1 flex-col items-stretch gap-0.5 text-left"
-                                        onClick={() => runToggle()}
-                                      >
-                                        <span
-                                          className={`font-sf text-base ${
-                                            isSelected
-                                              ? "font-semibold text-theme-blue"
-                                              : "font-medium text-gray-900"
-                                          }`}
-                                        >
-                                          {value.value}
-                                        </span>
-                                        {(value.temperature || value.meta) && (
-                                          <span className="font-sf text-xs font-normal text-gray-500">
-                                            {value.temperature || value.meta}
-                                          </span>
-                                        )}
-                                        {(value.price != null || value.weight != null) && (
-                                          <span className="font-sf text-xs font-normal text-gray-500">
-                                            {value.price != null && `£${value.price}`}
-                                            {value.price != null &&
-                                              value.weight != null &&
-                                              " · "}
-                                            {value.weight != null && `${value.weight}kg`}
-                                          </span>
-                                        )}
-                                      </button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {(showBagsInput || showItemsInput) && (
-                  <div className="mt-2 rounded-2xl border border-[#d9e0ef] bg-[#eef2f9] p-3 sm:p-4 space-y-3">
-                    <div>
-                      <p className="font-sf font-semibold text-base text-theme-gray-3">
-                        Estimated quantity (optional)
-                      </p>
-                      <p className="font-sf text-sm text-theme-psGray mt-1 leading-relaxed">
-                        Help us prepare for collection — you can skip this if unsure.
-                      </p>
-                    </div>
-
-                    {showPackingOptions && canEditPackingChoice && (
-                      <div className="space-y-2 mb-1">
-                        <p className="font-sf font-semibold text-sm text-theme-gray-3">
-                          How are you packing?
-                        </p>
-                        <label
-                          className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${
-                            !isAllInOneBagSelected
-                              ? "border-theme-blue bg-white shadow-sm"
-                              : "border-[#d9e0ef] bg-white/60"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name={`packingMode-${currentServiceId}`}
-                            className="mt-1 h-4 w-4 shrink-0 text-theme-blue focus:ring-theme-blue"
-                            checked={!isAllInOneBagSelected}
-                            onChange={() => handlePackingModeChange("perService")}
-                          />
-                          <span className="min-w-0">
-                            <span className="font-sf text-sm font-semibold text-gray-900 block">
-                              One bag per service
-                            </span>
-                            <span className="font-sf text-xs text-theme-psGray leading-snug">
-                              Recommended when mixing wash types
-                            </span>
-                          </span>
-                        </label>
-                        <label
-                          className={`flex items-start gap-3 rounded-xl border p-3 cursor-pointer transition-colors ${
-                            isAllInOneBagSelected
-                              ? "border-theme-blue bg-white shadow-sm"
-                              : "border-[#d9e0ef] bg-white/60"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name={`packingMode-${currentServiceId}`}
-                            className="mt-1 h-4 w-4 shrink-0 text-theme-blue focus:ring-theme-blue"
-                            checked={isAllInOneBagSelected}
-                            onChange={() => handlePackingModeChange("allInOne")}
-                          />
-                          <span className="min-w-0">
-                            <span className="font-sf text-sm font-semibold text-gray-900 block">
-                              All in one bag
-                            </span>
-                            <span className="font-sf text-xs text-theme-psGray leading-snug">
-                              Everything in a single bag for collection
-                            </span>
-                          </span>
-                        </label>
-                        {isAllInOneBagSelected && !multiServiceInCart && (
-                          <p className="font-sf text-xs text-theme-psGray px-1">
-                            Add another service to your order for this option to apply at checkout.
-                          </p>
-                        )}
-                      </div>
-                    )}
-
-                    {showPackingOptions && !canEditPackingChoice && (
-                      <div className="rounded-xl border border-[#d9e0ef] bg-white/80 px-3 py-2.5 mb-1">
-                        <p className="font-sf text-sm font-semibold text-gray-900">
-                          All in one bag
-                        </p>
-                        <p className="font-sf text-xs text-theme-psGray mt-0.5 leading-snug">
-                          {packingSourceServiceName
-                            ? `Bag count is set on ${packingSourceServiceName}.`
-                            : "Bag count is set on your first service."}
-                          {parseQuantityCount(orderData?.totalBags) > 0
-                            ? ` Total: ${parseQuantityCount(orderData?.totalBags)} bag(s).`
-                            : ""}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="space-y-3">
-                      {showBagsInput && !bagsStepperDisabled && (
-                        <EstimatedQuantityStepper
-                          label="Bags"
-                          icon={<IoBagOutline className="text-lg" />}
-                          disabled={false}
-                          value={
-                            useSharedBagStepper
-                              ? orderData?.totalBags
-                              : preferences.bagsCount
-                          }
-                          onChange={(next) => {
-                            if (useSharedBagStepper) {
-                              dispatch(setOrderData({ totalBags: next }));
-                            } else {
-                              setPreferences((prev) => ({
-                                ...prev,
-                                bagsCount: String(next),
-                              }));
-                            }
-                          }}
-                        />
-                      )}
-
-                      {showItemsInput && (
-                        <EstimatedQuantityStepper
-                          label="Items"
-                          icon={
-                            <svg
-                              className="size-4 text-theme-gray-3"
-                              viewBox="0 0 40 40"
-                              fill="none"
-                              xmlns="http://www.w3.org/2000/svg"
-                              aria-hidden
-                            >
-                              <path
-                                d="M20 7v4.5"
-                                stroke="currentColor"
-                                strokeWidth="1.35"
-                                strokeLinecap="round"
-                              />
-                              <path
-                                d="M14.5 18.5c0-3 2.5-5.5 5.5-5.5s5.5 2.5 5.5 5.5l7.5 8.5a1 1 0 0 1-.75 1.65H7.75a1 1 0 0 1-.75-1.65l7.5-8.5Z"
-                                stroke="currentColor"
-                                strokeWidth="1.35"
-                                strokeLinejoin="round"
-                              />
-                              <path
-                                d="M11 30.5h18"
-                                stroke="currentColor"
-                                strokeWidth="1.35"
-                                strokeLinecap="round"
-                              />
-                            </svg>
-                          }
-                          value={preferences.itemsCount}
-                          disabled={itemsStepperDisabled}
-                          onChange={(next) =>
-                            setPreferences((prev) => ({
-                              ...prev,
-                              itemsCount: String(next),
-                            }))
-                          }
-                        />
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                <div className="pt-3">
-                  <p className="font-sf text-lg pb-3">
-                    Additional Service instructions
-                  </p>
-
-                  <textarea
-                    className="w-full h-40 bg-theme-gray rounded-lg p-5 text-base text-theme-gray-2 resize-none outline-none"
-                    type="text"
-                    name=""
-                    id=""
-                    placeholder="Enter your instructions"
-                    value={preferences.additionalInstructions || ""}
-                    onChange={(e) =>
-                      setPreferences((prev) => ({
-                        ...prev,
-                        additionalInstructions: e.target.value,
-                      }))
-                    }
-                  />
-
-                </div>
-                  </div>
-                </div>
-                {(() => {
-                  const washParent = servicePreferencesData.find((p) =>
-                    isWashTypePreference(getPreferenceKey(p))
-                  );
-                  const washKey = washParent ? getPreferenceKey(washParent) : null;
-                  const washSelected = washKey
-                    ? Array.isArray(preferences[washKey])
-                      ? preferences[washKey]
-                      : []
-                    : [];
-                  if (washSelected.length < 2 || !hasModalOverflow) return null;
-                  return (
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[58px] z-20">
-                      <div className="pointer-events-auto absolute bottom-4 right-4 sm:bottom-5 sm:right-5">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            modalScrollRef.current?.scrollTo({
-                              top: isModalAtBottom
-                                ? 0
-                                : modalScrollRef.current.scrollHeight,
-                              behavior: "smooth",
-                            })
-                          }
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-theme-blue text-white shadow-md transition hover:opacity-90"
-                          aria-label={
-                            isModalAtBottom ? "Scroll to top" : "Scroll to bottom"
-                          }
-                        >
-                          {isModalAtBottom ? (
-                            <MdKeyboardArrowUp size={20} />
-                          ) : (
-                            <MdKeyboardArrowDown size={20} />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </>
-            ) : (
-              <div className="w-full px-6 py-6 font-sf">
-                <p className="text-center text-theme-psGray">
-                  No preferences available for this service.
-                </p>
-              </div>
-            )}
-          </div>
-        ) : modal.modType === "dry cleaning" ? (
+        {modal.modType === "dry cleaning" ? (
           ""
         ) : modal.modType === "driverInstructions" ? (
           <div className="">

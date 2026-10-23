@@ -1,11 +1,11 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import AuthLayout, { AuthAlt, AuthDivider, AuthFine, AuthHeading, AuthLink, authStyles } from "../../../../components/auth/AuthLayout";
 import InputHeroUi from "../../../../components/InputHeroUi";
 import {
   ButtonContinueWith,
   ButtonYouth70018,
 } from "../../../../components/Buttons";
-import SelectHero from "../../../../components/SelectHero";
 import { InputOtp } from "@heroui/react";
 import { useRouter } from "next/navigation";
 import {
@@ -32,25 +32,21 @@ import {
   useVerifyOTPRegisterMutation,
 } from "@/app/store/services/api";
 import { addToast } from "@heroui/react";
-import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import PhoneInputComp from "../../../../components/PhoneInputComp";
-import HomeClientWrapper from "../../../../utilities/Test";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { BASE_URL } from "../../../../utilities/URL";
 import { CountDown } from "../../../../utilities/CountDown";
 import Link from "next/link";
 import { useDispatch } from "react-redux";
 import { setPage } from "@/app/store/slices/cartItemSlice";
-import Header from "../../../../components/Header";
 import { MiniLoader } from "../../../../components/Loader";
 import { requestDeviceToken } from "../../../../utilities/requestFCMToken";
-import { FaChevronLeft } from "react-icons/fa";
 
-export default function page() {
+export default function SignInPage() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const [userLogin, { isLoading, isError, isSuccess }] = useUserLoginMutation();
+  const [userLogin, { isLoading }] = useUserLoginMutation();
   const [resetPassword, { isLoading: isResetPasswordLoading }] = useResetPasswordMutation();
   const [verifyOTP] = useVerifyOTPMutation();
   const [resendOTP] = useResendOTPMutation();
@@ -453,8 +449,6 @@ export default function page() {
     } catch (err) {
       console.log("🔴 Verify OTP Error:", err);
       console.log("🔴 Error Data:", err?.data);
-      const errorData = err?.data || {};
-      
       addToast({
         title: "Verify OTP Failed",
         description: "OTP is incorrect",
@@ -828,8 +822,6 @@ export default function page() {
   };
 
   // Helper function to extract username from email
-  const extractUsernameFromEmail = (email) =>
-    (email?.match(/^[a-zA-Z0-9._%+-]+/) || [])[0] || "";
 
   // Helper function to separate first and last name
   function separateNames(fullName) {
@@ -2017,328 +2009,201 @@ export default function page() {
     }
   };
 
+  // Back: sub-steps return to login; login returns to the previous page.
+  const handleBack = () => {
+    if (step === "forgot" || step === "otp" || step === "sign-up") {
+      setStep("sign-in");
+    } else if (step === "sign-in") {
+      dispatch(setPage(true));
+      router.back();
+    }
+  };
+
+  const otpEmail = (() => {
+    // Signup uses the register email; password reset uses the reset email.
+    if (typeof window === "undefined") return "";
+    const type = localStorage.getItem("type");
+    if (type === "register" || (!type && register?.email)) return register?.email || "";
+    if (type === "forgot") return userData?.resetPassword || localStorage.getItem("email") || "";
+    return localStorage.getItem("email") || register?.email || "";
+  })();
+
+  const isForgotFlow = typeof window !== "undefined" && localStorage.getItem("type") === "forgot";
+
+  const legalFine = (
+    <AuthFine>
+      By creating an account, you agree to our <Link href="/terms">Terms</Link> and{" "}
+      <Link href="/privacy-policy">Privacy Policy</Link>.
+    </AuthFine>
+  );
+
   return (
     <>
-      <HomeClientWrapper>
-        <div className="grid lg:grid-cols-2">
-          <div className="h-[300px] max-sm:hidden sm:h-[600px] lg:h-screen w-full lg:bg-sign-in bg-cover bg-center bg-no-repeat relative">
-            <video
-              src="/images/signInVideo.mp4"
-              autoPlay
-              muted
-              loop
-              playsInline
-              controls={false}
-              disablePictureInPicture
-              controlsList="nodownload nofullscreen noremoteplayback"
-              className="w-full h-full object-cover object-center lg:hidden"
-            ></video>
-
-            <div className="w-full max-w-[565px] mx-auto my-auto absolute bottom-5 left-1/2 -translate-x-1/2 lg:hidden">
-              <div className="mx-auto w-max pb-1 sm:pb-4">
-                <p className="font-sf sm:text-xl font-medium text-theme-blue">
-                  Welcome to
-                </p>
-                <h4 className="font-youth font-bold text-2xl sm:text-[40px] leading-8 text-theme-blue">
-                  Just Dry Cleaners
-                </h4>
-              </div>
-              <Link onClick={() => dispatch(setPage(true))} href="/">
-                <img
-                  className="mx-auto w-12 sm:w-auto"
-                  src="/images/logo.png"
-                  alt="logo"
-                />
-              </Link>
-            </div>
-
-            <div className="w-full h-14 flex justify-center items-center absolute -bottom-14 left-0 px-8 bg-theme-gray lg:hidden">
-              <p className="max-w-[565px] font-sf text-xs sm:text-base">
-                Create an account and start enjoying cleaner clothes with zero
-                effort!
-              </p>
-            </div>
-          </div>
-          <div className="w-full sm:hidden">
-            <Header type="sign-in" />
-          </div>
-
-          <div className="w-full h-screen lg:overflow-auto flex justify-center lg:items-center px-5 sm:px-8 sm:pad-y relative">
-            {/* Back Button */}
-            <button
-              onClick={() => {
-                if (step === "forgot" || step === "otp" || step === "sign-up") {
-                  // If on forgot password, OTP, or sign-up, go back to login screen
-                  setStep("sign-in");
-                } else if (step === "sign-in") {
-                  // If on login screen, go back to home
-                  dispatch(setPage(true));
-                  router.back();
-                }
+      <AuthLayout onBack={step === "new-order" || step === "password" ? undefined : handleBack}>
+        {step === "sign-in" ? (
+          <>
+            <AuthHeading title="Log in to your account" sub="Welcome back. Enter your details to continue." />
+            <form
+              className={authStyles.form}
+              onSubmit={(e) => {
+                e.preventDefault();
+                userData.verficationPending ? handleResendOtp(e) : handleLogin(e);
               }}
-              className="absolute top-5 left-5 sm:bottom-[120px] sm:top-auto sm:left-8 lg:top-8 lg:left-8 lg:bottom-auto flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm z-10"
-              aria-label="Go back"
+              noValidate
             >
-              <FaChevronLeft className="text-theme-blue text-lg" />
-            </button>
-
-            {step === "sign-in" ? (
-              <div className="w-full max-w-[565px] mx-auto sm:my-auto sm:py-10">
-                <Link onClick={() => dispatch(setPage(true))} href="/">
-                  <img
-                    className="mx-auto cursor-pointer max-lg:hidden"
-                    src="/images/logo.png"
-                    alt="logo"
-                  />
-                </Link>
-
-                <div className="mx-auto w-max pt-3 max-lg:hidden">
-                  <p className="font-sf text-xl font-medium text-theme-blue">
-                    Welcome to
-                  </p>
-                  <h4 className="font-youth font-bold text-[40px] leading-8 text-theme-blue">
-                    Just Dry Cleaners
-                  </h4>
-                </div>
-
-                <div className="flex items-center gap-3 pt-5 pl-16 sm:hidden">
-                  <h4 className="font-youth font-bold text-2xl text-theme-blue">
-                    Welcome Back!
-                  </h4>
-                </div>
-
-                <form className="space-y-5 pt-12 font-sf">
-                  <InputHeroUi
-                    type="email"
-                    label="Email Address"
-                    onChange={(e) =>
-                      setUserData({ ...userData, email: e.target.value })
-                    }
-                    value={userData?.email}
-                    validate={(value) => {
-                      const validateEmail = (value) =>
-                        value.match(
-                          /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i
-                        );
-
-                      if (!validateEmail(value)) {
-                        return "Please enter a valid email address";
-                      }
-
-                      return value === "admin" ? "Nice try!" : null;
-                    }}
-                  />
-                  <InputHeroUi
-                    type="password"
-                    label="Password"
-                    value={userData?.password}
-                    onChange={(e) =>
-                      setUserData({ ...userData, password: e.target.value })
-                    }
-                    validate={(value) => {
-                      if (value.length < 6) {
-                        return "Password must be at least 6 characters long";
-                      }
-
-                      return value === "admin" ? "Nice try!" : null;
-                    }}
-                  />
-                  <ButtonYouth70018
-                    text={userData.verficationPending ? "Send otp" : "Login"}
-                    onClick={(e) => {
-                      userData.verficationPending
-                        ? handleResendOtp(e)
-                        : handleLogin(e);
-                    }}
-                    isDisabled={isLoading}
-                    isPending={isLoading}
-                  />
-                </form>
-
-                <div className="font-sf my-6 space-y-2 sm:my-10 flex flex-col items-center">
-                  <p
-                    onClick={() => setStep("forgot")}
-                    className="text-base font-semibold text-theme-brightBlue text-center cursor-pointer"
-                  >
-                    I forgot my password
-                  </p>
-                  <p
-                    onClick={() => setStep("sign-up")}
-                    className="text-base font-medium text-center text-theme-gray-3 cursor-pointer"
-                  >
-                    Don’t have an account{" "}
-                    <span className="text-theme-brightBlue ">? Sign Up</span>
-                  </p>
-                </div>
-
-                <div className="w-full flex items-center gap-x-2">
-                  <p className="bg-theme-gray-2/25 w-full h-[2px]"></p>
-                  <p className="text-xs text-theme-gray-3 font-sf">OR</p>
-                  <p className="bg-theme-gray-2/25 w-full h-[2px]"></p>
-                </div>
-
-                <div className="w-full space-y-5 pt-8 sm:pt-12 max-sm:pb-10">
-                  <ButtonContinueWith
-                    text="Continue with google"
-                    size="18px"
-                    src="/images/auth/google.png"
-                    onClick={handleGoogleLogin}
-                    disabled={googleAuthLoader || isLoading}
-                  />
-                  <ButtonContinueWith
-                    text="Continue with facebook"
-                    size="18px"
-                    src="/images/auth/facebook.png"
-                    onClick={handleFacebookLogin}
-                    disabled={facebookAuthLoader || isLoading}
-                  />
-                  <ButtonContinueWith
-                    text="Continue with Apple"
-                    size="18px"
-                    src="/images/auth/email.png"
-                    onClick={handleAppleLogin}
-                    disabled={appleAuthLoader || isLoading}
-                  />
-                </div>
+              <InputHeroUi
+                type="email"
+                label="Email address"
+                onChange={(e) => setUserData({ ...userData, email: e.target.value })}
+                value={userData?.email}
+                validate={(value) => {
+                  const validateEmail = (v) => v.match(/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i);
+                  if (!validateEmail(value)) return "Please enter a valid email address";
+                  return value === "admin" ? "Nice try!" : null;
+                }}
+              />
+              <InputHeroUi
+                type="password"
+                label="Password"
+                value={userData?.password}
+                onChange={(e) => setUserData({ ...userData, password: e.target.value })}
+                validate={(value) => {
+                  if (value.length < 6) return "Password must be at least 6 characters long";
+                  return value === "admin" ? "Nice try!" : null;
+                }}
+              />
+              <div className={authStyles.row}>
+                <AuthLink onClick={() => setStep("forgot")}>Forgot password?</AuthLink>
               </div>
-            ) : step === "forgot" ? (
-              <div className="w-full h-max max-w-[565px] mx-auto py-10 overflow-y-auto sm:my-auto">
-                <img
-                  className="mx-auto max-lg:hidden"
-                  src="/images/logo.png"
-                  alt="logo"
+              <ButtonYouth70018
+                text={userData.verficationPending ? "Send code" : "Log in"}
+                onClick={(e) => {
+                  userData.verficationPending ? handleResendOtp(e) : handleLogin(e);
+                }}
+                isDisabled={isLoading}
+                isPending={isLoading}
+              />
+            </form>
+
+            <AuthDivider />
+
+            <div className={authStyles.social}>
+              <ButtonContinueWith
+                text="Continue with Google"
+                shortText="Google"
+                className="min-[1081px]:h-12 min-[1081px]:px-3"
+                src="/images/auth/google.png"
+                onClick={handleGoogleLogin}
+                disabled={googleAuthLoader || isLoading}
+              />
+              <ButtonContinueWith
+                text="Continue with Facebook"
+                shortText="Facebook"
+                className="min-[1081px]:h-12 min-[1081px]:px-3"
+                src="/images/auth/facebook.png"
+                onClick={handleFacebookLogin}
+                disabled={facebookAuthLoader || isLoading}
+              />
+              <ButtonContinueWith
+                text="Continue with Apple"
+                shortText="Apple"
+                className="min-[1081px]:h-12 min-[1081px]:px-3"
+                src="/jdc/icons/apple.svg"
+                onClick={handleAppleLogin}
+                disabled={appleAuthLoader || isLoading}
+              />
+            </div>
+
+            <AuthAlt text="New to Just Dry Cleans?" action="Create an account" onAction={() => setStep("sign-up")} />
+          </>
+        ) : step === "forgot" ? (
+          <>
+            <AuthHeading
+              title="Forgot your password?"
+              sub="Enter your email and we'll send you a code to create a new password."
+            />
+            <form
+              className={authStyles.form}
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleResetPassword(e);
+              }}
+              noValidate
+            >
+              <InputHeroUi
+                type="email"
+                label="Email address"
+                value={userData?.resetPassword}
+                onChange={(e) => setUserData({ ...userData, resetPassword: e.target.value })}
+              />
+              <ButtonYouth70018
+                text="Send reset code"
+                onClick={handleResetPassword}
+                isDisabled={isResetPasswordLoading}
+                isPending={isResetPasswordLoading}
+              />
+            </form>
+            <AuthAlt text="Remembered it?" action="Back to log in" onAction={() => setStep("sign-in")} />
+          </>
+        ) : step === "sign-up" ? (
+          <>
+            <AuthHeading
+              title="Create your account"
+              sub="Start enjoying cleaner clothes with zero effort."
+            />
+            <div className={authStyles.form}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-[14px]">
+                <InputHeroUi
+                  type="text"
+                  label="First name"
+                  name="firstName"
+                  value={register?.firstName}
+                  onChange={handleRegisterChange}
+                  validate={(value) => {
+                    if (value.length < 3) return "First name must be at least 3 characters long";
+                    return value === "admin" ? "Nice try!" : null;
+                  }}
                 />
-
-                <div className="mx-auto w-max pt-3 max-lg:hidden">
-                  <p className="font-sf text-xl font-medium text-theme-blue">
-                    Welcome to
-                  </p>
-                  <h4 className="font-youth font-bold text-[40px] leading-8 text-theme-blue">
-                    Just Dry Cleaners
-                  </h4>
-                </div>
-
-                <form className="space-y-3 sm:space-y-5 pt-12 font-sf">
-                  <h4 className="font-semibold text-2xl sm:text-[32px] sm:pb-4">
-                    Forgot your password?
-                  </h4>
-                  <p className="font-sf text-lg sm:font-medium text-theme-gray-2/65 leading-tight">
-                    Enter your email and we’ll send you instructions for
-                    creating a new password
-                  </p>
-                  <InputHeroUi
-                    type="email"
-                    label="Email Address"
-                    value={userData?.resetPassword}
-                    onChange={(e) =>
-                      setUserData({
-                        ...userData,
-                        resetPassword: e.target.value,
-                      })
-                    }
-                  />
-
-                  <div className="pt-2">
-                    <ButtonYouth70018
-                      text="Reset password"
-                      onClick={handleResetPassword}
-                      isDisabled={isResetPasswordLoading}
-                      isPending={isResetPasswordLoading}
-                    />
-                  </div>
-
-                  <p className="text-base font-medium text-center text-theme-gray-3 pt-4">
-                    Don’t have an account{" "}
-                    <span
-                      onClick={() => setStep("sign-up")}
-                      className="text-theme-brightBlue cursor-pointer"
-                    >
-                      ? Sign Up
-                    </span>
-                  </p>
-                </form>
+                <InputHeroUi
+                  type="text"
+                  label="Last name"
+                  name="lastName"
+                  value={register?.lastName}
+                  onChange={handleRegisterChange}
+                  validate={(value) => {
+                    if (value.length < 3) return "Last name must be at least 3 characters long";
+                    return value === "admin" ? "Nice try!" : null;
+                  }}
+                />
               </div>
-            ) : step === "sign-up" ? (
-              <div className="w-full max-w-[565px] mx-auto py-10 overflow-y-auto my-auto">
-                <Link onClick={() => dispatch(setPage(true))} href="/">
-                  <img
-                    className="mx-auto cursor-pointer max-lg:hidden"
-                    src="/images/logo.png"
-                    alt="logo"
-                  />
-                </Link>
-
-                <div className="mx-auto w-max pt-3 max-lg:hidden">
-                  <p className="font-sf text-xl font-medium text-theme-blue">
-                    Welcome to
-                  </p>
-                  <h4 className="font-youth font-bold text-[40px] leading-8 text-theme-blue">
-                    Just Dry Cleaners
-                  </h4>
-                </div>
-
-                <div className="space-y-5 sm:pt-12 font-sf">
-                  <p className="font-sf text-base text-theme-gray-2/75 max-lg:hidden">
-                    Create an account and start enjoying cleaner clothes with
-                    zero effort!
-                  </p>
-
-                  <div className="flex gap-5">
-                    <InputHeroUi
-                      type="text"
-                      label="First Name"
-                      name="firstName"
-                      value={register?.firstName}
-                      onChange={handleRegisterChange}
-                      validate={(value) => {
-                        if (value.length < 3) {
-                          return "First name must be at least 3 characters long";
-                        }
-
-                        return value === "admin" ? "Nice try!" : null;
-                      }}
-                    />
-                    <InputHeroUi
-                      type="text"
-                      label="Last Name"
-                      name="lastName"
-                      value={register?.lastName}
-                      onChange={handleRegisterChange}
-                      validate={(value) => {
-                        if (value.length < 3) {
-                          return "Last name must be at least 3 characters long";
-                        }
-
-                        return value === "admin" ? "Nice try!" : null;
-                      }}
-                    />
-                  </div>
-                  <InputHeroUi
-                    type="email"
-                    label="Email Address"
-                    name="email"
-                    value={register?.email}
-                    onChange={handleRegisterChange}
-                  />
-
-                  <PhoneInputComp
-                    value={register.countryCode + register.phoneNum}
-                    onChange={handlePhoneChange}
-                    error={
-                      register.countryCode &&
-                        register.phoneNum &&
-                        !validatePhone(
-                          register.countryCode?.includes("+")
-                            ? register.countryCode
-                            : "+" + register.countryCode + register.phoneNum
-                        )
-                        ? "Invalid phone number"
-                        : ""
-                    }
-                  />
-                  {/* Hide password fields for social auth */}
-                  {!register?.signedFrom || (register?.signedFrom !== "google" && register?.signedFrom !== "facebook" && register?.signedFrom !== "apple") ? (
-                    <>
+              <InputHeroUi
+                type="email"
+                label="Email address"
+                name="email"
+                value={register?.email}
+                onChange={handleRegisterChange}
+              />
+              <PhoneInputComp
+                value={register.countryCode + register.phoneNum}
+                onChange={handlePhoneChange}
+                error={
+                  register.countryCode &&
+                  register.phoneNum &&
+                  !validatePhone(
+                    register.countryCode?.includes("+")
+                      ? register.countryCode
+                      : "+" + register.countryCode + register.phoneNum
+                  )
+                    ? "Invalid phone number"
+                    : ""
+                }
+              />
+              {/* Password fields are not needed for social sign-up */}
+              {!register?.signedFrom ||
+              (register?.signedFrom !== "google" &&
+                register?.signedFrom !== "facebook" &&
+                register?.signedFrom !== "apple") ? (
+                <>
                   <InputHeroUi
                     type="password"
                     label="Password"
@@ -2346,278 +2211,184 @@ export default function page() {
                     value={register?.password}
                     onChange={handleRegisterChange}
                     validate={(value) => {
-                      if (value.length < 6) {
-                        return "Password must be at least 6 characters long";
-                      }
-
+                      if (value.length < 6) return "Password must be at least 6 characters long";
                       return value === "admin" ? "Nice try!" : null;
                     }}
                   />
                   <InputHeroUi
                     type="password"
-                    label="Confirm Password"
+                    label="Confirm password"
                     name="confirmPassword"
                     value={register?.confirmPassword}
                     onChange={handleRegisterChange}
                     validate={(value) => {
-                      if (value.length < 6) {
-                        return "Password must be at least 6 characters long";
-                      } else if (
-                        register?.confirmPassword !== register?.password
-                      ) {
+                      if (value.length < 6) return "Password must be at least 6 characters long";
+                      if (register?.confirmPassword !== register?.password)
                         return "Password and confirm password is not same";
-                      }
-
                       return value === "admin" ? "Nice try!" : null;
                     }}
                   />
-                    </>
-                  ) : null}
-
-                  <div className="pt-2">
-                    <ButtonYouth70018 text="Register" onClick={handleAddUser} />
-                  </div>
-
-                  <p className="text-xs text-center font-sf text-theme-gray-3">
-                    By creating an account, you agree to Just Dry Cleaners Terms
-                    and Privacy Policy.
-                  </p>
-
-                  <div className="space-y-3 flex flex-col items-center max-lg:pb-8">
-                    <p className="font-sf text-base text-theme-gray-2 text-center leading-tight">
-                      Already have an account?
-                    </p>
-                    <h6
-                      onClick={() => setStep("sign-in")}
-                      className="font-youth text-lg font-bold text-theme-gray-2 text-center cursor-pointer"
-                    >
-                      SIGN IN
-                    </h6>
-                  </div>
-                </div>
-              </div>
-            ) : step === "otp" ? (
-              <div className="w-full max-w-[565px] mx-auto pt-8 sm:my-auto overflow-x-hidden">
-                <div className="mx-auto w-full">
-                  <h4 className="font-youth font-bold text-2xl sm:text-[32px] text-center">
-                    Verify your email
-                  </h4>
-                  <p className="font-sf sm:text-2xl text-theme-gray-2 text-center leading-tight py-3 sm:py-5">
-                    Please enter the 4 digit code <br /> sent to{" "}
-                    {(() => {
-                      // For signup, use the email from register state
-                      // For password reset, use the email from userData or localStorage
-                      const type = typeof window !== "undefined" ? localStorage.getItem("type") : "";
-                      if (type === "register" || (!type && register?.email)) {
-                        return register?.email || "";
-                      } else if (type === "forgot") {
-                        return userData?.resetPassword || localStorage.getItem("email") || "";
-                      } else {
-                        return localStorage.getItem("email") || register?.email || "";
-                      }
-                    })()}
-                  </p>
-                </div>
-
-                <div className="flex justify-center">
-                  <img src="/images/auth/group.png" alt="" />
-                </div>
-
-                <div className="flex justify-center w-full py-5">
-                  <InputOtp
-                    classNames={{
-                      wrapper: "flex justify-center", // Center input boxes
-                    }}
-                    fullWidth
-                    size="lg"
-                    length={4}
-                    value={otp}
-                    variant={otp > 0 ? "bordered" : "flat"}
-                    onValueChange={setOtp}
-                    errorMessage={
-                      <div className="text-center">
-                        {otp?.length < 4 ? "incomplete otp fields" : " "}
-                      </div>
-                    }
-                  />
-                </div>
-
-                <div className="space-y-4 w-full font-sf">
-                  <div className="pt-2">
-                    <ButtonYouth70018
-                      text="Continue"
-                      onClick={(e) =>
-                        localStorage.getItem("type") === "register"
-                          ? handleVerifyOtpRegister(e)
-                          : VerifyOtp(e)
-                      }
-                    />
-                  </div>
-
-                  {isActive ? (
-                    <h6 className="font-sf text-lg font-semibold text-gray-500 text-center">
-                      Resend code in {secondsLeft}
-                    </h6>
-                  ) : (
-                    <h6
-                      onClick={handleResendOtp}
-                      className="font-sf text-lg font-semibold text-theme-blue text-center cursor-pointer"
-                    >
+                </>
+              ) : null}
+              <ButtonYouth70018 text="Create account" onClick={handleAddUser} />
+              {legalFine}
+            </div>
+            <AuthAlt text="Already have an account?" action="Log in" onAction={() => setStep("sign-in")} />
+          </>
+        ) : step === "otp" ? (
+          <>
+            <AuthHeading
+              title="Verify your email"
+              sub={
+                <>
+                  Enter the 4-digit code we sent to <strong>{otpEmail}</strong>
+                </>
+              }
+            />
+            <div className={authStyles.otpArt}>
+              <img src="/images/auth/group.png" alt="" />
+            </div>
+            <div className="flex justify-center w-full py-3">
+              <InputOtp
+                classNames={{
+                  wrapper: "flex justify-center",
+                  segment:
+                    "h-14 w-14 rounded-[14px] border-[1.5px] border-jdc-line bg-white font-display text-xl text-jdc-navy data-[active=true]:border-jdc-blue data-[active=true]:shadow-[0_0_0_4px_rgba(2,120,254,0.14)]",
+                }}
+                fullWidth
+                size="lg"
+                length={4}
+                value={otp}
+                variant="bordered"
+                onValueChange={setOtp}
+                aria-label="Verification code"
+                errorMessage={<div className="text-center">{otp?.length < 4 ? "Enter all 4 digits" : " "}</div>}
+              />
+            </div>
+            <div className={authStyles.form}>
+              <ButtonYouth70018
+                text="Verify"
+                onClick={(e) =>
+                  localStorage.getItem("type") === "register" ? handleVerifyOtpRegister(e) : VerifyOtp(e)
+                }
+              />
+              <p className={authStyles.resend} aria-live="polite">
+                {isActive ? (
+                  <>Resend code in {secondsLeft}s</>
+                ) : (
+                  <>
+                    Didn&apos;t get it?{" "}
+                    <button type="button" onClick={handleResendOtp}>
                       Resend code
-                    </h6>
-                  )}
-                </div>
-              </div>
-            ) : step === "password" ? (
-              <div className="w-full max-w-[565px] mx-auto sm:my-auto pt-12">
-                <Link
-                  className="max-lg:hidden"
-                  onClick={() => dispatch(setPage(true))}
-                  href="/"
-                >
-                  <img className="mx-auto" src="/images/logo.png" alt="logo" />
-                </Link>
+                    </button>
+                  </>
+                )}
+              </p>
+            </div>
+          </>
+        ) : step === "password" ? (
+          <>
+            <AuthHeading
+              title={isForgotFlow ? "Set a new password" : "Create your password"}
+              sub={
+                isForgotFlow
+                  ? "Enter your new password to reset your account password."
+                  : "Choose a password to finish creating your account."
+              }
+            />
+            <form
+              className={authStyles.form}
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleChangepasswordReset(e);
+              }}
+              noValidate
+            >
+              <InputHeroUi
+                type="password"
+                label="New password"
+                name="password"
+                onChange={(e) => setUserData({ ...userData, resetPassword: e.target.value })}
+                validate={(value) => {
+                  if (value.length < 6) return "Password must be at least 6 characters long";
+                  return value === "admin" ? "Nice try!" : null;
+                }}
+              />
+              <InputHeroUi
+                type="password"
+                label="Confirm password"
+                name="confirmPassword"
+                onChange={(e) => setUserData({ ...userData, confirmPassword: e.target.value })}
+                validate={(value) => {
+                  if (value.length < 6) return "Password must be at least 6 characters long";
+                  return value === "admin" ? "Nice try!" : null;
+                }}
+              />
+              <ButtonYouth70018
+                text={isForgotFlow ? "Update password" : "Create account"}
+                onClick={handleChangepasswordReset}
+              />
+              {isForgotFlow ? null : legalFine}
+            </form>
+            <AuthAlt text="Already have an account?" action="Log in" onAction={() => setStep("sign-in")} />
+          </>
+        ) : step === "new-order" ? (
+          <div className={authStyles.loading}>
+            <MiniLoader />
+          </div>
+        ) : null}
+      </AuthLayout>
 
-                <div className="mx-auto w-max pt-3 max-lg:hidden">
-                  <p className="font-sf text-xl font-medium text-theme-blue">
-                    Welcome to
-                  </p>
-                  <h4 className="font-youth font-bold text-[40px] leading-8 text-theme-blue">
-                    Just Dry Cleaners
-                  </h4>
-                </div>
-
-                <form className="space-y-5 sm:pt-12 font-sf">
-                  <p className="font-sf text-base text-theme-gray-2/75">
-                    {typeof window !== "undefined" && localStorage.getItem("type") === "forgot" 
-                      ? "Enter your new password to reset your account password."
-                      : "Create an account and start enjoying cleaner clothes with zero effort!"}
-                  </p>
-
-                  <InputHeroUi
-                    type="password"
-                    label="Password"
-                    onChange={(e) =>
-                      setUserData({
-                        ...userData,
-                        resetPassword: e.target.value,
-                      })
-                    }
-                    validate={(value) => {
-                      if (value.length < 6) {
-                        return "Password must be at least 6 characters long";
-                      }
-
-                      return value === "admin" ? "Nice try!" : null;
-                    }}
-                  />
-                  <InputHeroUi
-                    type="password"
-                    label="Confirm Password"
-                    onChange={(e) =>
-                      setUserData({
-                        ...userData,
-                        confirmPassword: e.target.value,
-                      })
-                    }
-                    validate={(value) => {
-                      if (value.length < 6) {
-                        return "Password must be at least 6 characters long";
-                      }
-
-                      return value === "admin" ? "Nice try!" : null;
-                    }}
-                  />
-
-                  <div className="pt-2">
-                    <ButtonYouth70018
-                      text={typeof window !== "undefined" && localStorage.getItem("type") === "forgot" ? "Update Password" : "Register"}
-                      onClick={handleChangepasswordReset}
-                    />
-                  </div>
-
-                  <p className="text-xs text-center font-sf text-theme-gray-3">
-                    By creating an account, you agree to Just Dry Cleaners Terms
-                    and Privacy Policy.
-                  </p>
-
-                  <div className="space-y-3">
-                    <p className="font-sf text-base text-theme-gray-2 text-center leading-tight">
-                      Already have an <br /> account?
-                    </p>
-                    <h6
-                      onClick={() => {
-                        setStep("sign-in");
-                      }}
-                      className="font-youth text-lg font-bold text-theme-gray-2 text-center cursor-pointer"
-                    >
-                      SIGN IN
-                    </h6>
-                  </div>
-                </form>
-              </div>
-            ) : step === "new-order" ? (
-              <MiniLoader />
-            ) : (
-              ""
-            )}
+      {/* Account merge modal */}
+      {showMergeModal && (
+        <div className={authStyles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="merge-title">
+          <div className={authStyles.modal}>
+            <h2 id="merge-title">Link your accounts</h2>
+            <p>
+              This email is already registered with {existingProvider}. Enter the code we sent to your email to
+              link the two sign-in methods.
+            </p>
+            <InputOtp
+              classNames={{
+                wrapper: "flex justify-center",
+                segment:
+                  "h-14 w-14 rounded-[14px] border-[1.5px] border-jdc-line bg-white font-display text-xl text-jdc-navy data-[active=true]:border-jdc-blue",
+              }}
+              fullWidth
+              size="lg"
+              length={4}
+              value={mergeOtp}
+              variant="bordered"
+              onValueChange={setMergeOtp}
+              aria-label="Verification code"
+            />
+            <div className={authStyles.modalActions}>
+              <ButtonYouth70018
+                text="Verify & link"
+                onClick={mergeAccounts}
+                isDisabled={!mergeOtp || mergeOtp.length !== 4}
+              />
+              <ButtonYouth70018
+                text="Cancel"
+                variant="outline"
+                onClick={() => {
+                  setShowMergeModal(false);
+                  setMergeOtp("");
+                }}
+              />
+            </div>
+            <p className={authStyles.resend} aria-live="polite">
+              {isActive ? (
+                <>Resend code in {secondsLeft}s</>
+              ) : (
+                <button type="button" onClick={resendMergeOTP}>
+                  Resend code
+                </button>
+              )}
+            </p>
           </div>
         </div>
-
-        {/* Account Merge Modal */}
-        {showMergeModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
-              <h3 className="font-youth text-2xl font-bold text-theme-blue">
-                Account Merge Required
-              </h3>
-              <p className="font-sf text-base text-theme-gray-2">
-                This email is already registered with {existingProvider}. Please
-                enter the OTP sent to your email to merge accounts.
-              </p>
-              <div className="space-y-3">
-                <InputOtp
-                  fullWidth
-                  size="lg"
-                  length={4}
-                  value={mergeOtp}
-                  variant={mergeOtp.length > 0 ? "bordered" : "flat"}
-                  onValueChange={setMergeOtp}
-                />
-                <div className="flex gap-3">
-                  <ButtonYouth70018
-                    text="Verify & Merge"
-                    onClick={mergeAccounts}
-                    isDisabled={!mergeOtp || mergeOtp.length !== 4}
-                  />
-                  <button
-                    onClick={() => {
-                      setShowMergeModal(false);
-                      setMergeOtp("");
-                    }}
-                    className="px-4 py-2 font-sf text-base text-theme-gray-2 border border-theme-gray-2 rounded-lg hover:bg-theme-gray-2/10"
-                  >
-                    Cancel
-                  </button>
-                </div>
-                {isActive ? (
-                  <p className="font-sf text-sm text-center text-theme-gray-2">
-                    Resend code in {secondsLeft} seconds
-                  </p>
-                ) : (
-                  <p
-                    onClick={resendMergeOTP}
-                    className="font-sf text-sm text-center text-theme-brightBlue cursor-pointer"
-                  >
-                    Resend OTP
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-      </HomeClientWrapper>
+      )}
     </>
   );
 }
-

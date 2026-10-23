@@ -1,7 +1,6 @@
 "use client";
-import { useEffect, useReducer, useState, useRef } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { HiOutlineMenuAlt2 } from "react-icons/hi";
-import CustomMenuBtn from "./CustomMenuBtn";
 import Link from "next/link";
 import { FaUser } from "react-icons/fa6";
 import CustomDrawer from "./Drawer";

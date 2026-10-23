@@ -1,12 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import Header from "../../../../components/Header";
 import InputField from "../../../../components/InputHeroUi";
 import SelectHero from "../../../../components/SelectHero";
 import { ButtonContinueWith } from "../../../../components/Buttons";
-import Footer from "../../../../components/Footer";
 import { Spinner, addToast } from "@heroui/react";
-import HomeClientWrapper from "../../../../utilities/Test";
 import {
   useRegisterAgentMutation,
   useGetCountriesQuery,
@@ -17,6 +14,8 @@ import {
 } from "@/app/store/services/api";
 import { IoSearchOutline } from "react-icons/io5";
 import PhoneInputComp from "../../../../components/PhoneInputComp";
+import PageShell from "../../../../components/ds/PageShell";
+import PageHero from "../../../../components/ds/PageHero";
 
 const PROFILE_OPTIONS = [
   { key: "ALL IN HOUSE", label: "ALL IN HOUSE- Washing, Ironing and Dry cleaning all done by us" },
@@ -261,24 +260,21 @@ export default function PartnerRegistration() {
   const updateForm = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
   return (
-    <HomeClientWrapper>
-      <div className="w-full relative">
-        <div className="max-xl:fixed max-xl:z-50 w-full">
-          <Header />
-        </div>
-        <div className="w-full flex justify-center items-center bg-registration bg-cover bg-center bg-no-repeat relative px-5 sm:px-[45px]">
-          <div className="flex justify-center items-center w-full min-h-[400px] sm:min-h-[500px] md:h-[600px] lg:h-[700px] max-w-[1290px] mx-auto pt-20 sm:pt-24 md:pt-28 lg:pt-32 pb-12 sm:pb-16">
-            <div className="text-white relative z-10 w-full max-w-[1290px]">
-              <h2 className="font-youth font-bold text-3xl sm:text-4xl md:text-5xl lg:text-6xl 2xl:text-[70px] leading-tight">
-                Thanks for your interest in partnering with Just Dry Cleaner!
-              </h2>
-              <p className="text-base sm:text-lg md:text-xl lg:text-2xl font-medium mt-4 sm:mt-6">
-                We're excited to learn more about your dry cleaning facility. Please complete this brief questionnaire.
-              </p>
-            </div>
-            <div className="absolute z-0 top-0 left-0 w-full h-full bg-gradient-to-t from-black to-transparent"></div>
-          </div>
-        </div>
+    <PageShell header="overlay">
+        <PageHero
+          size="sm"
+          crumbs={[
+            { label: "Home", href: "/" },
+            { label: "Become a partner", href: "/become-partner" },
+            { label: "Application" },
+          ]}
+          title={
+            <>
+              Partner with <span>Just Dry Cleans.</span>
+            </>
+          }
+          lead="We're excited to learn more about your cleaning facility. Please complete this short questionnaire."
+        />
 
         <div className="w-full py-8 sm:py-12 md:py-16 lg:py-[70px] px-5 sm:px-[45px]">
           <div className="w-full max-w-[1290px] mx-auto flex flex-col sm:flex-row justify-start sm:justify-between items-start sm:items-center relative gap-6 sm:gap-4">
@@ -286,15 +282,15 @@ export default function PartnerRegistration() {
             {[1, 2, 3].map((s) => (
               <div
                 key={s}
-                className={`flex flex-col justify-center items-start sm:items-center gap-3 sm:gap-5 bg-white cursor-pointer group ${step === s ? "w-auto sm:w-auto" : "hidden sm:flex sm:w-auto"}`}
+                className={`flex flex-col justify-center items-start sm:items-center gap-3 sm:gap-5 bg-jdc-paper cursor-pointer group ${step === s ? "w-auto sm:w-auto" : "hidden sm:flex sm:w-auto"}`}
                 onClick={() => setStep(s)}
               >
                 <div
-                  className={`size-12 sm:size-14 md:size-[60px] rounded-full shrink-0 ${step >= s ? "bg-theme-blue text-white" : "bg-theme-gray text-black"} flex justify-center items-center font-sf font-semibold text-lg sm:text-xl md:text-2xl transition-all duration-200`}
+                  className={`size-12 sm:size-14 md:size-[60px] rounded-full shrink-0 ${step >= s ? "bg-jdc-blue text-white" : "bg-theme-gray text-black"} flex justify-center items-center font-body font-semibold text-lg sm:text-xl md:text-2xl transition-all duration-200`}
                 >
                   {s}
                 </div>
-                <p className="font-sf font-semibold text-sm sm:text-base md:text-xl text-center">
+                <p className="font-body font-semibold text-sm sm:text-base md:text-xl text-center">
                   {s === 1 && "Add your Information"}
                   {s === 2 && "Add Address Details"}
                   {s === 3 && "Add Business Details"}
@@ -306,21 +302,21 @@ export default function PartnerRegistration() {
           {step === 1 && (
             <div className="w-full max-w-[1290px] space-y-4 sm:space-y-5 mx-auto pt-8 sm:pt-12 md:pt-16">
               <div className="flex flex-col md:flex-row gap-4 sm:gap-5">
-                <div className="flex-1 space-y-2 sm:space-y-3 font-sf">
+                <div className="flex-1 space-y-2 sm:space-y-3 font-body">
                   <p className="font-semibold text-base sm:text-lg md:text-xl">Full Name</p>
                   <InputField label="Enter Your Name" type="text" value={form.fullName} onChange={(e) => updateForm("fullName", e.target.value)} />
                 </div>
-                <div className="flex-1 space-y-2 sm:space-y-3 font-sf">
+                <div className="flex-1 space-y-2 sm:space-y-3 font-body">
                   <p className="font-semibold text-base sm:text-lg md:text-xl">Email</p>
                   <InputField label="Your Email" type="email" value={form.email} onChange={(e) => updateForm("email", e.target.value)} />
                 </div>
               </div>
               <div className="flex flex-col md:flex-row gap-4 sm:gap-5">
-                <div className="flex-1 space-y-2 sm:space-y-3 font-sf">
+                <div className="flex-1 space-y-2 sm:space-y-3 font-body">
                   <p className="font-semibold text-base sm:text-lg md:text-xl">Password</p>
                   <InputField label="Create Password" type="password" value={form.password} onChange={(e) => updateForm("password", e.target.value)} />
                 </div>
-                <div className="flex-1 space-y-2 sm:space-y-3 font-sf">
+                <div className="flex-1 space-y-2 sm:space-y-3 font-body">
                   <p className="font-semibold text-base sm:text-lg md:text-xl">Contact</p>
                   <PhoneInputComp
                     country="gb"
@@ -336,7 +332,7 @@ export default function PartnerRegistration() {
                 </div>
               </div>
               <div className="flex flex-col md:flex-row gap-4 sm:gap-5">
-                <div className="flex-1 space-y-2 sm:space-y-3 font-sf">
+                <div className="flex-1 space-y-2 sm:space-y-3 font-body">
                   <p className="font-semibold text-base sm:text-lg md:text-xl">Country</p>
                   {countriesList.length > 0 ? (
                     <SelectHero
@@ -351,7 +347,7 @@ export default function PartnerRegistration() {
                 </div>
               </div>
               <div className="pt-8 sm:pt-10 md:pt-14">
-                <ButtonContinueWith text="Continue" bg="bg-theme-blue" color="text-white" size="text-base sm:text-lg md:text-xl" onClick={() => setStep(2)} />
+                <ButtonContinueWith text="Continue" bg="bg-jdc-blue" color="text-white" size="text-base sm:text-lg md:text-xl" onClick={() => setStep(2)} />
               </div>
             </div>
           )}
@@ -359,11 +355,11 @@ export default function PartnerRegistration() {
           {step === 2 && (
             <div className="w-full max-w-[1290px] space-y-4 sm:space-y-5 mx-auto pt-8 sm:pt-12 md:pt-16">
               <div className="flex flex-col md:flex-row gap-4 sm:gap-5">
-                <div className="flex-1 space-y-2 sm:space-y-3 font-sf">
+                <div className="flex-1 space-y-2 sm:space-y-3 font-body">
                   <p className="font-semibold text-base sm:text-lg md:text-xl">Province</p>
                   <InputField label="Enter Province" type="text" value={form.province} onChange={(e) => updateForm("province", e.target.value)} />
                 </div>
-                <div className="flex-1 space-y-2 sm:space-y-3 font-sf">
+                <div className="flex-1 space-y-2 sm:space-y-3 font-body">
                   <p className="font-semibold text-base sm:text-lg md:text-xl">City</p>
                   {citiesList.length > 0 ? (
                     <SelectHero label="Select City" list={citiesList} value={form.cityId ? [String(form.cityId)] : []} onChange={(e) => updateForm("cityId", e.target.value)} />
@@ -374,7 +370,7 @@ export default function PartnerRegistration() {
               </div>
               <div className="relative" ref={postcodeInputRef}>
                 <div className="flex gap-2 items-end">
-                  <div className="flex-1 space-y-2 sm:space-y-3 font-sf">
+                  <div className="flex-1 space-y-2 sm:space-y-3 font-body">
                     <p className="font-semibold text-base sm:text-lg md:text-xl">Postal / Zip Code</p>
                     <div className="flex gap-2">
                       <InputField
@@ -387,7 +383,7 @@ export default function PartnerRegistration() {
                       <button
                         type="button"
                         onClick={handlePostcodeSubmit}
-                        className="h-[60px] w-[60px] bg-theme-blue rounded-[8px] flex justify-center items-center shrink-0"
+                        className="h-[60px] w-[60px] bg-jdc-blue rounded-[8px] flex justify-center items-center shrink-0"
                         disabled={isLoadingAddresses || !form.postalCode?.trim()}
                       >
                         {isLoadingAddresses ? <Spinner size="sm" className="text-white" /> : <IoSearchOutline className="text-xl text-white" />}
@@ -399,25 +395,25 @@ export default function PartnerRegistration() {
                   <div ref={addressDropdownRef} className="absolute z-[100] w-full mt-2 bg-white rounded-lg shadow-xl max-h-[250px] overflow-y-auto border border-gray-200">
                     {postcodeAddresses.data.addresses.map((addr, i) => (
                       <div key={i} onClick={() => handleAddressSelect(addr)} className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0">
-                        <p className="font-sf font-semibold text-base">{addr.line1}</p>
-                        {(addr.line2 || addr.fullAddress) && <p className="font-sf text-sm text-gray-600">{addr.line2 || addr.fullAddress}</p>}
+                        <p className="font-body font-semibold text-base">{addr.line1}</p>
+                        {(addr.line2 || addr.fullAddress) && <p className="font-body text-sm text-gray-600">{addr.line2 || addr.fullAddress}</p>}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
               <div className="flex flex-col md:flex-row gap-4 sm:gap-5">
-                <div className="flex-1 space-y-2 sm:space-y-3 font-sf">
+                <div className="flex-1 space-y-2 sm:space-y-3 font-body">
                   <p className="font-semibold text-base sm:text-lg md:text-xl">Street Address</p>
                   <InputField label="Street Address" type="text" value={form.streetAddress} onChange={(e) => updateForm("streetAddress", e.target.value)} />
                 </div>
-                <div className="flex-1 space-y-2 sm:space-y-3 font-sf">
+                <div className="flex-1 space-y-2 sm:space-y-3 font-body">
                   <p className="font-semibold text-base sm:text-lg md:text-xl">District</p>
                   <InputField label="District" type="text" value={form.district} onChange={(e) => updateForm("district", e.target.value)} />
                 </div>
               </div>
               <div className="pt-8 sm:pt-10 md:pt-14">
-                <ButtonContinueWith text="Continue" bg="bg-theme-blue" color="text-white" size="text-base sm:text-lg md:text-xl" onClick={() => setStep(3)} />
+                <ButtonContinueWith text="Continue" bg="bg-jdc-blue" color="text-white" size="text-base sm:text-lg md:text-xl" onClick={() => setStep(3)} />
               </div>
             </div>
           )}
@@ -427,11 +423,11 @@ export default function PartnerRegistration() {
               {subStep3 === 1 && (
                 <>
                   <div className="flex flex-col md:flex-row gap-4 sm:gap-5">
-                    <div className="flex-1 space-y-2 sm:space-y-3 font-sf">
+                    <div className="flex-1 space-y-2 sm:space-y-3 font-body">
                       <p className="font-semibold text-base sm:text-lg md:text-xl">Shop Name <span className="text-red-500">*</span></p>
                       <InputField label="Enter Shop Name" type="text" value={form.shopName} onChange={(e) => updateForm("shopName", e.target.value)} />
                     </div>
-                    <div className="flex-1 space-y-2 sm:space-y-3 font-sf">
+                    <div className="flex-1 space-y-2 sm:space-y-3 font-body">
                       <p className="font-semibold text-base sm:text-lg md:text-xl">Services <span className="text-red-500">*</span></p>
                       <p className="text-xs text-theme-psGray">Select services you offer</p>
                       <div className="flex flex-wrap gap-4 mt-2">
@@ -455,18 +451,18 @@ export default function PartnerRegistration() {
                     </div>
                   </div>
                   <div className="pt-6">
-                    <ButtonContinueWith text="Next" bg="bg-theme-blue" color="text-white" size="text-base sm:text-lg md:text-xl" onClick={() => setSubStep3(2)} />
+                    <ButtonContinueWith text="Next" bg="bg-jdc-blue" color="text-white" size="text-base sm:text-lg md:text-xl" onClick={() => setSubStep3(2)} />
                   </div>
                 </>
               )}
 
               {subStep3 === 2 && (
                 <>
-                  <div className="space-y-3 font-sf">
+                  <div className="space-y-3 font-body">
                     <p className="font-semibold text-base sm:text-lg md:text-xl">What matches your profile? <span className="text-red-500">*</span></p>
                     <div className="space-y-3">
                       {PROFILE_OPTIONS.map((opt) => (
-                        <label key={opt.key} className="flex items-start gap-3 p-3 rounded-lg border-2 border-gray-200 hover:border-theme-blue cursor-pointer">
+                        <label key={opt.key} className="flex items-start gap-3 p-3 rounded-lg border-2 border-gray-200 hover:border-jdc-blue cursor-pointer">
                           <input type="radio" name="profile" value={opt.key} checked={form.matchProfileOptions === opt.key} onChange={() => updateForm("matchProfileOptions", opt.key)} className="accent-theme-darkBlue" />
                           <span className="text-sm sm:text-base">{opt.label}</span>
                         </label>
@@ -479,7 +475,7 @@ export default function PartnerRegistration() {
                     )}
                   </div>
                   <div className="pt-6">
-                    <ButtonContinueWith text="Next" bg="bg-theme-blue" color="text-white" size="text-base sm:text-lg md:text-xl" onClick={() => setSubStep3(3)} />
+                    <ButtonContinueWith text="Next" bg="bg-jdc-blue" color="text-white" size="text-base sm:text-lg md:text-xl" onClick={() => setSubStep3(3)} />
                   </div>
                 </>
               )}
@@ -531,7 +527,7 @@ export default function PartnerRegistration() {
                   <div className="pt-6">
                     <ButtonContinueWith
                       text={isSubmitting ? "Submitting..." : "Submit"}
-                      bg="bg-theme-blue"
+                      bg="bg-jdc-blue"
                       color="text-white"
                       size="text-base sm:text-lg md:text-xl"
                       onClick={handleSubmit}
@@ -544,8 +540,6 @@ export default function PartnerRegistration() {
             </div>
           )}
         </div>
-        <Footer width="max-w-[1200px] px-[16px] sm:px-[30px] lg:w-[95%] largeDesktop:w-[95%] extraLargeDesktop:w-[62.5%] ultraLargeDesktop:w-[71%]" />
-      </div>
-    </HomeClientWrapper>
+    </PageShell>
   );
 }

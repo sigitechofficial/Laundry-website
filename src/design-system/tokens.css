@@ -1,0 +1,100 @@
+/*
+ * Just Dry Cleans design system: tokens
+ * ------------------------------------------------------------------
+ * Single source of truth for colour, type, spacing, radius, elevation
+ * and motion. Derived from the approved web prototype
+ * (Desktop/Prototype/web/assets/site.css).
+ *
+ * Everything is namespaced `--jdc-*` so it cannot collide with HeroUI
+ * or the legacy theme while pages migrate one at a time.
+ * Tailwind exposes the same values (see tailwind.config.js -> `jdc`).
+ */
+
+:root {
+  /* Colour: brand */
+  --jdc-navy: #1b2230;
+  --jdc-navy-deep: #0f141c;
+  --jdc-navy-2: #273246;
+  --jdc-blue: #0278fe;
+  --jdc-blue-dark: #0060d6;
+  --jdc-blue-tint: #eaf3ff;
+  --jdc-blue-line: #c9ddfb;
+  --jdc-sky: #7db8ff;
+
+  /* Colour: neutrals */
+  --jdc-paper: #f7f9fc;
+  --jdc-mist: #eef2f8;
+  --jdc-line: #dde3ee;
+  --jdc-line-strong: #c5cedd;
+  --jdc-text: #1d2740;
+  --jdc-muted: #56617a;
+  --jdc-white: #ffffff;
+
+  /* Colour: feedback */
+  --jdc-star: #ffc233;
+  --jdc-danger: #c0392b;
+  --jdc-danger-tint: #fdecea;
+
+  /* Colour: on-dark */
+  --jdc-on-dark: rgba(255, 255, 255, 0.9);
+  --jdc-on-dark-muted: rgba(255, 255, 255, 0.75);
+  --jdc-on-dark-line: rgba(255, 255, 255, 0.2);
+
+  /* Typography (font variables are injected by next/font in layout.js) */
+  --jdc-font-display: var(--font-outfit), "Outfit", system-ui, sans-serif;
+  --jdc-font-body: var(--font-figtree), "Figtree", system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+
+  --jdc-text-xs: 13px;
+  --jdc-text-sm: 15px;
+  --jdc-text-base: 17px;
+  --jdc-text-lg: 18px;
+  --jdc-text-xl: 20px;
+  --jdc-h3: 22px;
+  --jdc-h2: clamp(30px, 3vw, 44px);
+  --jdc-h1: clamp(36px, min(4.4vw, 8vh), 68px);
+
+  /* Layout */
+  --jdc-gutter: 96px;
+  --jdc-header-h: 88px;
+  --jdc-section-y: 120px;
+
+  /* Radius */
+  --jdc-radius-sm: 12px;
+  --jdc-radius-md: 16px;
+  --jdc-radius-lg: 24px;
+  --jdc-radius-xl: 28px;
+  --jdc-radius-2xl: 32px;
+  --jdc-radius-pill: 999px;
+
+  /* Elevation: the brand is flat. Separate surfaces with a 1px --jdc-line border.
+     Tokens kept (as none) so existing references stay valid. */
+  --jdc-shadow-sm: none;
+  --jdc-shadow-md: none;
+  --jdc-shadow-lg: none;
+  --jdc-shadow-blue: none;
+  --jdc-shadow-float: none;
+
+  /* Motion */
+  --jdc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --jdc-duration: 0.2s;
+  --jdc-focus-ring: 0 0 0 3px var(--jdc-blue);
+}
+
+@media (max-width: 1080px) {
+  :root {
+    --jdc-gutter: 48px;
+    --jdc-section-y: 96px;
+  }
+}
+
+@media (max-width: 720px) {
+  :root {
+    --jdc-gutter: 20px;
+    --jdc-header-h: 70px;
+    --jdc-section-y: 56px;
+    --jdc-h2: 30px;
+  }
+}
+
+/* Base page styles (former .jdc scope) live in components/ds/PageShell.jsx (PAGE_SCOPE). */

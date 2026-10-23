@@ -317,6 +317,12 @@ export const api = createApi({
       }),
     }),
 
+    // Saved cards: { defaultPaymentMethodId, cards: [{ paymentMethodId, brand, last4, expMonth, expYear, isDefault, isExpired }] }
+    getPaymentMethods: builder.query({
+      query: () => ({ url: "customer/payment-methods", method: "GET" }),
+      keepUnusedDataFor: 0,
+    }),
+
     getCancellationPolicies: builder.query({
       query: () => ({
         url: "admin/getCancellationPolicies?isActive=1&isDefault=1&limit=1",
@@ -373,6 +379,14 @@ export const api = createApi({
     getFAQs: builder.query({
       query: () => ({
         url: "admin/getAllFAQs",
+        method: "GET",
+      }),
+    }),
+
+    // Public support contact (email, phone, hours), managed in admin.
+    getSupportContact: builder.query({
+      query: () => ({
+        url: "customer/supportContact",
         method: "GET",
       }),
     }),
@@ -440,6 +454,7 @@ export const {
   useGetCustomerCreditQuery,
   useGetAllOrdersQuery,
   useCreateIntentMutation,
+  useGetPaymentMethodsQuery,
   useBookingDetailByIdQuery,
   useTrackOrderQuery,
   useGetLiveTrackingQuery,
@@ -458,6 +473,7 @@ export const {
   useGetPostcodeAutocompleteQuery,
   useLazyGetPostcodeAutocompleteQuery,
   useGetFAQsQuery,
+  useGetSupportContactQuery,
   useGetBlogsQuery,
   useGetBlogByIdQuery,
   useRegisterAgentMutation,

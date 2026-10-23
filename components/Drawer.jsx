@@ -1,21 +1,11 @@
 "use client";
 
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerBody,
-  DrawerFooter,
-  Button,
-} from "@heroui/react";
+import { Drawer, DrawerContent, DrawerHeader, DrawerBody } from "@heroui/react";
 import { useEffect, useState } from "react";
 import DrawerItem from "./DrawerItem";
 import {
   MdOutlineSupportAgent,
-  MdOutlineTableRestaurant,
-  MdPayment,
   MdLogout,
-  MdOutlineLanguage,
   MdPauseCircleOutline,
   MdAttachMoney,
   MdArticle,
@@ -25,15 +15,10 @@ import {
   MdOutlineNotifications,
   MdOutlinePublic,
 } from "react-icons/md";
-import {
-  FaBicycle,
-  FaChevronLeft,
-  FaRegAddressBook,
-  FaUser,
-} from "react-icons/fa";
+import { FaRegAddressBook, FaUser } from "react-icons/fa";
 import { GrUserAdmin } from "react-icons/gr";
 import { FiLogOut } from "react-icons/fi";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { addToast } from "@heroui/react";
 import { useDispatch } from "react-redux";
 import { setPage } from "@/app/store/slices/cartItemSlice";
@@ -56,19 +41,12 @@ export default function CustomDrawer({
   const searchParams = useSearchParams();
   const currentTab = searchParams.get("tab");
   const router = useRouter();
-  const [drawerScroll, setDrawerScroll] = useState(0);
-  const [inviteFriend, setInviteFriend] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [token, setToken] = useState(
     typeof window !== "undefined"
       ? JSON.parse(localStorage.getItem("loginStatus")) || false
       : false
   );
-
-  const handleDrawerScroll = (event) => {
-    const scrollTop = event.target.scrollTop;
-    setDrawerScroll(scrollTop);
-  };
 
   const logoutFunc = async () => {
     try {
@@ -164,272 +142,119 @@ export default function CustomDrawer({
   }, [isOpen]);
 
   if (!mounted) return null;
+
+  // Display details: API profile first, then values saved at login.
+  const ls = (k) => (typeof window !== "undefined" ? localStorage.getItem(k) : null);
+  const profile = data?.data ?? {};
+  const storedName = ls("userName") || "";
+  const firstName = profile.firstName || storedName.split(" ")[0] || "";
+  const fullName =
+    profile.firstName && profile.lastName ? `${profile.firstName} ${profile.lastName}` : storedName || firstName;
+  const initials = ((profile.firstName?.[0] || storedName.split(" ")[0]?.[0] || "") +
+    (profile.lastName?.[0] || storedName.split(" ")[1]?.[0] || "")).toUpperCase();
+  const image = ls("profileImage") || (profile.image ? BASE_URL + profile.image : null);
+  const email = profile.email || ls("email") || "";
+  const phone = (() => {
+    const num = profile.phoneNum || ls("phoneNum") || "";
+    const cc = profile.countryCode || ls("countryCode") || "";
+    if (!num) return "";
+    if (!cc || String(num).startsWith("+")) return num;
+    return `${cc.startsWith("+") ? cc : `+${cc}`} ${num}`;
+  })();
+
+  // Only destinations that exist; Payment methods / Country / Language have no page yet.
+  const accountItems = [
+    { Icon: MdOutlineHistory, text: "Order history", href: "/profile?tab=order-history" },
+    { Icon: MdPauseCircleOutline, text: "On hold bookings", href: "/profile?tab=on-hold-bookings" },
+    { Icon: MdOutlineAccountCircle, text: "My account", href: "/profile?tab=my-account" },
+    { Icon: FaRegAddressBook, text: "My addresses", href: "/profile?tab=my-account" },
+    { Icon: MdOutlineNotifications, text: "Notifications", href: "/profile?tab=notifications" },
+    { Icon: MdOutlinePeople, text: "Invite friends", href: "/profile?tab=invite-friend" },
+    { Icon: MdOutlineSupportAgent, text: "Support", href: "/help-center" },
+  ];
+  // Signed-in users reach the site pages from here (the ☰ opens this menu
+  // at every width), so all main nav links are listed.
+  const quickLinks = [
+    { Icon: MdAttachMoney, text: "Pricing", href: "/pricing" },
+    { Icon: MdOutlinePublic, text: "How it works", href: "/how-it-works" },
+    { Icon: MdArticle, text: "Blog", href: "/blog" },
+    { Icon: MdOutlineSupportAgent, text: "Contact us", href: "/contact-us" },
+  ];
+
   return (
     <Drawer
       radius="none"
-      size="lg"
+      size="sm"
       isOpen={isOpen}
       hideCloseButton
       onOpenChange={(open) => {
         if (!open) onClose?.(); // closes on outside click or Esc
       }}
+      // part of the screen on phones (like the site menu), a 380px side panel on larger screens
+      classNames={{ base: "!max-w-[380px] bg-white font-body max-[720px]:!w-[max(270px,72vw)] max-[720px]:!max-w-[320px]" }}
     >
-      <DrawerContent>
-        <DrawerHeader className="flex flex-col gap-1">{title}</DrawerHeader>
-
-        <DrawerBody>
-          {bodyContent || (
-            <div className="w-full" onScroll={handleDrawerScroll}>
-              {inviteFriend === 0 ? (
-                <section className="w-full overflow-x-hidden font-sf">
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center mt-2">
-                      <button
-                        onClick={() => {
-                          onActionClick?.();
-                          onClose?.();
-                        }}
-                      >
-                        <FaChevronLeft />
-                      </button>
-                      <div>
-                        <MdOutlineNotifications size={26} />
-                      </div>
-                    </div>
-
-                    <h1 className="font-omnes font-bold text-[32px] capitalize text-theme-black-2 ">
-                      <span className="me-2">Howdy</span>
-                      {(() => {
-                        // Get first name from API data first, then localStorage
-                        const firstName = data?.data?.firstName || "";
-                        const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : "";
-                        const firstNameFromStorage = userName?.split(" ")[0] || "";
-
-                        return firstName || firstNameFromStorage || "User";
-                      })()}
-                    </h1>
-                    <div className="flex items-start justify-start gap-7">
-                      <div
-                        className={` h-[120px] uppercase font-bold text-3xl shrink-0 rounded-full w-[120px] md:h-[120px] flex justify-center items-center ${false
-                          ? "bg-theme-red bg-opacity-20 text-theme-red"
-                          : "bg-theme-blue text-white"
-                          }`}
-                      >
-                        {token ? (
-                          (() => {
-                            // Check for profile image from localStorage (Google/Facebook) first
-                            const profileImageFromStorage = typeof window !== "undefined" ? localStorage.getItem("profileImage") : null;
-                            // Then check API data
-                            const profileImageFromAPI = data?.data?.image ? BASE_URL + data?.data?.image : null;
-                            const profileImage = profileImageFromStorage || profileImageFromAPI;
-
-                            // Get user initials for fallback
-                            const firstName = data?.data?.firstName || "";
-                            const lastName = data?.data?.lastName || "";
-                            const initials = (firstName?.[0] || "") + (lastName?.[0] || "");
-
-                            if (profileImage) {
-                              return (
-                                <img
-                                  src={profileImage}
-                                  alt={firstName}
-                                  className="w-[120px] h-[120px] object-cover rounded-full"
-                                />
-                              );
-                            } else if (initials) {
-                              return (
-                                <span className="text-white">
-                                  {initials}
-                                </span>
-                              );
-                            } else {
-                              return (
-                                <span className="text-white">
-                                  {firstName?.[0] || "U"}
-                                </span>
-                              );
-                            }
-                          })()
-                        ) : (
-                          <FaUser />
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-2 text-theme-black-2">
-                        <h2 className="text-2xl font-semibold font-omnes mt-3 capitalize line-clamp-1">
-                          Hi,{" "}
-                          {(() => {
-                            // Get name from API data first, then localStorage
-                            const firstName = data?.data?.firstName || "";
-                            const lastName = data?.data?.lastName || "";
-                            const userName = typeof window !== "undefined" ? localStorage.getItem("userName") : "";
-
-                            if (firstName && lastName) {
-                              return firstName + " " + lastName;
-                            } else if (userName) {
-                              return userName;
-                            } else {
-                              return "User";
-                            }
-                          })()}
-                        </h2>
-                        <p className="font-sf  text-sm font-normal text-theme-black-2 text-opacity-60">
-                          {(() => {
-                            // Get phone from API data first, then localStorage
-                            const phoneNum = data?.data?.phoneNum || "";
-                            const countryCode = data?.data?.countryCode || "";
-                            const phoneFromStorage = typeof window !== "undefined" ? localStorage.getItem("phoneNum") : "";
-                            const countryCodeFromStorage = typeof window !== "undefined" ? localStorage.getItem("countryCode") : "";
-
-                            if (phoneNum && countryCode) {
-                              // Ensure country code has + prefix
-                              const formattedCountryCode = countryCode.startsWith("+") ? countryCode : `+${countryCode}`;
-                              return formattedCountryCode + " " + phoneNum;
-                            } else if (phoneFromStorage) {
-                              // If we have country code in storage, use it
-                              if (countryCodeFromStorage) {
-                                const formattedCountryCode = countryCodeFromStorage.startsWith("+") ? countryCodeFromStorage : `+${countryCodeFromStorage}`;
-                                return formattedCountryCode + " " + phoneFromStorage;
-                              }
-                              // If phoneFromStorage already includes country code, use as is
-                              return phoneFromStorage;
-                            } else {
-                              return "+1 234 567 890";
-                            }
-                          })()}
-                        </p>
-                        <p className="font-sf  text-sm font-normal text-theme-black-2 text-opacity-60">
-                          {(() => {
-                            // Get email from API data first, then localStorage
-                            const email = data?.data?.email || "";
-                            const emailFromStorage = typeof window !== "undefined" ? localStorage.getItem("email") : "";
-
-                            return email || emailFromStorage || "abc@gmail.com";
-                          })()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-6 my-2">
-                    <div>
-                      <DrawerItem
-                        Icon={MdOutlinePeople}
-                        text={"Invite Friends"}
-                        onClick={() => {
-                          handleNavigate("/profile?tab=invite-friend");
-                        }}
-                      />
-                      <DrawerItem
-                        Icon={MdOutlineSupportAgent}
-                        text={"Support"}
-                      />
-
-                      <DrawerItem
-                        Icon={MdOutlineHistory}
-                        text={"Order history"}
-                        onClick={() => {
-                          handleNavigate("/profile?tab=order-history");
-                        }}
-                      />
-                      <DrawerItem
-                        Icon={MdPauseCircleOutline}
-                        text={"On Hold Bookings"}
-                        onClick={() => {
-                          handleNavigate("/profile?tab=on-hold-bookings");
-                        }}
-                      />
-
-                      <DrawerItem
-                        Icon={MdOutlineAccountCircle}
-                        text={"My Account"}
-                        onClick={() => {
-                          handleNavigate("/profile?tab=my-account");
-                        }}
-                      />
-                      <DrawerItem Icon={MdPayment} text={"Payment methods"} />
-                      <DrawerItem
-                        Icon={FaRegAddressBook}
-                        text={"My addresses"}
-                      />
-
-                      <DrawerItem
-                        Icon={MdOutlineNotifications}
-                        text={"Notifications"}
-                        onClick={() => {
-                          handleNavigate("/profile?tab=notifications");
-                        }}
-                      />
-                      <DrawerItem
-                        Icon={MdOutlinePublic}
-                        text={"Country"}
-                        onClick={() => {
-                          router.push("/order-history");
-                        }}
-                      />
-                      <DrawerItem
-                        Icon={MdOutlineLanguage}
-                        text={"Language"}
-                        onClick={() => {
-                          router.push("/order-history");
-                        }}
-                      />
-                    </div>
-
-                    <div>
-                      <div className="text-theme-black-2 font-omnes text-2xl font-semibold mb-3">
-                        {"Quick links"}
-                      </div>
-
-                      <div>
-                        <DrawerItem
-                          Icon={MdAttachMoney}
-                          text={"Pricing"}
-                          onClick={() => {
-                            router.push("/pricing");
-                          }}
-                        />
-                        <DrawerItem
-                          Icon={MdArticle}
-                          text={"Blog"}
-                          onClick={() => {
-                            handleNavigate("/blog");
-                          }}
-                        />
-                      </div>
-
-                      {token ? (
-                        <>
-                          <DrawerItem
-                            onClick={logoutFunc}
-                            Icon={MdLogout}
-                            text={"Logout"}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <DrawerItem
-                            Icon={GrUserAdmin}
-                            onClick={() => {
-                              router.push("/sign-in");
-                            }}
-                            text="Log in"
-                          />
-                          <DrawerItem
-                            Icon={FiLogOut}
-                            onClick={() => {
-                              router.push("/sign-in");
-                            }}
-                            text="Sign up"
-                          />
-                        </>
-                      )}
-                    </div>
-                  </div>
-                </section>
-              ) : (
-                <></>
-              )}
+      <DrawerContent aria-label="Your account">
+        <DrawerHeader className="p-0">
+          <div
+            className="relative w-full overflow-hidden bg-[linear-gradient(135deg,var(--jdc-navy)_0%,var(--jdc-navy-2)_55%,#2B3A58_100%)] px-5 py-6 text-white max-[720px]:px-4"
+          >
+           <div className="relative flex items-center gap-3.5 max-[720px]:gap-2.5">
+              <span className="flex size-12 max-[720px]:size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white font-display text-lg font-extrabold text-jdc-navy">
+                {token && image ? (
+                  <img src={image} alt="" className="h-full w-full object-cover" />
+                ) : token && initials ? (
+                  initials
+                ) : (
+                  <FaUser aria-hidden="true" />
+                )}
+              </span>
+              <span className="min-w-0 flex-1">
+                <b className="block truncate font-display text-base">{fullName || "Your account"}</b>
+                {email ? <small className="block truncate text-[13px] text-white/80">{email}</small> : null}
+                {phone ? <small className="block truncate text-[13px] text-white/80">{phone}</small> : null}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  onActionClick?.();
+                  onClose?.();
+                }}
+                aria-label="Close"
+                className="flex size-[38px] shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/15 text-white transition-colors hover:bg-white/25"
+              >
+                <svg width="18" height="18" viewBox="0 0 256 256" fill="currentColor" aria-hidden="true">
+                  <path d="M208.49,191.51a12,12,0,0,1-17,17L128,145,64.49,208.49a12,12,0,0,1-17-17L111,128,47.51,64.49a12,12,0,0,1,17-17L128,111l63.51-63.52a12,12,0,0,1,17,17L145,128Z" />
+                </svg>
+              </button>
             </div>
+          </div>
+        </DrawerHeader>
+
+        <DrawerBody className="px-3 pb-6 pt-3">
+          {bodyContent || (
+            <nav aria-label="Account">
+              {accountItems.map((item) => (
+                <DrawerItem key={item.text} Icon={item.Icon} text={item.text} onClick={() => handleNavigate(item.href)} />
+              ))}
+
+              <p className="mx-2 mb-0.5 mt-3 border-t border-jdc-line px-2 pb-1.5 pt-3.5 text-xs font-bold uppercase tracking-[0.06em] text-jdc-muted">
+                Quick links
+              </p>
+              {quickLinks.map((item) => (
+                <DrawerItem key={item.text} Icon={item.Icon} text={item.text} onClick={() => handleNavigate(item.href)} />
+              ))}
+
+              <div className="mt-1.5">
+                {token ? (
+                  <DrawerItem onClick={logoutFunc} Icon={MdLogout} text="Log out" tone="danger" />
+                ) : (
+                  <>
+                    <DrawerItem Icon={GrUserAdmin} onClick={() => router.push("/sign-in")} text="Log in" />
+                    <DrawerItem Icon={FiLogOut} onClick={() => router.push("/sign-in")} text="Sign up" />
+                  </>
+                )}
+              </div>
+            </nav>
           )}
         </DrawerBody>
       </DrawerContent>

@@ -33,6 +33,9 @@ export default function PostcodeAddressLookup({
   const autocompleteSeqRef = useRef(0);
   const skipNextAutocompleteRef = useRef(false);
   const suggestionTypeRef = useRef("postcode");
+  // Only suggest after the user edits the field; a pre-filled / saved
+  // postcode must not pop the suggestions list open on page load.
+  const userEditedRef = useRef(false);
 
   const [postcodeSuggestions, setPostcodeSuggestions] = useState([]);
   const [showPostcodeSuggestions, setShowPostcodeSuggestions] = useState(false);
@@ -93,7 +96,11 @@ export default function PostcodeAddressLookup({
             return;
           }
 
-          const suggestions = result?.data?.suggestions || [];
+          // Hide the postcode that is already entered (e.g. "NW119ES" == "NW11 9ES").
+          const current = normalizePostcode(queryForFetch) || "";
+          const suggestions = (result?.data?.suggestions || []).filter(
+            (s) => (normalizePostcode(s) || s) !== current
+          );
           suggestionTypeRef.current = result?.data?.suggestionType || "postcode";
           setPostcodeSuggestions(suggestions);
           setShowPostcodeSuggestions(suggestions.length > 0);
@@ -126,6 +133,7 @@ export default function PostcodeAddressLookup({
       skipNextAutocompleteRef.current = false;
       return;
     }
+    if (!userEditedRef.current) return;
     runAutocomplete(value);
   }, [value, runAutocomplete]);
 
@@ -227,6 +235,7 @@ export default function PostcodeAddressLookup({
   );
 
   const handlePostcodeChange = (nextValue) => {
+    userEditedRef.current = true;
     onChange?.(nextValue);
   };
 
@@ -286,13 +295,13 @@ export default function PostcodeAddressLookup({
           )}
 
           {showPostcodeSuggestions && postcodeSuggestions.length > 0 && (
-            <div className="absolute z-[10001] w-full mt-1 bg-white rounded-lg shadow-xl max-h-[180px] overflow-y-auto border border-gray-200">
+            <div className="absolute z-[10001] w-full mt-1 bg-white rounded-[14px] shadow-[0_18px_40px_rgba(27,34,48,0.14)] max-h-[220px] overflow-y-auto border border-jdc-line">
               {postcodeSuggestions.map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
                   onClick={() => handlePostcodeSuggestionSelect(suggestion)}
-                  className="w-full text-left px-4 py-2.5 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0 text-sm font-sf"
+                  className="w-full text-left px-4 py-3 hover:bg-jdc-mist cursor-pointer border-b border-jdc-line last:border-b-0 text-[15px] font-body text-jdc-navy"
                 >
                   {suggestion}
                 </button>
@@ -308,8 +317,8 @@ export default function PostcodeAddressLookup({
           type="button"
           onClick={() => void handleAddressSearch()}
           className={`${
-            compact ? "h-14 w-14" : "h-[60px] w-[60px]"
-          } bg-theme-blue rounded-[8px] flex items-center justify-center hover:bg-theme-darkBlue disabled:bg-blue-200 disabled:cursor-not-allowed transition-colors shrink-0`}
+            compact ? "h-14 w-14" : "h-[58px] w-[58px]"
+          } bg-jdc-blue rounded-[14px] flex items-center justify-center hover:bg-jdc-blue-dark disabled:bg-[#9CC8FF] disabled:cursor-not-allowed transition-colors shrink-0`}
           disabled={searchDisabled}
           aria-label="Search postcode"
         >

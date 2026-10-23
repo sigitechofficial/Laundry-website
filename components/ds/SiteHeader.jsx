@@ -45,6 +45,8 @@ export default function SiteHeader({ variant = "overlay" }) {
   const session = useAccountSession();
   const signedIn = session.mounted && session.isLoggedIn;
   const startBooking = useStartBooking();
+  // No "Book a pickup" while already booking (address/time, services, payment)
+  const inBooking = /^\/(place-order|checkout)(\/|$)/.test(pathname || "");
 
   useEffect(() => {
     if (variant !== "overlay") return undefined;
@@ -109,9 +111,11 @@ export default function SiteHeader({ variant = "overlay" }) {
             )}
           >
             {signedIn ? (
+              inBooking ? null : (
               <button type="button" className={pillCls(solid)} onClick={() => startBooking()}>
                 Book a pickup
               </button>
+              )
             ) : (
               <Link
                 href={ROUTES.signIn}

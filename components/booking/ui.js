@@ -161,7 +161,8 @@ export const OPT =
   "mt-2.5 overflow-hidden rounded-[14px] border-[1.5px] border-jdc-line transition-[border-color] duration-200 first-of-type:mt-0 focus-within:border-[#C4D3EA] hover:border-[#C4D3EA]";
 export const OPT_ON = "border-jdc-blue focus-within:border-jdc-blue hover:border-jdc-blue";
 export const OPT_ROW = "m-0 flex cursor-pointer items-center gap-3 px-4 py-3.5";
-export const CHECKBOX = "mb-[3px] ml-1 mr-[3px] mt-[3px] h-5 w-5 flex-none accent-jdc-blue";
+// mr-3 + the row gap: clear space between the tick box and the option name
+export const CHECKBOX = "mb-[3px] ml-1 mr-3 mt-[3px] h-5 w-5 flex-none accent-jdc-blue";
 export const OPT_MAIN =
   "flex-1 [&>b]:block [&>b]:text-[15px] [&>b]:font-bold [&>b]:text-jdc-navy [&>small]:mt-0.5 [&>small]:block [&>small]:text-[13px] [&>small]:text-jdc-muted";
 export const OPT_EXP = "flex flex-none cursor-pointer border-0 bg-none p-1 text-jdc-muted transition-transform duration-200";

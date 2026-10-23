@@ -214,3 +214,6 @@ export const BAR_TXT_TOTAL =
   "flex-col items-start gap-0 leading-[1.2] [&>small]:text-[12.5px] [&>small]:font-medium [&>small]:text-jdc-muted [&>strong]:font-display [&>strong]:text-[20px] [&>strong]:text-jdc-navy";
 export const BAR_GO =
   "h-[52px] rounded-xl px-[34px] max-[720px]:h-[50px] max-[720px]:max-w-[210px] max-[720px]:flex-1 max-[720px]:justify-center max-[720px]:px-[22px]";
+
+// Small spinner inside a busy button (uses the button's text colour)
+export const SPIN = "inline-block size-[18px] flex-none animate-spin rounded-full border-2 border-current border-r-transparent";

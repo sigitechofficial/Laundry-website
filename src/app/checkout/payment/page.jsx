@@ -1112,6 +1112,7 @@ export default function Payment() {
                           disabled={orderBusy}
                           onClick={placeOrder}
                         >
+                          {orderBusy ? <span className={ui.SPIN} aria-hidden="true" /> : null}
                           {orderBusy ? "Placing order…" : "Place order"}
                           <ProtoIcon name="arrow" size={18} />
                         </button>
@@ -1266,9 +1267,9 @@ export default function Payment() {
                     <strong id="coBarTotal">{totalText}</strong>
                   </span>
                 }
-                goText="Place order"
+                goText={orderBusy ? "Placing order…" : "Place order"}
                 innerClassName="max-[720px]:px-10"
-                isDisabled={orderBusy}
+                isBusy={orderBusy}
                 onContinue={placeOrder}
               />
             )}
@@ -1324,6 +1325,7 @@ export default function Payment() {
                         }
                       }}
                     >
+                      {stripeProcessing ? <span className={ui.SPIN} aria-hidden="true" /> : null}
                       {stripeProcessing ? "Placing order…" : payForPlace ? "Pay & place order" : "Save card"}
                       <ProtoIcon name="arrow" size={18} />
                     </button>

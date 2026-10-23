@@ -17,6 +17,16 @@ export default function HomeClientWrapper({ children }) {
     dispatch(setPage(false));
   }, [pathname, dispatch]);
 
+  // The overlay is switched off by the page change above. If it is switched on for a
+  // move to the page we are already on (e.g. a second "Verify" finishing after the first
+  // one navigated), the path never changes and it spun until a manual refresh.
+  // Safety net: never keep it longer than 8 seconds.
+  useEffect(() => {
+    if (!page) return undefined;
+    const t = setTimeout(() => dispatch(setPage(false)), 8000);
+    return () => clearTimeout(t);
+  }, [page, dispatch]);
+
   const showOverlay = page && !NO_OVERLAY_PATHS.some((p) => pathname?.startsWith(p));
 
   return (

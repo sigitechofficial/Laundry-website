@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 
 import PageShell from "../../../components/ds/PageShell";
 import { cx } from "../../../components/ds/cx";
@@ -39,7 +39,17 @@ import { clearAllCookies } from "../../../utilities/cookieUtils";
 import { api } from "../store/services/api";
 import DeleteAccountModal from "../../../components/DeleteAccountModal";
 
-export default function Profile() {
+// The tab comes from the URL (?tab=), which useSearchParams reads; Next.js needs a Suspense
+// boundary around it when building the page. The fallback is the same empty page frame.
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<PageShell header="solid" clientOnly />}>
+      <Profile />
+    </Suspense>
+  );
+}
+
+function Profile() {
   const router = useRouter();
   const dispatch = useDispatch();
   const searchParams = useSearchParams();

@@ -1545,7 +1545,7 @@ export default function PlaceOrderPage() {
         >
           {modal?.modType === "address" ? (
             <div className="">
-              <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+              <div className="h-[58px] flex items-center justify-center relative border-b border-jdc-line">
                 <h4 className="font-youth font-bold text-[22px] text-center">
                   Enter Your Location
                 </h4>
@@ -1610,7 +1610,7 @@ export default function PlaceOrderPage() {
               onScroll={handleModalScroll}
               className="max-h-[95vh] overflow-y-auto modal-scroll"
             >
-              <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+              <div className="h-[58px] flex items-center justify-center relative border-b border-jdc-line">
                 <h4 className="font-youth font-bold text-[22px] text-center">
                   Collection
                 </h4>
@@ -1731,7 +1731,7 @@ export default function PlaceOrderPage() {
             </div>
           ) : modal?.modType === "collection-location" ? (
             <div className="">
-              <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+              <div className="h-[58px] flex items-center justify-center relative border-b border-jdc-line">
                 <h4 className="font-youth font-bold text-[22px] text-center">
                   Enter Your Location
                 </h4>
@@ -1773,7 +1773,7 @@ export default function PlaceOrderPage() {
               onScroll={handleModalScroll}
               className="max-h-[95vh] overflow-y-auto modal-scroll"
             >
-              <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+              <div className="h-[58px] flex items-center justify-center relative border-b border-jdc-line">
                 <h4 className="font-youth font-bold text-[22px] text-center">
                   Delivery
                 </h4>
@@ -1929,7 +1929,7 @@ export default function PlaceOrderPage() {
             </div>
           ) : modal?.modType === "delivery-location" ? (
             <div className="">
-              <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+              <div className="h-[58px] flex items-center justify-center relative border-b border-jdc-line">
                 <h4 className="font-youth font-bold text-[22px] text-center">
                   Enter Your Location
                 </h4>
@@ -1968,7 +1968,7 @@ export default function PlaceOrderPage() {
             </div>
           ) : modal?.modType === "driver" ? (
             <div className="">
-              <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+              <div className="h-[58px] flex items-center justify-center relative border-b border-jdc-line">
                 <h4 className="font-youth font-bold text-[22px] text-center">
                   Driver instruction
                 </h4>

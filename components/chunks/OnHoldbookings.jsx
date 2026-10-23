@@ -295,7 +295,7 @@ export default function OnHoldbookings() {
             onScroll={handleModalScroll}
             className="modal-scroll overflow-auto font-sf"
           >
-            <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+            <div className="h-[58px] flex items-center justify-center relative border-b border-jdc-line">
               <h4 className="font-youth font-bold sm:text-[22px] text-center">
                 Order ID: {manageOrder?.orderId || "-"}
               </h4>

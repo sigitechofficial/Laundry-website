@@ -174,7 +174,7 @@ export default function DeleteAccountModal({
       className="custom-modal-class max-h-[90vh] overflow-auto"
     >
       <div className="font-sf">
-        <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+        <div className="h-[58px] flex items-center justify-center relative border-b border-jdc-line">
           {step > 1 && (
             <p
               onClick={() => setStep((s) => Math.max(1, s - 1))}

@@ -2,6 +2,8 @@
 import React, { useEffect } from "react";
 
 import PageShell from "../../../components/ds/PageShell";
+import { cx } from "../../../components/ds/cx";
+import { BACK_LABEL, BACK_ROUND, TITLE_ROW } from "../../../components/booking/ui";
 import { useState } from "react";
 import {
   MdPauseCircleOutline,
@@ -10,7 +12,8 @@ import {
   MdOutlineAccountCircle,
   MdOutlineNotifications,
 } from "react-icons/md";
-import { FaChevronLeft, FaUser } from "react-icons/fa";
+import { FaUser } from "react-icons/fa";
+import ProtoIcon from "../../../components/proto/ProtoIcon";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   useGetProfileQuery,
@@ -395,11 +398,21 @@ export default function Profile() {
                 : "max-w-[1280px] mx-auto my-0"
           }
         >
-          <button type="button" className="inline-flex items-center gap-2 mb-3 py-[6px] px-0 [border:0] text-[15px] font-semibold text-jdc-navy cursor-pointer hover:text-jdc-blue" onClick={() => router.back()}>
-            <FaChevronLeft aria-hidden="true" /> Back
-          </button>
-          {/* account heading as in the prototype (.acc-h1 / .acc-sub) */}
-          <h1 className="m-0 mt-1 font-display text-[32px] font-bold leading-[1.15] tracking-[-0.02em] text-jdc-navy max-[720px]:text-[28px]">{TABS.find((t) => t.id === activeTab)?.label ?? "My account"}</h1>
+          {/* Back + account heading (.acc-h1): round ← beside the heading on phones (see TITLE_ROW in booking/ui.js) */}
+          <div className={TITLE_ROW}>
+            <button
+              type="button"
+              className={cx(
+                "inline-flex items-center gap-2 mb-3 py-[6px] px-0 border-0 bg-transparent text-[15px] font-semibold text-jdc-navy cursor-pointer hover:text-jdc-blue",
+                BACK_ROUND
+              )}
+              onClick={() => router.back()}
+            >
+              <ProtoIcon name="back" size={16} />
+              <span className={BACK_LABEL}>Back</span>
+            </button>
+            <h1 className="m-0 mt-1 font-display text-[32px] font-bold leading-[1.15] tracking-[-0.02em] text-jdc-navy max-[720px]:mt-0 max-[720px]:text-[28px]">{TABS.find((t) => t.id === activeTab)?.label ?? "My account"}</h1>
+          </div>
           <p className="m-[8px_0_24px] text-[16px] text-jdc-muted max-[720px]:mb-5 max-[720px]:text-[15px]">
             {activeTab === "my-account"
               ? "Your name, contact details and password."

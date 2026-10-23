@@ -33,7 +33,7 @@ import {
 } from "../../../utilities/turnaroundTime";
 import PageShell from "../../../components/ds/PageShell";
 import { cx } from "../../../components/ds/cx";
-import { BTN, BTN_BLOCK, CTRL, CTRL_CHEV, CTRL_ICON, CTRL_INPUT, FIELD, FIELD_LABEL, FIELDSET, LEGEND, ROOT } from "../../../components/booking/ui";
+import { BACK_LABEL, BACK_ROUND, BTN, BTN_BLOCK, CTRL, CTRL_CHEV, CTRL_ICON, CTRL_INPUT, FIELD, FIELD_LABEL, FIELDSET, LEGEND, ROOT, TITLE_ROW } from "../../../components/booking/ui";
 import { MiniLoader } from "../../../components/Loader";
 import { BASE_URL } from "../../../utilities/URL";
 import AddressFilterLookup from "../../../components/AddressFilterLookup";
@@ -1232,25 +1232,31 @@ export default function PlaceOrderPage() {
         ) : step === "get-started" ? (
           <div className="bg-white">
             <div className="mx-auto max-w-[820px] px-8 pb-16 pt-7 max-[1080px]:px-jdc-gutter [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:pb-7 [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:pt-5 [@media(min-width:901px)_and_(max-height:860px)]:pb-5 [@media(min-width:901px)_and_(max-height:860px)]:pt-3 max-[720px]:px-5 max-[720px]:pb-12 max-[720px]:pt-5">
-              <div className="mb-[18px] flex items-center justify-between gap-4">
-                <a
-                  className="-ml-1 inline-flex items-center gap-1.5 rounded-[10px] pb-1.5 pl-1 pr-2.5 pt-1.5 text-[14.5px] font-semibold text-jdc-navy no-underline hover:bg-jdc-paper"
-                  href="/"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (isRescheduleFlow) {
-                      router.back();
-                      return;
-                    }
-                    dispatch(setPage(true));
-                    router.push("/");
-                  }}
-                >
-                  <ProtoIcon name="back" size={16} />
-                  Back
-                </a>
+              {/* Back + heading: round ← beside the heading on phones (see TITLE_ROW in booking/ui.js) */}
+              <div className={TITLE_ROW}>
+                <div className="mb-[18px] flex items-center justify-between gap-4 max-[720px]:mb-0">
+                  <a
+                    className={cx(
+                      "-ml-1 inline-flex items-center gap-1.5 rounded-[10px] pb-1.5 pl-1 pr-2.5 pt-1.5 text-[14.5px] font-semibold text-jdc-navy no-underline hover:bg-jdc-paper",
+                      BACK_ROUND
+                    )}
+                    href="/"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (isRescheduleFlow) {
+                        router.back();
+                        return;
+                      }
+                      dispatch(setPage(true));
+                      router.push("/");
+                    }}
+                  >
+                    <ProtoIcon name="back" size={16} />
+                    <span className={BACK_LABEL}>Back</span>
+                  </a>
+                </div>
+                <h1 className="m-0 font-display text-[34px] font-bold leading-[1.15] tracking-[-0.02em] text-jdc-navy [@media(min-width:901px)_and_(max-height:860px)]:text-[28px] max-[720px]:text-[28px]">{isRescheduleFlow ? "Reschedule your booking" : "Book your pickup"}</h1>
               </div>
-              <h1 className="m-0 font-display text-[34px] font-bold leading-[1.15] tracking-[-0.02em] text-jdc-navy [@media(min-width:901px)_and_(max-height:860px)]:text-[28px] max-[720px]:text-[28px]">{isRescheduleFlow ? "Reschedule your booking" : "Book your pickup"}</h1>
               <p className="mx-0 mb-0 mt-2 text-[16.5px] text-jdc-muted [@media(min-width:901px)_and_(max-height:860px)]:mt-1 [@media(min-width:901px)_and_(max-height:860px)]:text-[15px] max-[720px]:text-[15.5px]">
                 {isRescheduleFlow
                   ? "Choose new collection and delivery windows."

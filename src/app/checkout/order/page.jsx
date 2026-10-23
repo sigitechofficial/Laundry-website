@@ -941,20 +941,22 @@ export default function Order() {
             <section className={ui.HERO_SECTION}>
               <div className={ui.WRAP}>
                 <div className={ui.PG_HEAD}>
-                  <a
-                    className={cx(ui.BACK, "mb-3.5")}
-                    href="/place-order"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      router.push("/place-order");
-                    }}
-                  >
-                    <ProtoIcon name="back" size={16} />
-                    Back
-                  </a>
-                  <h1 className={ui.H2}>
-                    Add your <em>services.</em>
-                  </h1>
+                  <div className={ui.TITLE_ROW}>
+                    <a
+                      className={cx(ui.BACK, "mb-3.5", ui.BACK_ROUND)}
+                      href="/place-order"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        router.push("/place-order");
+                      }}
+                    >
+                      <ProtoIcon name="back" size={16} />
+                      <span className={ui.BACK_LABEL}>Back</span>
+                    </a>
+                    <h1 className={ui.H2}>
+                      Add your <em>services.</em>
+                    </h1>
+                  </div>
                   <p className={ui.LEAD}>
                     Pick what you&rsquo;d like cleaned. You only pay after we weigh it.
                   </p>

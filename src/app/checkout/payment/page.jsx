@@ -738,28 +738,30 @@ export default function Payment() {
                 <div className="mt-0 grid grid-cols-[minmax(0,1fr)_310px] [align-items:start] gap-7 min-[1200px]:grid-cols-[minmax(0,1fr)_330px] max-[980px]:flex max-[980px]:grid-cols-[minmax(0,1fr)] max-[980px]:flex-col max-[980px]:gap-[18px]">
                   <div className="min-w-0 max-[980px]:contents max-[980px]:max-w-full max-[980px]:[&>*]:w-full max-[980px]:[&>*]:max-w-full max-[980px]:[&>*]:self-stretch">
                     <div className={cx(ui.PG_HEAD, "mb-6 max-[980px]:order-none max-[980px]:mb-0 max-[720px]:mb-0")}>
-                      <a
-                        className={cx(ui.BACK, "mb-3.5")}
-                        href="/checkout/order"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          router.push("/checkout/order");
-                        }}
-                      >
-                        <ProtoIcon name="back" size={16} />
-                        Back
-                      </a>
-                      <h1 className={ui.H2}>
-                        {isRescheduleFlow ? (
-                          <>
-                            Rescheduling <em>your booking.</em>
-                          </>
-                        ) : (
-                          <>
-                            Add a <em>payment method.</em>
-                          </>
-                        )}
-                      </h1>
+                      <div className={ui.TITLE_ROW}>
+                        <a
+                          className={cx(ui.BACK, "mb-3.5", ui.BACK_ROUND)}
+                          href="/checkout/order"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            router.push("/checkout/order");
+                          }}
+                        >
+                          <ProtoIcon name="back" size={16} />
+                          <span className={ui.BACK_LABEL}>Back</span>
+                        </a>
+                        <h1 className={ui.H2}>
+                          {isRescheduleFlow ? (
+                            <>
+                              Rescheduling <em>your booking.</em>
+                            </>
+                          ) : (
+                            <>
+                              Add a <em>payment method.</em>
+                            </>
+                          )}
+                        </h1>
+                      </div>
                       <p className={ui.LEAD}>
                         {isRescheduleFlow
                           ? "Please wait while we submit your reschedule request…"

@@ -71,6 +71,17 @@ export const PG_HEAD_CENTER = "mx-auto text-center";
 export const H2 =
   "m-0 font-display text-[clamp(34px,4vw,54px)] font-bold leading-[1.05] tracking-[-0.03em] text-jdc-navy [&_em]:not-italic [&_em]:!text-inherit [&_span]:!text-inherit";
 /* .bk2-back (also used in page heads, where it gets a bottom gap) */
+/*
+ * Back link + page heading. Tablet/desktop: "← Back" sits above the heading (prototype).
+ * Phones (≤720px): it becomes a round ← button beside the heading to save height, like the app.
+ * Use: <div className={TITLE_ROW}><a className={cx(BACK, BACK_ROUND)}>…<span className={BACK_LABEL}>Back</span></a><h1/></div>
+ */
+// items-start: with a two-line heading the arrow lines up with the first line
+export const TITLE_ROW = "max-[720px]:flex max-[720px]:items-start max-[720px]:gap-3";
+export const BACK_ROUND =
+  "max-[720px]:m-0 max-[720px]:size-9 max-[720px]:flex-none max-[720px]:justify-center max-[720px]:gap-0 max-[720px]:rounded-full max-[720px]:border max-[720px]:border-jdc-line max-[720px]:bg-white max-[720px]:p-0 max-[720px]:hover:bg-jdc-paper";
+// the word "Back" stays for screen readers on phones, where only the arrow shows
+export const BACK_LABEL = "max-[720px]:sr-only";
 export const BACK =
   "-ml-1 inline-flex items-center gap-1.5 rounded-[10px] pb-1.5 pl-1 pr-2.5 pt-1.5 text-[14.5px] font-semibold text-jdc-navy no-underline hover:bg-jdc-paper";
 /* .svc-lead */

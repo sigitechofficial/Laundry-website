@@ -1,4 +1,7 @@
 "use client";
+import { DetailsSkeleton, OrderCardSkeleton } from "../ds/Skeleton";
+import EmptyState from "../ds/EmptyState";
+import { useStartBooking } from "../../utilities/useStartBooking";
 import React, { useState } from "react";
 import { GoArrowUp, GoClock } from "react-icons/go";
 import {
@@ -59,6 +62,7 @@ export default function OrderHistory() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dispatch = useDispatch();
+  const startBooking = useStartBooking();
   const { data, isLoading, refetch: refetchOrders } = useGetAllOrdersQuery(
     undefined,
     {
@@ -156,16 +160,11 @@ export default function OrderHistory() {
 
   const renderOrderDetailsPanel = ({ panelLayout = false } = {}) => {
     if (isBookingDetailsLoading) {
+      // placeholders in the shape of the details cards (no jump when they arrive)
       return (
-        <div className="w-full flex items-center justify-center py-16">
-          <Spinner
-            size="lg"
-            label="Loading order details..."
-            classNames={{
-              label: "text-foreground mt-4 font-youth font-semibold text-theme-blue",
-            }}
-            variant="wave"
-          />
+        <div className="w-full pt-2">
+          <span className="sr-only" role="status">Loading order details…</span>
+          <DetailsSkeleton />
         </div>
       );
     }
@@ -1835,15 +1834,11 @@ export default function OrderHistory() {
         <div className={`w-full font-sf space-y-5 ${manageOrder?.orderId ? "md:flex-1 md:min-w-0" : ""}`}>
           {/* Loading Spinner */}
           {isLoading ? (
-            <div className="w-full flex items-center justify-center py-20">
-              <Spinner
-                size="lg"
-                label="Loading orders..."
-                classNames={{
-                  label: "text-foreground mt-4 font-youth font-semibold text-theme-blue",
-                }}
-                variant="wave"
-              />
+            <div className="grid w-full gap-4">
+              <span className="sr-only" role="status">Loading orders…</span>
+              <OrderCardSkeleton />
+              <OrderCardSkeleton />
+              <OrderCardSkeleton />
             </div>
           ) : (
             <>
@@ -1851,9 +1846,9 @@ export default function OrderHistory() {
                 <button
                   type="button"
                   onClick={() => setBookingTab("active")}
-                  className={`flex-1 sm:flex-none px-5 sm:px-8 py-2.5 rounded-full font-youth font-bold text-sm sm:text-base transition-all duration-200 ${
+                  className={`flex-1 sm:flex-none px-5 sm:px-8 py-2.5 rounded-full font-youth font-bold text-sm sm:text-base transition-colors duration-200 ${
                     bookingTab === "active"
-                      ? "bg-theme-blue text-white shadow-sm"
+                      ? "bg-theme-blue text-white"
                       : "text-theme-psGray hover:text-gray-900"
                   }`}
                 >
@@ -1871,9 +1866,9 @@ export default function OrderHistory() {
                 <button
                   type="button"
                   onClick={() => setBookingTab("past")}
-                  className={`flex-1 sm:flex-none px-5 sm:px-8 py-2.5 rounded-full font-youth font-bold text-sm sm:text-base transition-all duration-200 ${
+                  className={`flex-1 sm:flex-none px-5 sm:px-8 py-2.5 rounded-full font-youth font-bold text-sm sm:text-base transition-colors duration-200 ${
                     bookingTab === "past"
-                      ? "bg-theme-blue text-white shadow-sm"
+                      ? "bg-theme-blue text-white"
                       : "text-theme-psGray hover:text-gray-900"
                   }`}
                 >
@@ -1895,18 +1890,17 @@ export default function OrderHistory() {
                   {visibleBookings.map((order) => renderBookingCard(order))}
                 </div>
               ) : (
-                <div className="w-full xl:max-w-[859px] rounded-2xl border border-dashed border-[#D9DEE8] bg-[#FBFBFB] px-6 py-12 text-center">
-                  <p className="font-youth font-bold text-lg text-theme-blue">
-                    {bookingTab === "active"
-                      ? "No active bookings"
-                      : "No past bookings"}
-                  </p>
-                  <p className="font-sf text-sm text-theme-psGray mt-2">
-                    {bookingTab === "active"
-                      ? "Your current orders will appear here."
-                      : "Completed and cancelled orders will appear here."}
-                  </p>
-                </div>
+                <EmptyState
+                  className="w-full xl:max-w-[859px]"
+                  icon={bookingTab === "active" ? "truck" : "receipt"}
+                  title={bookingTab === "active" ? "No active orders" : "No past orders yet"}
+                  text={
+                    bookingTab === "active"
+                      ? "Book a pickup and your order will show here, with live tracking."
+                      : "Completed and cancelled orders will show here."
+                  }
+                  actions={[{ label: "Book a pickup", onClick: () => startBooking() }]}
+                />
               )}
             </>
           )}
@@ -1915,7 +1909,7 @@ export default function OrderHistory() {
         {/* Desktop/Tablet Side Panel - Hidden on mobile */}
         {manageOrder?.orderId ? (
           <div
-            className={`hidden md:flex md:flex-col md:w-[360px] lg:w-[400px] xl:w-[440px] md:flex-none min-h-0 sticky top-[104px] self-start h-[calc(100vh-128px)] overflow-hidden bg-white border border-jdc-line rounded-[24px] transition-all duration-500 ease-in-out ${
+            className={`hidden md:flex md:flex-col md:w-[360px] lg:w-[400px] xl:w-[440px] md:flex-none min-h-0 sticky top-[104px] self-start h-[calc(100vh-128px)] overflow-hidden bg-white border border-jdc-line rounded-[24px] transition-[opacity,transform] duration-500 ease-in-out ${
               showOrderDetails || isBookingDetailsLoading
                 ? "opacity-100 translate-x-0"
                 : "opacity-0 translate-x-4"
@@ -1923,15 +1917,15 @@ export default function OrderHistory() {
           >
             {bookingDtails?.data?.orderTrackId ? (
               <div
-                className={`pointer-events-none absolute transition-all duration-300 ease-in-out font-sf ${
+                className={`pointer-events-none absolute transition-[opacity,transform] duration-300 ease-in-out font-sf ${
                   panelScroll
                     ? "translate-y-0 opacity-100"
                     : "-translate-y-full opacity-0"
-                } top-0 left-0 z-20 bg-white w-full shadow-md rounded-t-[20px]`}
+                } top-0 left-0 z-20 bg-white w-full border-b border-jdc-line rounded-t-[20px]`}
               >
                 <div className="flex justify-center items-center w-full h-[58px] px-4">
                   <h2
-                    className={`font-youth font-bold sm:text-[22px] text-center transition-all duration-500 ease-in-out ${
+                    className={`font-youth font-bold sm:text-[22px] text-center transition-[opacity,transform] duration-500 ease-in-out ${
                       panelScroll
                         ? "translate-y-0 opacity-100 delay-500"
                         : "-translate-y-4 opacity-0 delay-0"
@@ -1971,6 +1965,7 @@ export default function OrderHistory() {
           }
         }}
         onClose={onOrderDetailsModalClose}
+        ariaLabel="Order details"
         size="full"
         placement="bottom"
         className="md:hidden"
@@ -2017,7 +2012,6 @@ export default function OrderHistory() {
         // }
         onFooterAction={() => false}
         size="xl"
-        backdrop="blur"
         className="custom-modal-class max-h-[90vh] overflow-auto"
       >
         {manageOrder?.modType === "track" ? (
@@ -2039,8 +2033,8 @@ export default function OrderHistory() {
             </div>
 
             {isBookingDetailsLoading ? (
-              <div className="flex justify-center py-16">
-                <Spinner />
+              <div className="px-6 py-4">
+                <DetailsSkeleton />
               </div>
             ) : (
               <>
@@ -2215,7 +2209,6 @@ export default function OrderHistory() {
         showFooter={false}
         onFooterAction={() => false}
         size="5xl"
-        backdrop="blur"
         className="custom-modal-class max-h-[95vh] overflow-hidden"
       >
         <div className="h-[58px] flex items-center justify-center relative border-b border-jdc-line">
@@ -2278,7 +2271,6 @@ export default function OrderHistory() {
         }
         onFooterAction={() => false}
         size="md"
-        backdrop="blur"
         className="custom-modal-class"
       >
         <div className="w-full px-6 py-6 font-sf">
@@ -2367,6 +2359,7 @@ export default function OrderHistory() {
         isDismissable={true}
         isOpen={isManageOrderModalOpen}
         onOpenChange={onManageOrderModalOpenChange}
+        ariaLabel="Manage order"
         showHeader={false}
         headerTitle=""
         modalScroll={false}
@@ -2375,7 +2368,6 @@ export default function OrderHistory() {
         showFooter={false}
         onFooterAction={() => false}
         size="md"
-        backdrop="blur"
         className="custom-modal-class"
       >
         <div className="w-full px-6 py-6 font-sf">

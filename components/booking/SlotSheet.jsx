@@ -2,18 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cx } from "../ds/cx";
-import { lockPageScroll } from "../../utilities/scrollLock";
+import Dialog from "../ds/Dialog";
 import { BTN } from "./ui";
 import ProtoIcon from "../proto/ProtoIcon";
 
-// Centred dialog on desktop, bottom sheet on phones.
-const SHEET = "fixed inset-0 z-[1200] flex items-center justify-center p-6 max-[720px]:items-end max-[720px]:p-0";
-const OVERLAY = "absolute inset-0 bg-[rgba(15,20,28,0.5)] opacity-0 transition-opacity duration-[250ms]";
-const PANEL =
-  "relative flex h-[min(640px,calc(100vh-48px))] max-h-[min(680px,calc(100vh-48px))] w-full max-w-[520px] flex-col rounded-[22px] bg-white opacity-0 [box-shadow:0_16px_40px_rgba(15,20,28,0.14)] [transform:translateY(12px)_scale(0.98)] [transition:opacity_0.25s,transform_0.25s] max-[720px]:h-[86vh] max-[720px]:max-h-none max-[720px]:max-w-none max-[720px]:rounded-[22px_22px_0_0] max-[720px]:opacity-100 max-[720px]:[box-shadow:0_-4px_20px_rgba(15,20,28,0.08)] max-[720px]:[transform:translateY(100%)] max-[720px]:[transition:transform_0.3s_cubic-bezier(0.2,0.8,0.2,1)]";
-const PANEL_OPEN = "opacity-100 [transform:none] max-[720px]:[transform:none]";
-const GRAB =
-  "hidden max-[720px]:mx-auto max-[720px]:mb-0 max-[720px]:mt-2.5 max-[720px]:block max-[720px]:h-[5px] max-[720px]:w-10 max-[720px]:rounded-[3px] max-[720px]:bg-[#D5DAE3]";
+// Centred popup on desktop, bottom sheet on phones (components/ds/Dialog). Fixed size,
+// so changing day never resizes it.
+const PANEL = "h-[min(640px,calc(100vh-48px))] max-h-[min(680px,calc(100vh-48px))] max-w-[520px] max-[720px]:h-[86vh] max-[720px]:max-h-[86vh]";
 const HEAD = "flex items-center justify-between px-[22px] pb-1.5 pt-5 max-[720px]:px-5 max-[720px]:pb-1 max-[720px]:pt-3";
 const CLOSE = "h-9 w-9 cursor-pointer rounded-[50%] border-0 bg-jdc-mist text-[22px] leading-none text-jdc-navy";
 const BODY =
@@ -71,8 +66,6 @@ export function slotNiceDay(iso) {
 }
 
 export default function SlotSheet({ open, title, days = [], timesFor, value, fmt, onConfirm, onClose, loading = false }) {
-  const [shown, setShown] = useState(false); // drives .is-open (animation)
-  const [mounted, setMounted] = useState(false);
   const [pickDay, setPickDay] = useState("");
   const [pickStart, setPickStart] = useState("");
   const timesRef = useRef(null);
@@ -81,47 +74,26 @@ export default function SlotSheet({ open, title, days = [], timesFor, value, fmt
   const times = pickDay ? timesFor(pickDay) || [] : [];
   const pickSlot = times.find((t) => t?.start === pickStart) || null;
 
-  useEffect(() => {
-    if (open) {
-      const d = value?.date && days.some((x) => x.date === value.date) ? value.date : days[0]?.date || "";
-      setPickDay(d);
-      const ts = d ? timesFor(d) || [] : [];
-      setPickStart(ts.some((t) => t?.start === value?.start) ? value.start : ts[0]?.start || "");
-      setMounted(true);
-      lockPageScroll(true);
-      const r = requestAnimationFrame(() => {
-        setShown(true);
-        requestAnimationFrame(() => {
-          daysRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "center" });
-          const t = timesRef.current?.querySelector('[aria-selected="true"]') || timesRef.current?.querySelector("button");
-          if (t && timesRef.current) {
-            t.focus({ preventScroll: true });
-            timesRef.current.scrollTop = Math.max(0, t.offsetTop - timesRef.current.offsetTop - 40);
-          }
-        });
-      });
-      return () => cancelAnimationFrame(r);
-    }
-    setShown(false);
-    lockPageScroll(false);
-    const t = setTimeout(() => setMounted(false), 280);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
-
+  // On open: start from the current choice, show it, and focus the selected time.
   useEffect(() => {
     if (!open) return undefined;
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose?.();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  useEffect(() => () => {
-    lockPageScroll(false);
-  }, []);
-
+    const d = value?.date && days.some((x) => x.date === value.date) ? value.date : days[0]?.date || "";
+    setPickDay(d);
+    const ts = d ? timesFor(d) || [] : [];
+    setPickStart(ts.some((t) => t?.start === value?.start) ? value.start : ts[0]?.start || "");
+    const r = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        daysRef.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest", inline: "center" });
+        const t = timesRef.current?.querySelector('[aria-selected="true"]') || timesRef.current?.querySelector("button");
+        if (t && timesRef.current) {
+          t.focus({ preventScroll: true });
+          timesRef.current.scrollTop = Math.max(0, t.offsetTop - timesRef.current.offsetTop - 40);
+        }
+      });
+    });
+    return () => cancelAnimationFrame(r);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   const label = (t) => `${fmt(t.start)} – ${fmt(t.end)}`;
   const off = offset(pickDay);
   const sum = pickDay
@@ -129,10 +101,7 @@ export default function SlotSheet({ open, title, days = [], timesFor, value, fmt
     : "";
 
   return (
-    <div className={cx(SHEET, (!mounted && !open) && "hidden")} hidden={!mounted && !open}>
-      <div className={cx(OVERLAY, shown && "opacity-100")} onClick={onClose} />
-      <div className={cx(PANEL, shown && PANEL_OPEN)} role="dialog" aria-modal="true" aria-labelledby="slotTitle">
-        <span className={GRAB} aria-hidden="true" />
+    <Dialog open={open} onClose={onClose} labelledBy="slotTitle" className={PANEL}>
         <div className={HEAD}>
           <h2 id="slotTitle" className="m-0 font-display text-[20px] font-bold text-jdc-navy">{title}</h2>
           <button type="button" className={CLOSE} aria-label="Close" onClick={onClose}>
@@ -150,9 +119,17 @@ export default function SlotSheet({ open, title, days = [], timesFor, value, fmt
                 {loading ? "Finding available slots…" : "No slots available"}
               </b>
               {loading ? null : (
-                <p className="m-0 max-w-[320px] text-[14px] leading-[1.5] text-jdc-muted">
-                  We don&rsquo;t have any free slots for this address right now. Please try again later or contact us.
-                </p>
+                <>
+                  <p className="m-0 max-w-[320px] text-[14px] leading-[1.5] text-jdc-muted">
+                    We don&rsquo;t have any free slots for this address right now. Please try again later or contact us.
+                  </p>
+                  <a
+                    href="/contact-us"
+                    className="mt-2 inline-flex h-11 items-center rounded-full border border-jdc-line bg-white px-5 text-[14.5px] font-bold text-jdc-navy no-underline hover:border-[#C5CEDD]"
+                  >
+                    Contact us
+                  </a>
+                </>
               )}
             </div>
           ) : (
@@ -192,6 +169,11 @@ export default function SlotSheet({ open, title, days = [], timesFor, value, fmt
             Choose a time slot <span className="ml-1.5 font-medium text-jdc-muted">1-hour window</span>
           </p>
           <div className={TIMES} role="listbox" aria-label="Time slot" tabIndex={-1} ref={timesRef}>
+            {!times.length ? (
+              <p className="m-0 rounded-[14px] border border-dashed border-jdc-line px-4 py-6 text-center text-[14px] text-jdc-muted" role="status">
+                No times left on this day. Please pick another day.
+              </p>
+            ) : null}
             {times.map((t) => {
               const on = t.start === pickStart;
               return (
@@ -225,7 +207,6 @@ export default function SlotSheet({ open, title, days = [], timesFor, value, fmt
             Confirm
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

@@ -286,7 +286,7 @@ export default function PartnerRegistration() {
                 onClick={() => setStep(s)}
               >
                 <div
-                  className={`size-12 sm:size-14 md:size-[60px] rounded-full shrink-0 ${step >= s ? "bg-jdc-blue text-white" : "bg-theme-gray text-black"} flex justify-center items-center font-body font-semibold text-lg sm:text-xl md:text-2xl transition-all duration-200`}
+                  className={`size-12 sm:size-14 md:size-[60px] rounded-full shrink-0 ${step >= s ? "bg-jdc-blue text-white" : "bg-theme-gray text-black"} flex justify-center items-center font-body font-semibold text-lg sm:text-xl md:text-2xl transition-colors duration-200`}
                 >
                   {s}
                 </div>
@@ -392,7 +392,7 @@ export default function PartnerRegistration() {
                   </div>
                 </div>
                 {showAddressDropdown && postcodeAddresses?.data?.addresses?.length > 0 && (
-                  <div ref={addressDropdownRef} className="absolute z-[100] w-full mt-2 bg-white rounded-lg shadow-xl max-h-[250px] overflow-y-auto border border-gray-200">
+                  <div ref={addressDropdownRef} className="absolute z-jdc-dropdown w-full mt-2 bg-white rounded-lg shadow-xl max-h-[250px] overflow-y-auto border border-gray-200">
                     {postcodeAddresses.data.addresses.map((addr, i) => (
                       <div key={i} onClick={() => handleAddressSelect(addr)} className="px-4 py-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0">
                         <p className="font-body font-semibold text-base">{addr.line1}</p>

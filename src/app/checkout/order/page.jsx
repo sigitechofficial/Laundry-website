@@ -6,6 +6,7 @@ import {
   useRescheduleBookingMutation,
   useGetServicesQuery,
   useGetServiceWithPreferenceDetailsQuery,
+  api,
 } from "@/app/store/services/api";
 import { addToast, useDisclosure } from "@heroui/react";
 import ReusableModal from "../../../../components/Modal";
@@ -14,7 +15,6 @@ import {
   clearCartData,
   setDeliveryData,
   setDriverInstruction,
-  setPage,
   updatePreference,
   setOrderData,
   removePreference,
@@ -25,7 +25,6 @@ import {
 } from "../../../../utilities/bookingSlotsApi";
 import {
   buildDeliveryUpdateForMinDate,
-  formatIsoDateLong,
   getTurnaroundConflict,
 } from "../../../../utilities/turnaroundTime";
 import { formatDate, to24Hour } from "../../../../utilities/ConversionFunction";
@@ -34,7 +33,8 @@ import PageShell from "../../../../components/ds/PageShell";
 import ServiceBar from "../../../../components/booking/ServiceBar";
 import ProtoIcon from "../../../../components/proto/ProtoIcon";
 import { cx } from "../../../../components/ds/cx";
-import { lockPageScroll } from "../../../../utilities/scrollLock";
+import Dialog from "../../../../components/ds/Dialog";
+import DeliveryDateDialog from "../../../../components/booking/DeliveryDateDialog";
 import { useFitsViewport } from "../../../../components/ds/useFitsViewport";
 import * as ui from "../../../../components/booking/ui";
 
@@ -47,7 +47,8 @@ const SERVICES_FAQ = [
   { q: "Can I still change my pickup?", a: "Of course. Use the Edit or Modify links in your pickup summary to change your times, address or driver instructions." },
 ];
 import { useRouter } from "next/navigation";
-import { MiniLoader } from "../../../../components/Loader";
+import { Bone, ServiceListSkeleton } from "../../../../components/ds/Skeleton";
+import EmptyState from "../../../../components/ds/EmptyState";
 import {
   parseServiceBooleanFlag,
   shouldShowWashBleedDisclaimer,
@@ -106,6 +107,21 @@ export default function Order() {
       refetchOnMountOrArgChange: true,
     }
   );
+
+  // Load the next step early: the Payment page's charges, saved cards and credit,
+  // and its page code, so it opens without waiting.
+  const prefetchCharges = api.usePrefetch("getCharges");
+  const prefetchCards = api.usePrefetch("getPaymentMethods");
+  const prefetchCredit = api.usePrefetch("getCustomerCredit");
+  useEffect(() => {
+    if (!collectionLat || !collectionLng) return;
+    prefetchCharges({ lat: collectionLat, lng: collectionLng });
+    if (typeof window !== "undefined" && localStorage.getItem("loginStatus")) {
+      prefetchCards(undefined);
+      prefetchCredit(undefined);
+    }
+    router.prefetch?.("/checkout/payment");
+  }, [collectionLat, collectionLng]); // eslint-disable-line react-hooks/exhaustive-deps
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
   const [modalScroll] = useState(false);
   const [currentServiceId, setCurrentServiceId] = useState(null);
@@ -610,13 +626,6 @@ export default function Order() {
     };
   }, []);
 
-  useEffect(() => {
-    const on = isOpen && modal?.modType === "servicePreferences";
-    lockPageScroll(on);
-    return () => {
-      lockPageScroll(false);
-    };
-  }, [isOpen, modal?.modType]);
 
   const handleRescheduleSubmit = async (deliveryOverride) => {
     const delivery = {
@@ -691,8 +700,11 @@ export default function Order() {
     }
   };
 
+  // Going on to Payment: the button that was pressed shows a spinner (not the top
+  // progress line) until the Payment page opens.
+  const [goingToPay, setGoingToPay] = useState(false);
   const proceedToPayment = () => {
-    dispatch(setPage(true));
+    setGoingToPay(true);
     router.push("/checkout/payment");
   };
 
@@ -950,7 +962,7 @@ export default function Order() {
 
   return (
     <>
-      <PageShell header="solid">
+      <PageShell header="solid" clientOnly>
         {/* Add services: layout from the prototype (services.html), styled with Tailwind */}
         <div id="jdcServicesRoot" className={ui.ROOT}>
           <div className={ui.PAGE_BG}>
@@ -980,8 +992,19 @@ export default function Order() {
 
                 <div className="mt-[34px] grid grid-cols-[minmax(0,1fr)_310px] [align-items:start] gap-7 min-[1200px]:grid-cols-[minmax(0,1fr)_330px] min-[1200px]:gap-8 max-[980px]:block max-[980px]:grid-cols-[minmax(0,1fr)] max-[980px]:gap-[22px]">
                   <div className="min-w-0 max-[980px]:mx-auto max-[980px]:max-w-[760px]">
-                    <div className="flex flex-col gap-4">
-                      {!isLoading ? (
+                    <div className={cx("flex flex-col gap-4", !isLoading && "animate-jdc-fade-in")}>
+                      {!isLoading && !(data?.data?.serviceData?.length) ? (
+                        // no services for this address (or the list could not load): say so and give a way on
+                        <EmptyState
+                          icon="pin"
+                          title="No services at this address yet"
+                          text="We don't collect from this address yet. Try another address, or contact us and we'll tell you when we cover it."
+                          actions={[
+                            { label: "Change address", href: "/place-order" },
+                            { label: "Contact us", href: "/contact-us" },
+                          ]}
+                        />
+                      ) : !isLoading ? (
                         data?.data?.serviceData?.map((item) => {
                           const selectedEntry = Array.isArray(preferencesData)
                             ? preferencesData.find((elem) => elem?.serviceId === item?.id)
@@ -1009,9 +1032,8 @@ export default function Order() {
                           );
                         })
                       ) : (
-                        <div className="flex justify-center py-10">
-                          <MiniLoader />
-                        </div>
+                        // card-shaped placeholders: same size as the real list, so nothing jumps
+                        <ServiceListSkeleton count={4} />
                       )}
                     </div>
                   </div>
@@ -1202,14 +1224,17 @@ export default function Order() {
                         className={cx(ui.BTN, ui.BTN_BLOCK, "h-[52px] disabled:cursor-not-allowed disabled:opacity-50")}
                         id="svcCheckout"
                         disabled={
+                          goingToPay ||
                           isRescheduling ||
                           !preferencesData?.length ||
                           (!isRescheduleFlow && !orderData?.collectionData?.streetAddress)
                         }
+                        aria-busy={goingToPay || undefined}
                         onClick={handleContinue}
                       >
+                        {goingToPay ? <span className={ui.SPIN} aria-hidden="true" /> : null}
                         Continue to checkout
-                        <ProtoIcon name="arrow" size={18} />
+                        {goingToPay ? null : <ProtoIcon name="arrow" size={18} />}
                       </button>
                     </div>
                   </aside>
@@ -1246,10 +1271,13 @@ export default function Order() {
           </div>
 
           {/* Service preferences popup */}
-          {modal?.modType === "servicePreferences" && currentServiceId ? (
-            <div className={cx(ui.MODAL, !(isOpen) && "hidden")} id="svcModal" hidden={!isOpen}>
-              <div className={ui.MODAL_OVERLAY} onClick={handleCancelModal} />
-              <div className={ui.MODAL_PANEL} role="dialog" aria-modal="true" aria-labelledby="svcModalTitle">
+          {/* one fixed size from opening to closing: loading and loaded look the same size */}
+          <Dialog
+            open={isOpen && modal?.modType === "servicePreferences" && Boolean(currentServiceId)}
+            onClose={handleCancelModal}
+            labelledBy="svcModalTitle"
+            className="h-[min(720px,calc(100vh-48px))] max-[720px]:h-[88vh] max-[720px]:max-h-[88vh]"
+          >
                 <div className={ui.MODAL_HEAD}>
                   <b id="svcModalTitle">
                     {currentServiceMeta?.name ? `${currentServiceMeta.name} preferences` : "Service preferences"}
@@ -1258,10 +1286,27 @@ export default function Order() {
                     Cancel
                   </button>
                 </div>
-                <div className={ui.MODAL_BODY} id="svcModalBody" ref={modalScrollRef}>
+                <div className={cx(ui.MODAL_BODY, "min-h-0 flex-1 content-start")} id="svcModalBody" ref={modalScrollRef}>
                   {isLoadingPreferences || isFetchingPreferences ? (
-                    <div className="flex justify-center py-10">
-                      <MiniLoader />
+                    // placeholder rows in the shape of the options
+                    <div className="grid gap-[18px]" aria-hidden="true">
+                      <span className="sr-only" role="status">Loading preferences…</span>
+                      <Bone className="h-5 w-28" />
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="flex items-center gap-3 rounded-[14px] border border-jdc-line px-4 py-3.5">
+                          <Bone className="size-5 flex-none rounded-md" />
+                          <span className="grid flex-1 gap-2">
+                            <Bone className="h-4 w-36" />
+                            <Bone className="h-3 w-20" />
+                          </span>
+                        </div>
+                      ))}
+                      <Bone className="mt-1 h-5 w-24" />
+                      <div className="flex flex-wrap gap-2">
+                        {[0, 1, 2, 3].map((i) => (
+                          <Bone key={i} className="h-10 w-20 rounded-full" />
+                        ))}
+                      </div>
                     </div>
                   ) : (Array.isArray(servicePreferencesData) && servicePreferencesData.length > 0) ||
                     showBagsInput ||
@@ -1641,9 +1686,7 @@ export default function Order() {
                     <ProtoIcon name="arrow" size={18} />
                   </button>
                 </div>
-              </div>
-            </div>
-          ) : null}
+          </Dialog>
 
           <ServiceBar
             count={preferencesData?.length || 0}
@@ -1651,6 +1694,7 @@ export default function Order() {
             fallbackId="svcFaq"
             rootId="jdcServicesRoot"
             isDisabled={isRescheduling || (!isRescheduleFlow && !orderData?.collectionData?.streetAddress)}
+            isBusy={goingToPay || isRescheduling}
             onContinue={handleContinue}
           />
         </div>
@@ -1690,7 +1734,6 @@ export default function Order() {
         }
         onFooterAction={() => false}
         size="xl"
-        backdrop="blur"
         className="custom-modal-class max-h-[90vh] overflow-hidden"
       >
         {modal.modType === "dry cleaning" ? (
@@ -1734,56 +1777,15 @@ export default function Order() {
         )}
       </ReusableModal>
 
-      <ReusableModal
-        isOpen={turnaroundModal.open}
-        onOpenChange={(open) => {
-          if (!open) {
-            setTurnaroundModal((prev) => ({ ...prev, open: false }));
-            setPendingContinueAfterTurnaround(false);
-          }
+      <DeliveryDateDialog
+        notice={turnaroundModal}
+        onAccept={handleAcceptSuggestedDelivery}
+        onChange={handleChangeDeliveryDateFromTurnaround}
+        onClose={() => {
+          setTurnaroundModal((prev) => ({ ...prev, open: false }));
+          setPendingContinueAfterTurnaround(false);
         }}
-        showHeader
-        headerTitle="Delivery date update"
-        showFooter
-        footerContent={
-          <div className="w-full flex flex-col gap-3 px-6 pb-6">
-            <ButtonYouth70018
-              size="compact"
-              text="Use suggested date"
-              onClick={handleAcceptSuggestedDelivery}
-            />
-            <ButtonYouth70018
-              size="compact"
-              variant="outline"
-              text="Change delivery date"
-              onClick={handleChangeDeliveryDateFromTurnaround}
-            />
-          </div>
-        }
-      >
-        <div className="px-6 py-4 font-sf text-base text-theme-psGray space-y-3">
-          <p>
-            One or more services in your order need more processing time
-            {turnaroundModal.maxDays
-              ? ` (${turnaroundModal.maxDays} day${turnaroundModal.maxDays > 1 ? "s" : ""})`
-              : ""}
-            .
-          </p>
-          {turnaroundModal.serviceLabels?.length > 0 && (
-            <p className="font-medium text-gray-900">
-              {turnaroundModal.serviceLabels.join(", ")}
-            </p>
-          )}
-          <p>
-            Your current delivery date is too early. The earliest delivery we can
-            offer is{" "}
-            <span className="font-semibold text-gray-900">
-              {formatIsoDateLong(turnaroundModal.minDeliveryDate)}
-            </span>
-            .
-          </p>
-        </div>
-      </ReusableModal>
+      />
     </>
   );
 }

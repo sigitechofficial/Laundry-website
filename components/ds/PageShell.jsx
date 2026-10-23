@@ -4,22 +4,15 @@ import SiteHeader from "./SiteHeader";
 import SiteFooter from "./SiteFooter";
 import HomeClientWrapper from "../../utilities/Test";
 import { cx } from "./cx";
+import { useIsClient } from "./useIsClient";
 
 /**
- * Base type, colour and focus styles for design-system pages (was the `.jdc`
- * class in tokens.css). Descendant rules keep the old specificity.
+ * Base type and colour for design-system pages. The focus ring and the reduced-motion
+ * rule live in globals.css for the whole document, so popups drawn outside this
+ * wrapper (components/ds/Dialog, HeroUI modals, toasts) get them too.
  */
-export const PAGE_SCOPE = [
-  "overflow-x-clip bg-jdc-paper font-body text-jdc-lg leading-[1.6] text-jdc-text antialiased [text-rendering:optimizeLegibility]",
-  // Keyboard focus ring for links/buttons. Text fields are left out: they already turn their
-  // own border blue on focus, and a second ring around them looked like a double border.
-  "[&_:focus-visible:not(input):not(textarea):not(select)]:rounded-md [&_:focus-visible:not(input):not(textarea):not(select)]:outline [&_:focus-visible:not(input):not(textarea):not(select)]:outline-[3px] [&_:focus-visible:not(input):not(textarea):not(select)]:outline-offset-[3px] [&_:focus-visible:not(input):not(textarea):not(select)]:outline-jdc-blue",
-  "[&_img]:block [&_img]:max-w-full [&_video]:block [&_video]:max-w-full",
-  // reduced motion: switch off animations and transitions everywhere inside
-  "motion-reduce:[&_*]:![animation-duration:0.01ms] motion-reduce:[&_*]:![animation-iteration-count:1] motion-reduce:[&_*]:![transition-duration:0.01ms] motion-reduce:[&_*]:![scroll-behavior:auto]",
-  "motion-reduce:[&_*::before]:![animation-duration:0.01ms] motion-reduce:[&_*::before]:![animation-iteration-count:1] motion-reduce:[&_*::before]:![transition-duration:0.01ms]",
-  "motion-reduce:[&_*::after]:![animation-duration:0.01ms] motion-reduce:[&_*::after]:![animation-iteration-count:1] motion-reduce:[&_*::after]:![transition-duration:0.01ms]",
-].join(" ");
+export const PAGE_SCOPE =
+  "overflow-x-clip bg-jdc-paper font-body text-jdc-lg leading-[1.6] text-jdc-text antialiased [text-rendering:optimizeLegibility] [&_img]:block [&_img]:max-w-full [&_video]:block [&_video]:max-w-full";
 
 /**
  * Standard page frame on the design system: skip link, header, main,
@@ -27,8 +20,14 @@ export const PAGE_SCOPE = [
  *
  * @param {"overlay"|"solid"} [header="overlay"] use "overlay" when the page
  *   starts with a dark hero (PageHero), "solid" otherwise.
+ * @param {boolean} [clientOnly] the page content comes from this browser (saved cart,
+ *   signed-in account in localStorage), which the server cannot see. Header and footer
+ *   are still server-rendered; the content is drawn once the page runs in the browser
+ *   (at once when arriving from another page of the site), so the server never renders
+ *   an empty cart that the browser then has to replace (a hydration mismatch).
  */
-export default function PageShell({ header = "overlay", children, mainClassName }) {
+export default function PageShell({ header = "overlay", children, mainClassName, clientOnly = false }) {
+  const isClient = useIsClient();
   return (
     <HomeClientWrapper>
       <div className={PAGE_SCOPE}>
@@ -42,9 +41,11 @@ export default function PageShell({ header = "overlay", children, mainClassName 
         <main
           id="main"
           tabIndex={-1}
-          className={cx(header === "solid" && "pt-jdc-header", mainClassName)}
+          // Inner pages fill at least the screen, so the footer stays at the bottom
+          // while a step is loading instead of jumping up under the header.
+          className={cx(header === "solid" && "min-h-[100svh] pt-jdc-header", mainClassName)}
         >
-          {children}
+          {clientOnly && !isClient ? null : children}
         </main>
         <SiteFooter />
       </div>

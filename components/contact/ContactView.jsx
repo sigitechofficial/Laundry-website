@@ -7,7 +7,8 @@ import Icon from "../ds/Icon";
 import PageHero from "../ds/PageHero";
 import PageShell from "../ds/PageShell";
 import Reveal from "../ds/Reveal";
-import { HeroChips, LinkCard, PageHead } from "../ds/Blocks";
+import { HeroChips, IconTile, LinkCard, PageHead } from "../ds/Blocks";
+import { Bone } from "../ds/Skeleton";
 import { FormAlert, FormCard, FormNote, FormRow, SelectField, TextAreaField, TextField } from "../ds/Form";
 import { Container } from "../ds/Layout";
 import { FAQ as HOME_FAQ } from "../home/content";
@@ -16,6 +17,9 @@ import { buildMailto, digitsOnly, validateMessage } from "./contactForm";
 
 const TOPICS = ["An order", "Prices & services", "Feedback", "Something else"];
 const EMPTY = { name: "", email: "", topic: TOPICS[0], message: "" };
+// same box as LinkCard (components/ds/Blocks.jsx)
+const CARD =
+  "flex items-center gap-4 rounded-[20px] border border-jdc-line bg-jdc-white p-[22px] max-[720px]:px-[18px] max-[720px]:py-4";
 
 export default function ContactView() {
   const { data: contactRes, isLoading: contactLoading } = useGetSupportContactQuery();
@@ -82,6 +86,19 @@ export default function ContactView() {
               lead="Prefer to chat? Pick the way that suits you."
             />
             <div className="grid grid-cols-[1fr] gap-3.5 min-[721px]:max-[1080px]:grid-cols-[1fr_1fr] max-[720px]:grid-cols-[1fr] max-[720px]:gap-2.5" aria-busy={contactLoading || undefined}>
+              {/* card-shaped placeholders while the support details load, so the form below
+                  does not get pushed down when they arrive */}
+              {contactLoading
+                ? Array.from({ length: 4 }, (_, i) => (
+                    <div key={i} className={CARD} aria-hidden="true">
+                      <Bone className="size-[58px] flex-none rounded-2xl" />
+                      <span className="grid flex-1 gap-2">
+                        <Bone className="h-[22px] w-28" />
+                        <Bone className="h-4 w-40 max-w-full" />
+                      </span>
+                    </div>
+                  ))
+                : null}
               {phone ? (
                 <LinkCard external href={`tel:${phone.replace(/\s+/g, "")}`} icon="phone" title="Call us" body={phone} />
               ) : null}
@@ -96,10 +113,8 @@ export default function ContactView() {
               ) : null}
               {email ? <LinkCard external href={`mailto:${email}`} icon="envelope" title="Email" body={email} /> : null}
               {hours ? (
-                <div className="flex items-center gap-4 rounded-[20px] border border-jdc-line bg-jdc-white p-[22px] max-[720px]:px-[18px] max-[720px]:py-4">
-                  <span className="flex h-[58px] w-[58px] flex-none items-center justify-center rounded-2xl bg-[#F1F3F7] text-[#6B7385] max-[720px]:h-[50px] max-[720px]:w-[50px]">
-                    <Icon name="clock" size={26} />
-                  </span>
+                <div className={CARD}>
+                  <IconTile name="clock" tone="tint" />
                   <span>
                     <strong className="block font-display text-[18px] text-jdc-navy">Opening hours</strong>
                     <small className="mt-0.5 block text-[15px] text-jdc-muted">{hours}</small>

@@ -3,7 +3,7 @@ import React from "react";
 
 export default function Loader() {
   return (
-    <div className="fixed w-full h-full inset-0 z-50 bg-white/90 backdrop-blur-sm flex items-center justify-center">
+    <div className="fixed w-full h-full inset-0 z-50 bg-white/90 flex items-center justify-center">
       <div className="text-xl font-semibold">
         <Spinner
           classNames={{

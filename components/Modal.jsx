@@ -1,6 +1,47 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import { IoClose } from "react-icons/io5";
 import { FaArrowLeftLong } from "react-icons/fa6";
+
+/*
+ * HeroUI popup used by the older account screens (order history, delete account,
+ * turnaround notices). It follows the same rules as components/ds/Dialog so both kinds
+ * look and move alike:
+ *  - plain dimmed backdrop (bg-jdc-scrim), never blurred: the blur builds up over
+ *    several frames and made the page flicker;
+ *  - centred with a short rise-and-fade; at 720px and below a bottom sheet that
+ *    slides up (same breakpoint as Dialog, not HeroUI's own 640px);
+ *  - HeroUI / react-aria handle scroll lock, Escape, focus trap and focus return.
+ * Callers may pass `classNames` / `motionProps`; they are merged over these defaults.
+ */
+const PHONE = "(max-width: 720px)";
+
+function useIsPhone() {
+  const [phone, setPhone] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(PHONE);
+    const on = () => setPhone(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return phone;
+}
+
+const POP = {
+  initial: { y: 12, opacity: 0 },
+  animate: { y: 0, opacity: 1, transition: { duration: 0.18, ease: "easeOut" } },
+  exit: { y: 12, opacity: 0, transition: { duration: 0.14, ease: "easeIn" } },
+};
+const SHEET = {
+  initial: { y: "100%" },
+  animate: { y: 0, transition: { duration: 0.28, ease: [0.2, 0.8, 0.2, 1] } },
+  exit: { y: "100%", transition: { duration: 0.2, ease: "easeIn" } },
+};
+const ICON_BTN =
+  "absolute top-3 z-20 flex size-10 cursor-pointer items-center justify-center rounded-full border-0 bg-theme-gray-17 text-black duration-150 hover:bg-theme-gray-16";
 
 const ReusableModal = ({
   isOpen,
@@ -8,76 +49,73 @@ const ReusableModal = ({
   children,
   showHeader = false,
   headerTitle = "",
+  ariaLabel,
   onBack = null,
   onClose = null,
   showFooter = false,
-  footerButtonText = "Close",
-  onFooterAction = null,
   size = "md",
   placement = "auto",
   backdrop = "opaque",
   scrollBehavior = "inside",
   modalScroll = 0,
   className = "",
+  classNames,
+  motionProps,
   isDismissable = true,
   footerContent,
 }) => {
+  const phone = useIsPhone();
+
   const handleClose = () => {
     if (onClose) onClose();
     if (onOpenChange) onOpenChange(false);
   };
 
-  const handleBack = () => {
-    if (onBack) onBack();
-  };
+  const sheet = phone && (placement === "auto" || placement === "bottom");
+  const motion = motionProps || (sheet ? SHEET : POP);
 
   return (
     <Modal
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       size={size}
-      placement={placement}
-      backdrop={backdrop}
+      placement={placement === "auto" ? (phone ? "bottom" : "center") : placement}
+      backdrop={backdrop === "transparent" ? "transparent" : "opaque"}
       scrollBehavior={scrollBehavior}
       className={className}
       classNames={{
         closeButton: "hidden",
-        base: "max-h-[100vh] !my-0 mx-0 max-sm:rounded-b-none",
+        backdrop: "bg-jdc-scrim",
+        ...classNames,
+        base: [
+          "max-h-[100vh] !my-0 mx-0",
+          sheet && "max-h-[92vh] !max-w-none !rounded-b-none",
+          classNames?.base,
+        ]
+          .filter(Boolean)
+          .join(" "),
       }}
       isDismissable={isDismissable}
-      motionProps={{
-        initial: { y: 50, opacity: 0 },
-        animate: {
-          y: 0,
-          opacity: 1,
-          transition: { duration: 0.3, ease: "easeOut" },
-        },
-        exit: {
-          y: 50,
-          opacity: 0,
-          transition: { duration: 0.2, ease: "easeIn" },
-        },
-      }}
+      motionProps={motion}
     >
-      <ModalContent className="overflow-hidden bg-white">
-        {(onCloseModal) => (
+      <ModalContent className="overflow-hidden bg-white" aria-label={showHeader ? undefined : ariaLabel || headerTitle || undefined}>
+        {() => (
           <>
             {showHeader && (
               <ModalHeader
-                className={`absolute transition-all duration-300 ease-in-out font-sf ${
+                className={`absolute transition-[transform,opacity] duration-300 ease-in-out font-sf ${
                   modalScroll
                     ? "translate-y-0 opacity-100"
                     : "-translate-y-full opacity-0"
-                } top-0 left-0 z-20 bg-white w-full shadow-md`}
+                } top-0 left-0 z-20 bg-white w-full border-b border-jdc-line`}
               >
                 <div className="flex justify-center items-center w-full h-7">
                   <h2
-                    className={`font-youth font-bold sm:text-[22px] text-center transition-all duration-500 ease-in-out 
-        ${
-          modalScroll
-            ? "translate-y-0 opacity-100 delay-500"
-            : "-translate-y-4 opacity-0 delay-0"
-        }`}
+                    className={`font-youth font-bold sm:text-[22px] text-center transition-[transform,opacity] duration-500 ease-in-out ${
+                      modalScroll
+                        ? "translate-y-0 opacity-100 delay-500"
+                        : "-translate-y-4 opacity-0 delay-0"
+                    }`}
                   >
                     {headerTitle}
                   </h2>
@@ -87,21 +125,15 @@ const ReusableModal = ({
 
             <ModalBody className="p-0 overflow-hidden">
               {onBack && (
-                <div
-                  onClick={handleBack}
-                  className="bg-theme-gray-17 hover:bg-theme-gray-16 rounded-full cursor-pointer duration-150 size-10 absolute top-3 left-3 z-20 flex justify-center items-center text-2xl text-black font-black"
-                >
+                <button type="button" aria-label="Back" onClick={onBack} className={`${ICON_BTN} left-3`}>
                   <FaArrowLeftLong size={20} />
-                </div>
+                </button>
               )}
 
               {onClose && (
-                <div
-                  onClick={handleClose}
-                  className="bg-theme-gray-17 hover:bg-theme-gray-16 rounded-full cursor-pointer duration-150 size-10 absolute top-3 right-3 z-20 flex justify-center items-center text-2xl text-black font-black"
-                >
+                <button type="button" aria-label="Close" onClick={handleClose} className={`${ICON_BTN} right-3`}>
                   <IoClose size={30} />
-                </div>
+                </button>
               )}
               {children}
             </ModalBody>
@@ -115,7 +147,6 @@ const ReusableModal = ({
     </Modal>
   );
 };
-
 export default ReusableModal;
 
 // Usage Examples:
@@ -170,7 +201,6 @@ export default ReusableModal;
   footerButtonText="Confirm Delete"
   onFooterAction={() => handleDelete()}
   size="lg"
-  backdrop="blur"
   className="custom-modal-class"
 >
   <div>

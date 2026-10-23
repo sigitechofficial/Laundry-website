@@ -22,9 +22,9 @@ const styles = {
   resend:
     "m-[4px_0_0] text-center text-[15px] font-semibold text-jdc-muted [&_button]:p-0 [&_button]:[border:0] [&_button]:text-jdc-blue [&_button]:cursor-pointer",
   loading: "flex justify-center py-10 px-0",
-  modalBackdrop: "fixed inset-0 z-[120] flex items-center justify-center p-4 bg-[rgba(15,20,28,0.55)]",
+  // content of the account-link popup (the popup itself is components/ds/Dialog)
   modal:
-    "w-full max-w-[440px] p-7 rounded-jdc-lg bg-jdc-white [&_h2]:m-[0_0_8px] [&_h2]:font-display [&_h2]:text-[24px] [&_h2]:text-jdc-navy [&_p]:m-[0_0_18px] [&_p]:text-[15px] [&_p]:text-jdc-muted",
+    "p-7 max-[720px]:px-5 max-[720px]:pb-[calc(24px+env(safe-area-inset-bottom))] [&_h2]:m-[0_0_8px] [&_h2]:font-display [&_h2]:text-[24px] [&_h2]:text-jdc-navy [&_p]:m-[0_0_18px] [&_p]:text-[15px] [&_p]:text-jdc-muted",
   modalActions: "flex gap-[10px] mt-4",
 };
 

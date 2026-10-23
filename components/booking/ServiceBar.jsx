@@ -1,9 +1,9 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import ProtoIcon from "../proto/ProtoIcon";
 import { cx } from "../ds/cx";
-import { BAR, BAR_GO, BAR_IN, BAR_TXT, BTN } from "./ui";
+import { BAR, BAR_GO, BAR_IN, BAR_TXT, BTN, SPIN } from "./ui";
 
 /**
  * Bottom "N services selected · Continue" bar, prototype markup (.svc-bar).
@@ -12,7 +12,7 @@ import { BAR, BAR_GO, BAR_IN, BAR_TXT, BTN } from "./ui";
  * if that is not rendered, the FAQ section) is still below the screen.
  * Toggles `has-svc-bar` on the page root, like the prototype does on <body>.
  */
-export default function ServiceBar({ count, targetId, fallbackId, rootId, isDisabled, onContinue, barId, label, goText = "Continue", innerClassName }) {
+export default function ServiceBar({ count, targetId, fallbackId, rootId, isDisabled, isBusy, onContinue, barId, label, goText = "Continue", innerClassName }) {
   const [below, setBelow] = useState(false);
 
   useEffect(() => {
@@ -55,9 +55,10 @@ export default function ServiceBar({ count, targetId, fallbackId, rootId, isDisa
             <span>{count === 1 ? "service selected" : "services selected"}</span>
           </span>
         )}
-        <button type="button" className={cx(BTN, BAR_GO)} disabled={isDisabled} onClick={onContinue}>
+        <button type="button" className={cx(BTN, BAR_GO)} disabled={isDisabled || isBusy} aria-busy={isBusy || undefined} onClick={onContinue}>
+          {isBusy ? <span className={SPIN} aria-hidden="true" /> : null}
           {goText}
-          <ProtoIcon name="arrow" size={18} />
+          {isBusy ? null : <ProtoIcon name="arrow" size={18} />}
         </button>
       </div>
     </div>

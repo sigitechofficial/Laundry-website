@@ -5,7 +5,7 @@ import "../design-system/tokens.css";
 import { Providers } from "./store/Providers";
 import {
   GoogleMapsProviderWrapper,
-  HeroUIProvidersNoSSR,
+  HeroUIProvidersWrapper,
 } from "../../utilities/wrapper";
 
 const sfPro = localFont({
@@ -133,11 +133,13 @@ export default function RootLayout({ children }) {
       lang="en"
       className={`${sfPro.variable} ${youth.variable} ${outfit.variable} ${figtree.variable} overscroll-none`}
     >
-      <body className="antialiased overscroll-none">
+      {/* Base text style for the whole site, so everything inherits it, including popups,
+          dialogs and toasts drawn outside the page wrapper (PageShell). */}
+      <body className="font-body text-jdc-text antialiased overscroll-none">
         <Providers>
-          <HeroUIProvidersNoSSR>
+          <HeroUIProvidersWrapper>
             <GoogleMapsProviderWrapper>{children}</GoogleMapsProviderWrapper>
-          </HeroUIProvidersNoSSR>
+          </HeroUIProvidersWrapper>
         </Providers>
       </body>
     </html>

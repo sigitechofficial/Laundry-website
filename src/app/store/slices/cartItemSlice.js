@@ -11,16 +11,15 @@ const getInitialState = () => {
     driverTip: 0,
   };
   let preferences = [];
-  let page = "";
 
   if (typeof window !== "undefined") {
     const storedOrderData = localStorage.getItem("orderData");
     const storedPreferences = localStorage.getItem("preferences");
-    const storedPage = localStorage.getItem("cartPage");
+    // "cartPage" used to keep the page-change flag here; it is in-memory only now
+    localStorage.removeItem("cartPage");
 
     if (storedOrderData) orderData = JSON.parse(storedOrderData);
     if (storedPreferences) preferences = JSON.parse(storedPreferences);
-    if (storedPage) page = storedPage;
 
     // Drop stale one-bag flag (e.g. old default true without a source service)
     if (
@@ -89,7 +88,10 @@ const getInitialState = () => {
       totalBags: orderData?.totalBags ?? "",
     },
     preferences,
-    page,
+    // true while moving to another page (thin progress line, utilities/Test.jsx).
+    // Never saved: it describes this moment only, and a saved value (the string
+    // "false" is truthy) showed the line on the next visit.
+    page: false,
   };
 };
 
@@ -184,10 +186,7 @@ const cartItemSlice = createSlice({
       }
     },
     setPage: (state, action) => {
-      state.page = action.payload;
-      if (typeof window !== "undefined") {
-        localStorage.setItem("cartPage", JSON.stringify(state.page));
-      }
+      state.page = Boolean(action.payload);
     },
     clearCartData: (state) => {
       // Reset to truly empty state (not from getInitialState which may have defaults)
@@ -244,11 +243,10 @@ const cartItemSlice = createSlice({
         totalBags: "",
       };
       state.preferences = [];
-      state.page = "";
+      state.page = false;
       if (typeof window !== "undefined") {
         localStorage.removeItem("orderData");
         localStorage.removeItem("preferences");
-        localStorage.removeItem("cartPage");
       }
     },
   },

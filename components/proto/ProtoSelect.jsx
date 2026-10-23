@@ -15,7 +15,7 @@ import { CTRL, CTRL_CHEV, CTRL_ICON, CTRL_INPUT, CTRL_SELECT } from "../booking/
 
 // Option list under the field (.csel__menu / .csel__opt)
 const MENU =
-  "absolute left-0 right-0 top-[calc(100%+8px)] z-[60] thin-scroll max-h-[280px] overflow-auto rounded-[14px] border border-jdc-line bg-white p-1.5 [-webkit-overflow-scrolling:touch] [box-shadow:0_20px_44px_rgba(27,34,48,0.18)]";
+  "absolute left-0 right-0 top-[calc(100%+8px)] z-jdc-dropdown thin-scroll max-h-[280px] overflow-auto rounded-[14px] border border-jdc-line bg-white p-1.5 [-webkit-overflow-scrolling:touch] [box-shadow:0_20px_44px_rgba(27,34,48,0.18)]";
 const OPT =
   "flex w-full cursor-pointer items-center gap-3 rounded-[10px] border-0 bg-none px-3.5 py-[13px] text-left text-[15.5px] text-jdc-navy transition-[background] duration-[120ms] hover:bg-jdc-paper";
 

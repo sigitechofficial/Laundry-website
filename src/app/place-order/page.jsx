@@ -6,6 +6,8 @@ import { ButtonYouth70018 } from "../../../components/Buttons";
 import { PiArrowRight } from "react-icons/pi";
 import { FaChevronLeft } from "react-icons/fa";
 import ReusableModal from "../../../components/Modal";
+import DeliveryDateDialog from "../../../components/booking/DeliveryDateDialog";
+import Dialog from "../../../components/ds/Dialog";
 import { Spinner, addToast, useDisclosure } from "@heroui/react";
 import { TbLocation } from "react-icons/tb";
 import { useRouter } from "next/navigation";
@@ -21,12 +23,12 @@ import {
   useGetServicesQuery,
   useGetAllOrdersQuery,
   useRescheduleBookingMutation,
+  api,
 } from "../store/services/api";
 import { to24Hour } from "../../../utilities/ConversionFunction";
 import { getFailedAttemptBookings } from "../../../utilities/bookingAttemptStatus";
 import {
   buildDeliveryUpdateForMinDate,
-  formatIsoDateLong,
   getMinDeliveryDate,
   getMaxTurnaroundDays,
   getTurnaroundConflict,
@@ -94,7 +96,6 @@ export default function PlaceOrderPage() {
   });
   const isRescheduleFlow = Boolean(orderData?.rescheduleData?.isReschedule);
   const isDeliveryOnlyReschedule = isRescheduleFlow && orderData?.rescheduleData?.rescheduleType === "delivery";
-  const state = history.state?.customData?.step || null;
   const dispatch = useDispatch();
   const [rescheduleBooking, { isLoading: isRescheduling }] =
     useRescheduleBookingMutation();
@@ -104,7 +105,6 @@ export default function PlaceOrderPage() {
     isOpen: isFailedAttemptModalOpen,
     onOpen: onFailedAttemptModalOpen,
     onClose: onFailedAttemptModalClose,
-    onOpenChange: onFailedAttemptModalOpenChange,
   } = useDisclosure();
   const [failedAttemptModalShown, setFailedAttemptModalShown] = useState(false);
   const isLoggedIn =
@@ -162,7 +162,7 @@ export default function PlaceOrderPage() {
     router.push(`/profile?tab=order-history&bookingId=${bookingId}`);
   };
 
-  const [step, setStep] = useState(state ?? "get-started");
+  const [step, setStep] = useState("get-started");
   const [isCheckingZone, setIsCheckingZone] = useState(false);
   const [modal, setModal] = useState({
     modType: "",
@@ -1042,8 +1042,10 @@ export default function PlaceOrderPage() {
       return;
     }
 
-    setStep("");
+    // keep the form on screen while Services opens (the top progress line shows it is
+    // loading); clearing it here left an empty page with the footer jumping up
     onClose();
+    dispatch(setPage(true));
     router.push("/checkout/order");
   };
 
@@ -1144,6 +1146,16 @@ export default function PlaceOrderPage() {
 
   // Slots come from the pickup address, so the pickers wait for it.
   const hasPickupAddress = Boolean(collectionData?.lat && collectionData?.lng);
+
+  // Load the next step early: once the pickup address is known, fetch the services
+  // for it (same query + arguments as the Services page) and its page code, so
+  // Services opens with its list already there.
+  const prefetchServices = api.usePrefetch("getServices");
+  useEffect(() => {
+    if (!hasPickupAddress || isRescheduleFlow) return;
+    prefetchServices({ lat: collectionData.lat, lng: collectionData.lng });
+    router.prefetch?.("/checkout/order");
+  }, [hasPickupAddress, collectionData?.lat, collectionData?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
   const slotText = (date, from, to) =>
     date && from
       ? `${slotNiceDay(date)} · ${formatTo24HourDisplay(from)} – ${formatTo24HourDisplay(to)}`
@@ -1196,7 +1208,7 @@ export default function PlaceOrderPage() {
     !deliveryData?.driverInstructionOptions1;
 
   return (
-    <PageShell header="solid">
+    <PageShell header="solid" clientOnly>
       {/* Booking form: layout from the prototype (book.html), styled with Tailwind */}
       <div id="jdcBookRoot" className={cx(ROOT, "bg-white")}>
         {step === "new-order" ? (
@@ -1540,7 +1552,6 @@ export default function PlaceOrderPage() {
           footerButtonText="Confirm Delete"
           onFooterAction={() => false}
           size="xl"
-          backdrop="blur"
           className="custom-modal-class max-h-[90vh] overflow-auto"
         >
           {modal?.modType === "address" ? (
@@ -2015,80 +2026,25 @@ export default function PlaceOrderPage() {
           )}
         </ReusableModal>
 
-        <ReusableModal
-          isOpen={turnaroundModal.open}
-          onOpenChange={(open) => {
-            if (!open) {
-              setTurnaroundModal((prev) => ({ ...prev, open: false }));
-              setProceedAfterTurnaroundAccept(false);
-            }
+        <DeliveryDateDialog
+          notice={turnaroundModal}
+          onAccept={handleAcceptTurnaroundOnPlaceOrder}
+          onChange={handleChangeDeliveryFromTurnaround}
+          onClose={() => {
+            setTurnaroundModal((prev) => ({ ...prev, open: false }));
+            setProceedAfterTurnaroundAccept(false);
           }}
-          showHeader
-          headerTitle="Delivery date update"
-          showFooter
-          footerContent={
-            <div className="w-full flex flex-col gap-3 px-6 pb-6">
-              <ButtonYouth70018
-                size="compact"
-                text="Use suggested date"
-                onClick={handleAcceptTurnaroundOnPlaceOrder}
-              />
-              <ButtonYouth70018
-                size="compact"
-                variant="outline"
-                text="Change delivery date"
-                onClick={handleChangeDeliveryFromTurnaround}
-              />
-            </div>
-          }
-        >
-          <div className="px-6 py-4 font-sf text-base text-theme-psGray space-y-3">
-            <p>
-              Your selected services need more time
-              {turnaroundModal.maxDays
-                ? ` (${turnaroundModal.maxDays} day${turnaroundModal.maxDays > 1 ? "s" : ""})`
-                : ""}
-              .
-            </p>
-            {turnaroundModal.serviceLabels?.length > 0 && (
-              <p className="font-medium text-gray-900">
-                {turnaroundModal.serviceLabels.join(", ")}
-              </p>
-            )}
-            <p>
-              Earliest delivery:{" "}
-              <span className="font-semibold text-gray-900">
-                {formatIsoDateLong(turnaroundModal.minDeliveryDate)}
-              </span>
-            </p>
-          </div>
-        </ReusableModal>
+        />
 
-        <ReusableModal
-          isOpen={isFailedAttemptModalOpen}
-          onOpenChange={(open) => {
-            if (!open) markFailedAttemptsSeen();
-            onFailedAttemptModalOpenChange(open);
-          }}
-          showHeader
-          headerTitle="Action Required"
-          modalScroll={modalScroll}
-          onClose={closeFailedAttemptModal}
-          isDismissable
-          backdrop="blur"
-          size="sm"
-        >
-          <div
-            onScroll={handleModalScroll}
-            className="max-h-[85vh] overflow-y-auto modal-scroll"
-          >
-            <div className="space-y-5 px-6 pb-6 pt-8 font-body max-[720px]:px-5">
+        <Dialog open={isFailedAttemptModalOpen} onClose={closeFailedAttemptModal} labelledBy="failedAttemptTitle" width="md">
+          <div className="modal-scroll min-h-0 overflow-y-auto overflow-x-hidden">
+            <div className="space-y-5 px-6 pb-6 pt-8 max-[720px]:px-5 max-[720px]:pb-[calc(24px+env(safe-area-inset-bottom))] max-[720px]:pt-5">
               {/* Header: neutral, like the prototype's On hold screens */}
               <div className="flex flex-col items-center gap-2 text-center">
                 <span className="mb-1 flex size-[52px] items-center justify-center rounded-[14px] bg-[#F1F3F7] text-jdc-navy">
                   <ProtoIcon name="ntWarn" size={24} />
                 </span>
-                <h3 className="m-0 font-display text-[22px] font-bold text-jdc-navy">Action required</h3>
+                <h3 id="failedAttemptTitle" className="m-0 font-display text-[22px] font-bold text-jdc-navy">Action required</h3>
                 <p className="m-0 text-[15px] text-jdc-muted">
                   {failedAttemptBookings.length === 1
                     ? "One of your orders needs a new time."
@@ -2119,10 +2075,12 @@ export default function PlaceOrderPage() {
                 ))}
               </div>
 
-              <ButtonYouth70018 size="compact" text="Got it" onClick={closeFailedAttemptModal} />
+              <button type="button" className={cx(BTN, BTN_BLOCK)} onClick={closeFailedAttemptModal} data-autofocus>
+                Got it
+              </button>
             </div>
           </div>
-        </ReusableModal>
+        </Dialog>
     </PageShell>
   );
 }

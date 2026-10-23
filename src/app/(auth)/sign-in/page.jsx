@@ -1,6 +1,7 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import AuthLayout, { AuthAlt, AuthDivider, AuthFine, AuthHeading, AuthLink, authStyles } from "../../../../components/auth/AuthLayout";
+import Dialog from "../../../../components/ds/Dialog";
 import InputHeroUi from "../../../../components/InputHeroUi";
 import {
   ButtonContinueWith,
@@ -479,6 +480,7 @@ export default function SignInPage() {
     }
   };
 
+  const otpBusyRef = useRef(false);
   const handleVerifyOtpRegister = async (e) => {
     e.preventDefault();
     try {
@@ -2252,6 +2254,8 @@ export default function SignInPage() {
               <InputOtp
                 classNames={{
                   wrapper: "flex justify-center",
+                  // the hidden text box spans all 4 boxes; its caret showed between box 2 and 3 on phones
+                  input: "caret-transparent",
                   segment:
                     "h-14 w-14 rounded-[14px] border-[1.5px] border-jdc-line bg-white font-display text-xl text-jdc-navy data-[active=true]:border-jdc-blue data-[active=true]:shadow-[0_0_0_4px_rgba(2,120,254,0.14)]",
                 }}
@@ -2268,9 +2272,16 @@ export default function SignInPage() {
             <div className={authStyles.form}>
               <ButtonYouth70018
                 text="Verify"
-                onClick={(e) =>
-                  localStorage.getItem("type") === "register" ? handleVerifyOtpRegister(e) : VerifyOtp(e)
-                }
+                onClick={async (e) => {
+                  // one check at a time: a double tap verified twice (two "OTP Verified" toasts)
+                  if (otpBusyRef.current) return;
+                  otpBusyRef.current = true;
+                  try {
+                    await (localStorage.getItem("type") === "register" ? handleVerifyOtpRegister(e) : VerifyOtp(e));
+                  } finally {
+                    otpBusyRef.current = false;
+                  }
+                }}
               />
               <p className={authStyles.resend} aria-live="polite">
                 {isActive ? (
@@ -2340,8 +2351,15 @@ export default function SignInPage() {
       </AuthLayout>
 
       {/* Account merge modal */}
-      {showMergeModal && (
-        <div className={authStyles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="merge-title">
+      <Dialog
+        open={showMergeModal}
+        onClose={() => {
+          setShowMergeModal(false);
+          setMergeOtp("");
+        }}
+        labelledBy="merge-title"
+        width="md"
+      >
           <div className={authStyles.modal}>
             <h2 id="merge-title">Link your accounts</h2>
             <p>
@@ -2351,6 +2369,7 @@ export default function SignInPage() {
             <InputOtp
               classNames={{
                 wrapper: "flex justify-center",
+                input: "caret-transparent",
                 segment:
                   "h-14 w-14 rounded-[14px] border-[1.5px] border-jdc-line bg-white font-display text-xl text-jdc-navy data-[active=true]:border-jdc-blue",
               }}
@@ -2387,8 +2406,7 @@ export default function SignInPage() {
               )}
             </p>
           </div>
-        </div>
-      )}
+      </Dialog>
     </>
   );
 }

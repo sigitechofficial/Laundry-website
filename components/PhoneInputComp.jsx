@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import PhoneInput from "react-phone-input-2";
 import "react-phone-input-2/lib/style.css";
 import { cx } from "./ds/cx";
@@ -19,7 +19,7 @@ const FLAG_BUTTON =
 // Country list: same look as the site's other dropdowns (white panel, 1px border, slim
 // scrollbar, no shadow) and above the fields below it, whose labels showed through.
 const DROPDOWN = cx(
-  "thin-scroll !z-[60] !m-0 !mt-1.5 !w-[340px] max-[480px]:!w-[calc(100vw-72px)] !max-h-[300px] !rounded-[14px] !border !border-solid !border-jdc-line !bg-white !p-1.5 ![box-shadow:none] !font-body",
+  "thin-scroll !z-[60] !m-0 !mt-1.5 !w-[calc(var(--tel-w,340px)-12px)] !max-h-[300px] !rounded-[14px] !border !border-solid !border-jdc-line !bg-white !p-1.5 ![box-shadow:none] !font-body",
   // rows
   "[&_.country]:!flex [&_.country]:!items-center [&_.country]:!gap-2.5 [&_.country]:!rounded-[10px] [&_.country]:!px-3 [&_.country]:!py-2.5 [&_.country]:!text-[15px] [&_.country]:!text-jdc-navy",
   "[&_.country:hover]:!bg-jdc-paper [&_.country.highlight]:!bg-[#EAF3FF] [&_.country.highlight]:!font-semibold",
@@ -32,9 +32,19 @@ const SEARCH =
   "!sticky !top-0 !z-[1] !m-0 !mb-1 !flex !bg-white !p-0 !pb-1.5 [&_input]:!m-0 [&_input]:!h-[42px] [&_input]:!w-full [&_input]:!rounded-[10px] [&_input]:!border [&_input]:!border-solid [&_input]:!border-jdc-line [&_input]:!px-3 [&_input]:!font-body [&_input]:!text-[15px] [&_input]:!text-jdc-text [&_input]:[outline:none] [&_input:focus]:!border-jdc-blue";
 
 export default function PhoneInputComp({ value = "", onChange, country = "gb", error }) {
+  // The list lives inside the narrow flag button, so pass the field width down to it
+  const wrapRef = useRef(null);
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    const ro = new ResizeObserver(([entry]) => el.style.setProperty("--tel-w", `${Math.round(entry.contentRect.width)}px`));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     // own layer, so the open country list sits above the next fields' labels
-    <div className="relative z-30">
+    <div ref={wrapRef} className="relative z-30">
       <PhoneInput
         country={country}
         preferredCountries={["gb"]}

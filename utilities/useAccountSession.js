@@ -10,6 +10,19 @@ import { requestDeviceToken } from "./requestFCMToken";
 
 const read = (key) => (typeof window !== "undefined" ? localStorage.getItem(key) : null);
 
+// Customer id from a signed-in access token; null for guest tokens ({ guest: true })
+// or anything unreadable. Only used to tell signed-in from signed-out, never trusted.
+function customerIdFromToken(token) {
+  try {
+    const part = String(token || "").split(".")[1];
+    if (!part) return null;
+    const json = JSON.parse(atob(part.replace(/-/g, "+").replace(/_/g, "/")));
+    return json && !json.guest && json.id ? String(json.id) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Signed-in state for the site header. Same behaviour as the legacy
  * components/Header.jsx:
@@ -31,9 +44,17 @@ export function useAccountSession() {
 
   useEffect(() => {
     const sync = () => {
-      const token = read("loginStatus");
-      setIsLoggedIn(Boolean(token));
-      setUserId(token ? read("userId") : null);
+      // Signed in = the loginStatus flag, or a customer (non-guest) access token.
+      // Some sign-in paths left the flag unset, so the header said "Log in"
+      // while orders and payments worked; restore the flag in that case.
+      const tokenUserId = customerIdFromToken(read("accessToken"));
+      const signedIn = Boolean(read("loginStatus")) || Boolean(tokenUserId);
+      if (signedIn && !read("loginStatus")) {
+        localStorage.setItem("loginStatus", "true");
+        if (!read("userId") && tokenUserId) localStorage.setItem("userId", tokenUserId);
+      }
+      setIsLoggedIn(signedIn);
+      setUserId(signedIn ? read("userId") || tokenUserId : null);
     };
     sync();
     setMounted(true);

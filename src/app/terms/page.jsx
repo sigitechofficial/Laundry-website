@@ -1,8 +1,7 @@
-import React from "react";
-import Header from "../../../components/Header";
-import Footer from "../../../components/Footer";
-import HomeClientWrapper from "../../../utilities/Test";
+import LegalPage from "../../../components/ds/LegalPage";
 import CancellationTermsBody from "../../../components/CancellationTermsBody";
+
+// Previous layout: see git history (before the 2026 redesign)
 
 export const metadata = {
   title: "Terms & Conditions | Just Dry Cleaners",
@@ -80,48 +79,13 @@ Nothing in these Terms limits liability for death or personal injury caused by o
   },
 ];
 
-export default function Terms() {
+export default function Page() {
   return (
-    <HomeClientWrapper>
-      <div className="w-full relative">
-        <div className="max-xl:fixed max-xl:z-50 w-full">
-          <Header type="how" />
-        </div>
-
-        {/* Hero */}
-        <div className="w-full bg-theme-blue px-5 md:px-[45px] pt-28 pb-16 sm:pt-36 sm:pb-20">
-          <div className="max-w-[1290px] mx-auto">
-            <p className="font-sf text-white/70 text-sm sm:text-base mb-2">
-              Last updated: April 2025
-            </p>
-            <h1 className="font-youth font-bold text-4xl sm:text-5xl 2xl:text-[60px] leading-tight text-white">
-              Terms &amp; Conditions
-            </h1>
-            <p className="font-sf text-white/80 text-base sm:text-xl mt-4 max-w-2xl">
-              Please read these terms carefully before using Just Dry Cleaners
-              services. They set out your rights and obligations as a customer.
-            </p>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="w-full px-5 md:px-[45px] py-12 sm:py-20">
-          <div className="max-w-[860px] mx-auto space-y-10 font-sf">
-            {sections.map((section) => (
-              <div key={section.heading} className="space-y-3">
-                <h2 className="font-youth font-bold text-xl sm:text-2xl text-theme-darkBlue">
-                  {section.heading}
-                </h2>
-                <p className="text-base sm:text-lg text-black/70 leading-relaxed whitespace-pre-line">
-                  {section.body == null ? <CancellationTermsBody /> : section.body}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <Footer />
-      </div>
-    </HomeClientWrapper>
+    <LegalPage
+      title="Terms & Conditions"
+      updated="April 2025"
+      intro="Please read these terms carefully before using our services. They set out your rights and obligations as a customer."
+      sections={sections.map((s) => (s.body == null ? { ...s, body: <CancellationTermsBody /> } : s))}
+    />
   );
 }

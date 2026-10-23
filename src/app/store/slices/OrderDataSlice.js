@@ -8,7 +8,7 @@ const initialState = {
 // OrderDataSlice.js
 const OrderDataSlice = createSlice({
   name: "OrderDataSlice",
-  initialState: { value: 0 },
+  initialState,
   reducers: {
     increment: (state) => {
       state.value += 1;

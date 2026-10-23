@@ -31,11 +31,19 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# Local secrets — never commit real keys. Example templates are OK.
+.env
+.env.*
+.env.local
+.env.*.local
+!.env.example
 
 # vercel
 .vercel
+
+# Local backup copies made during the 2026 redesign (old versions of changed files).
+# They are not used by the app; git history keeps the real record of the old code.
+/src/legacy/
 
 # typescript
 *.tsbuildinfo

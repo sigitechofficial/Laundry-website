@@ -1,127 +1,93 @@
-import { removePreference } from "@/app/store/slices/cartItemSlice";
-import React, { useState } from "react";
-import { FaCheck, FaPlus } from "react-icons/fa6";
-import { IoClose } from "react-icons/io5";
-import { MdNavigateNext } from "react-icons/md";
-import { useDispatch } from "react-redux";
+import React from "react";
+import ProtoIcon, { serviceIconName } from "./proto/ProtoIcon";
+import { serviceCardChips } from "../utilities/serviceChips";
+import { cx } from "./ds/cx";
 
-export default function CategoryCard({
-  bg,
-  h,
-  p,
-  turnaroundDays = 0,
-  Icon,
-  src,
-  right,
-  onClick,
-  type,
-  serviceId,
-}) {
-  const days = Number(turnaroundDays);
-  const showTurnaround = Number.isFinite(days) && days > 0;
-  const [hovered, setHovered] = useState(false);
-  const dispatch = useDispatch();
+/*
+ * Service card on the Add services page (Tailwind).
+ * Previous version: see git history (before the 2026 redesign)
+ */
+
+// Same badges as the prototype (by service name).
+function badgeFor(name) {
+  const n = String(name || "").toLowerCase().trim();
+  if (n === "wash" || n.startsWith("wash, dry") || n === "wash & fold") return "Most popular";
+  if (n.startsWith("dry clean")) return "Popular";
+  return null;
+}
+
+const ICON_GREY = "text-[#8A93A6]";
+
+export default function CategoryCard({ h, p, onClick, type, prefs }) {
+  const added = type === "check";
+  const chips = added ? serviceCardChips(prefs) : [];
+  const badge = badgeFor(h);
+
   return (
-    <>
-      <div
-        onClick={onClick}
-        className={`rounded-xl w-full h-[160px] sm:h-[264px] flex relative overflow-hidden cursor-pointer ${bg === "1"
-          ? "bg-bgAvailable"
-          : bg === "2"
-            ? "bg-card-dark-orange"
-            : bg === "3"
-              ? "bg-card-green"
-              : bg === "4"
-                ? "bg-card-pink"
-                : bg === "5"
-                  ? "bg-card-light-orange"
-                  : bg
-          }`}
+    <button
+      type="button"
+      className="group flex cursor-pointer items-center gap-[18px] rounded-[20px] border-[1.5px] border-jdc-line bg-white px-6 py-[22px] text-left text-inherit [transition:border-color_0.2s,box-shadow_0.2s,transform_0.2s] hover:!border-[#C5CEDD] hover:![box-shadow:0_4px_14px_rgba(27,34,48,0.06)] hover:![transform:none] max-[720px]:min-h-[150px] max-[720px]:gap-3 max-[720px]:p-[18px]"
+      onClick={onClick}
+    >
+      <span
+        className={cx(
+          "flex h-14 w-14 flex-none items-center justify-center rounded-2xl bg-jdc-paper [transition:background_0.2s,color_0.2s] group-hover:bg-jdc-mist group-hover:text-jdc-navy max-[720px]:h-[42px] max-[720px]:w-[42px]",
+          ICON_GREY,
+          added && "group-hover:bg-jdc-paper group-hover:text-[#8A93A6]"
+        )}
       >
-        {/* Text — left column */}
-        <div className="flex-1 min-w-0 pl-3 sm:pl-5 pr-3 py-4 h-full">
-          <div className="flex items-center gap-x-3">
-            <div className="bg-white rounded-full shrink-0 size-8 sm:size-10 flex justify-center items-center">
-              <Icon className="text-xl sm:text-2xl" />
-            </div>
-
-            <p className="font-youth font-bold sm:text-2xl whitespace-nowrap">{h}</p>
-          </div>
-
-          {showTurnaround && (
-            <p className="font-sf text-xs sm:text-sm font-semibold text-theme-darkBlue pt-2 sm:pt-3">
-              Turnaround: {days} day{days !== 1 ? "s" : ""}
-            </p>
-          )}
-
-          {p ? (
-            <p
-              className={`font-sf text-sm sm:text-base text-theme-psGray line-clamp-3 sm:line-clamp-4 ${
-                showTurnaround ? "pt-1.5 sm:pt-2" : "pt-2 sm:pt-[22px]"
-              }`}
-            >
-              {p}
-            </p>
+        <ProtoIcon name={serviceIconName(h)} size={26} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1.5 max-[720px]:min-w-0 max-[720px]:flex-row max-[720px]:flex-nowrap max-[720px]:gap-1.5">
+          <b className="block font-display text-[19px] tracking-[-0.01em] text-jdc-navy max-[720px]:min-w-0 max-[720px]:flex-[0_1_auto] max-[720px]:overflow-hidden max-[720px]:text-ellipsis max-[720px]:whitespace-nowrap max-[720px]:text-[15px]">
+            {h}
+          </b>
+          {badge ? (
+            <span className="m-0 inline-flex h-[22px] items-center self-center rounded-jdc-pill bg-jdc-mist px-2.5 text-[11.5px] font-bold uppercase tracking-[0.02em] text-jdc-muted max-[720px]:h-[17px] max-[720px]:flex-none max-[720px]:px-1.5 max-[720px]:text-[8.5px]">
+              {badge}
+            </span>
           ) : null}
-        </div>
-
-        {/* Image — right column, fixed width */}
-        <div className="w-[50%] flex-shrink-0 h-full flex items-end justify-end">
-          <img
-            className="max-h-full max-w-full object-contain object-right-bottom"
-            src={src}
-            alt={h ? String(h) : ""}
-          />
-        </div>
-
-        <div
-          onMouseEnter={() => setHovered(true)}
-          onMouseLeave={() => setHovered(false)}
-          className="absolute bottom-2 right-2 size-12 sm:size-16 rounded-full sh bg-theme-blue text-white flex justify-center items-center"
-        >
-          {type === "plus" ? (
-            <FaPlus size={30} />
-          ) : type === "check" ? (
-            <div
-              onClick={(e) => {
-                e.stopPropagation();
-                if (type === "check") {
-                  dispatch(removePreference(serviceId));
-                }
-              }}
-              className="relative flex justify-center items-center"
+        </span>
+        {p ? (
+          <small className="mx-0 mb-0 mt-1 block text-[14px] leading-[1.5] text-jdc-muted max-[720px]:overflow-hidden max-[720px]:[-webkit-box-orient:vertical] max-[720px]:[-webkit-line-clamp:2] max-[720px]:[display:-webkit-box]">
+            {p}
+          </small>
+        ) : null}
+        <span className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <span className="mt-0 inline-block rounded-jdc-pill bg-none p-0 text-[13px] font-semibold text-jdc-muted">By item</span>
+        </span>
+        <span className={cx("mt-2.5 flex flex-wrap gap-1.5", (chips.length === 0) && "hidden")} hidden={chips.length === 0}>
+          {chips.map((c) => (
+            <span
+              key={c}
+              className="inline-flex h-auto min-h-[24px] items-center whitespace-normal rounded-jdc-pill bg-jdc-mist px-2.5 py-1 text-[12px] font-semibold leading-[1.35] text-jdc-navy"
             >
-              <IoClose
-                className={`absolute transition-all duration-500 ${hovered ? "opacity-100 scale-100" : "opacity-0 scale-90"
-                  }`}
-                size={40}
-              />
-              <FaCheck
-                className={`absolute transition-all duration-500 ${hovered ? "opacity-0 scale-90" : "opacity-100 scale-100"
-                  }`}
-                size={35}
-              />
-            </div>
-          ) : (
-            // hovered ? (
-            //   <IoClose
-            //     className={`absolute transition-all duration-500 ${
-            //       hovered ? "opacity-100 scale-100" : "opacity-0 scale-90"
-            //     }`}
-            //     size={40}
-            //   />
-            // ) : (
-            //   <FaCheck
-            //     className={`absolute transition-all duration-500 ${
-            //       hovered ? "opacity-0 scale-90" : "opacity-100 scale-100"
-            //     }`}
-            //     size={40}
-            //   />
-            // )
-            <MdNavigateNext size={40} />
+              {c}
+            </span>
+          ))}
+        </span>
+      </span>
+      <span className="flex-none">
+        <span
+          className={cx(
+            "flex h-[50px] w-[50px] items-center justify-center rounded-[50%] bg-jdc-navy text-white [transition:background_0.2s,transform_0.2s] group-hover:bg-jdc-navy-2 group-hover:![transform:none] max-[720px]:h-11 max-[720px]:w-11",
+            added && "hidden"
           )}
-        </div>
-      </div>
-    </>
+          aria-hidden="true"
+        >
+          <ProtoIcon name="plus" size={22} />
+        </span>
+        <span
+          className={cx(
+            "hidden h-[50px] w-[50px] items-center justify-center rounded-[50%] bg-jdc-blue text-white [transition:background_0.2s,transform_0.2s] max-[720px]:h-11 max-[720px]:w-11",
+            added && "flex"
+          )}
+          aria-hidden="true"
+        >
+          <ProtoIcon name="check" size={22} />
+        </span>
+      </span>
+    </button>
   );
 }

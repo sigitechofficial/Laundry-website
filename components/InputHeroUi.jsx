@@ -4,6 +4,11 @@ import { Input } from "@heroui/react";
 import React from "react";
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
 
+/*
+ * Legacy text input API on HeroUI, restyled to the design system
+ * (white field, 1.5px line border, blue focus ring). Props unchanged.
+ * Previous version: see git history (before the 2026 redesign)
+ */
 export default function InputField({
   label = "Enter value...",
   type = "text",
@@ -27,45 +32,29 @@ export default function InputField({
 }) {
   const [isPasswordVisible, setIsPasswordVisible] = React.useState(false);
   const isPasswordField = type === "password";
-  const resolvedType = isPasswordField
-    ? (isPasswordVisible ? "text" : "password")
-    : type;
+  const resolvedType = isPasswordField ? (isPasswordVisible ? "text" : "password") : type;
 
-  const isActive = value?.length > 0;
   const defaultClassNames = {
-    label: [
-      "group-data-[focus=true]:text-gray-500 text-sm text-gray-400",
-    ],
-    input: ["bg-transparent text-lg", "dark:hover:bg-transparent"],
-    innerWrapper: [
-      "bg-transparent",
-      "hover:bg-transparent",
-      "dark:hover:bg-transparent",
-    ],
+    label: ["font-body text-sm !text-jdc-muted group-data-[focus=true]:!text-jdc-blue"],
+    input: ["bg-transparent font-body text-base !text-jdc-text", "placeholder:text-[#8a93a8]"],
+    innerWrapper: ["bg-transparent", "hover:bg-transparent"],
     inputWrapper: [
-      "border-0",
-      !isActive ? "bg-[#E8E7E3]" : "bg-white border-[#000099] border-2",
-      "group-data-[focus=true]:border-[#000099] border-2",
-      "group-data-[focus=true]:!bg-white",
-      "dark:border-gray-400",
-      "dark:hover:border-theme-green-2",
+      "!bg-white",
+      "border-[1.5px] border-jdc-line",
+      "hover:!bg-white hover:border-jdc-line-strong",
+      "group-data-[focus=true]:!border-jdc-blue",
+      "group-data-[focus=true]:shadow-[0_0_0_4px_rgba(2,120,254,0.14)]",
+      "group-data-[invalid=true]:!border-jdc-danger",
       "shadow-none",
-      // "backdrop-blur-xl",
-      // "backdrop-saturate-0",
       "!cursor-text",
-      "hover:!bg-[#E8E7E3]",
-      "rounded-[8px]",
-      "h-[60px]",
+      "rounded-[14px]",
+      "h-[58px]",
+      "transition-[border-color,box-shadow]",
     ],
+    errorMessage: ["font-body text-[13px] font-semibold !text-jdc-danger"],
   };
 
-  // Merge custom classNames with defaults
-  const mergedClassNames = {
-    label: [...(defaultClassNames.label || []), ...(customClassNames?.label || [])],
-    input: [...(defaultClassNames.input || []), ...(customClassNames?.input || [])],
-    innerWrapper: [...(defaultClassNames.innerWrapper || []), ...(customClassNames?.innerWrapper || [])],
-    inputWrapper: [...(defaultClassNames.inputWrapper || []), ...(customClassNames?.inputWrapper || [])],
-  };
+  const merge = (key) => [...(defaultClassNames[key] || []), ...(customClassNames?.[key] || [])];
 
   return (
     <Input
@@ -86,25 +75,30 @@ export default function InputField({
       isInvalid={isInvalid}
       isDisabled={isDisabled}
       isRequired={isRequired}
+      autoComplete={
+        type === "email" ? "email" : isPasswordField ? (name === "password" || name === "confirmPassword" ? "new-password" : "current-password") : undefined
+      }
       endContent={
         isPasswordField ? (
           <button
             type="button"
             onClick={() => setIsPasswordVisible((prev) => !prev)}
-            className="text-theme-gray-2 hover:text-theme-blue transition-colors"
+            className="text-jdc-muted hover:text-jdc-blue transition-colors"
             aria-label={isPasswordVisible ? "Hide password" : "Show password"}
           >
-            {isPasswordVisible ? (
-              <AiOutlineEyeInvisible size={20} />
-            ) : (
-              <AiOutlineEye size={20} />
-            )}
+            {isPasswordVisible ? <AiOutlineEyeInvisible size={20} /> : <AiOutlineEye size={20} />}
           </button>
         ) : (
           endContent
         )
       }
-      classNames={mergedClassNames}
+      classNames={{
+        label: merge("label"),
+        input: merge("input"),
+        innerWrapper: merge("innerWrapper"),
+        inputWrapper: merge("inputWrapper"),
+        errorMessage: merge("errorMessage"),
+      }}
     />
   );
 }

@@ -65,6 +65,7 @@ const CheckoutForm = forwardRef(function CheckoutForm(
     clientSecret,
     savedCards = [],
     defaultCardId = null,
+    cardsReady = true,
     setModal,
     booking,
     onOpen,
@@ -84,13 +85,19 @@ const CheckoutForm = forwardRef(function CheckoutForm(
   const [peComplete, setPeComplete] = useState(false);
   const [walletsAvailable, setWalletsAvailable] = useState(false);
 
-  // Saved card chosen ("new" = enter a new payment method).
+  /*
+   * Order in the popup: 1) saved cards (default only, "Show more" for the rest),
+   * 2) Apple Pay / Google Pay, 3) Card, 4) other methods (3 and 4 are Stripe's Payment
+   * Element with card first). It works as one choice: opening a Payment Element method
+   * deselects the saved card ("new"), picking a saved card closes the Payment Element.
+   */
   const usable = savedCards.filter((c) => !c.isExpired);
   const [selected, setSelected] = useState("");
   const pickedByUser = useRef(false);
   const choose = (id) => {
     pickedByUser.current = true;
     setSelected(id);
+    if (id !== "new") elements?.getElement(PaymentElement)?.collapse();
   };
   // Pre-select the default card once the list has loaded (it arrives after the form mounts)
   useEffect(() => {
@@ -101,8 +108,8 @@ const CheckoutForm = forwardRef(function CheckoutForm(
   }, [savedCards.length, defaultCardId]);
   const useNew = selected === "new" || !usable.length;
 
-  // Default card first, then the others; expired cards last. Show 3, the rest behind "Show more".
-  const SHOWN_CARDS = 3;
+  // Default card first, then the others; expired cards last. Only the default shows, the rest behind "Show more".
+  const SHOWN_CARDS = 1;
   const [showAllCards, setShowAllCards] = useState(false);
   const orderedCards = useMemo(
     () =>
@@ -265,7 +272,7 @@ const CheckoutForm = forwardRef(function CheckoutForm(
                 onClick={() => setShowAllCards((v) => !v)}
                 aria-expanded={showAllCards}
               >
-                {showAllCards ? "Show fewer cards" : `Show ${hiddenCount} more card${hiddenCount === 1 ? "" : "s"}`}
+                {showAllCards ? "Show fewer cards" : `Show ${hiddenCount} more saved card${hiddenCount === 1 ? "" : "s"}`}
                 <svg
                   width="12"
                   height="12"
@@ -278,24 +285,14 @@ const CheckoutForm = forwardRef(function CheckoutForm(
                 </svg>
               </button>
             ) : null}
-            <button
-              type="button"
-              role="radio"
-              aria-checked={useNew}
-              className={OPTION}
-              onClick={() => choose("new")}
-            >
-              <span className={cx(RADIO, useNew && RADIO_ON)} />
-              <b className="text-[15px] font-semibold text-jdc-navy">Use a new payment method</b>
-            </button>
           </div>
         </div>
       ) : null}
 
-      {/* New method: wallets first (only shown where available), then Stripe's form */}
-      <div className={cx("grid gap-[18px]", !useNew && "hidden")}>
-        <div className={walletsAvailable ? "grid gap-[18px]" : "hidden"}>
-          <ExpressCheckoutElement
+      {/* 2) Apple Pay / Google Pay — only rendered visibly where the device supports them */}
+      <div className={walletsAvailable ? "grid gap-2.5" : "hidden"}>
+        <p className={LABEL}>Express checkout</p>
+        <ExpressCheckoutElement
             options={{
               buttonHeight: 48,
               buttonType: { applePay: "plain", googlePay: "plain" },
@@ -306,18 +303,28 @@ const CheckoutForm = forwardRef(function CheckoutForm(
             onClick={onWalletClick}
             onConfirm={onWalletConfirm}
           />
-          <div className="flex items-center gap-3 text-[12px] font-bold uppercase tracking-[0.1em] text-jdc-muted before:h-px before:flex-1 before:bg-jdc-line before:content-[''] after:h-px after:flex-1 after:bg-jdc-line after:content-['']">
-            or
-          </div>
-        </div>
+      </div>
+
+      {/* 3) Card, 4) other methods. Closed while a saved card is chosen; opening one selects it. */}
+      <div className="grid gap-2.5">
+        {usable.length || walletsAvailable ? <p className={LABEL}>{usable.length ? "Or pay another way" : "Card or other ways to pay"}</p> : null}
+        {/* mounted after the saved cards have loaded, so it starts closed when there is a saved card */}
+        {!cardsReady ? (
+          <p className="m-0 text-[13.5px] text-jdc-muted">Loading payment options…</p>
+        ) : (
         <PaymentElement
           options={{
-            layout: { type: "accordion", defaultCollapsed: false, radios: true, spacedAccordionItems: true },
+            layout: { type: "accordion", defaultCollapsed: usable.length > 0, radios: true, spacedAccordionItems: true },
+            paymentMethodOrder: ["card"],
             wallets: { applePay: "never", googlePay: "never" },
           }}
-          onChange={(event) => setPeComplete(Boolean(event?.complete))}
+          onChange={(event) => {
+            setPeComplete(Boolean(event?.complete));
+            if (event && event.collapsed === false && selected !== "new") choose("new");
+          }}
           onLoadError={(error) => setMessage(error?.error?.message || error?.message || "Couldn't load the payment form.")}
         />
+        )}
       </div>
 
       {message ? <p className="m-0 text-[13.5px] text-jdc-danger">{message}</p> : null}
@@ -342,7 +349,7 @@ const StripeCheckout = ({
   const [intentId, setIntentId] = useState(""); // Payment Intent ID or Setup Intent ID extracted from client secret
   const [createPaymentIntent, { isLoading }] = useCreateIntentMutation();
   const [initError, setInitError] = useState("");
-  const { data: savedData } = useGetPaymentMethodsQuery(undefined, { skip: !customerId });
+  const { data: savedData, isFetching: cardsLoading } = useGetPaymentMethodsQuery(undefined, { skip: !customerId });
   const savedCards = savedData?.data?.cards || [];
   const defaultCardId = savedData?.data?.defaultPaymentMethodId || null;
 
@@ -462,6 +469,7 @@ const StripeCheckout = ({
           clientSecret={clientSecret}
           savedCards={savedCards}
           defaultCardId={defaultCardId}
+          cardsReady={!cardsLoading}
           setModal={setModal}
           booking={booking}
           onOpen={onOpen}

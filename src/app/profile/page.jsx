@@ -28,6 +28,7 @@ import { BASE_URL } from "../../../utilities/URL";
 import OrderHistory from "../../../components/chunks/OrderHistory";
 import Notifications from "../../../components/chunks/Notifications";
 import Invite from "../../../components/chunks/Invite";
+import MyAddresses from "../../../components/chunks/MyAddresses";
 import { setPage } from "../store/slices/cartItemSlice";
 import { useDispatch } from "react-redux";
 import OnHoldbookings from "../../../components/chunks/OnHoldbookings";
@@ -362,6 +363,7 @@ export default function Profile() {
 
   const TABS = [
     { id: "my-account", label: "My account", Icon: MdOutlineAccountCircle },
+    { id: "my-addresses", label: "My addresses", Icon: MdOutlineAccountCircle },
     { id: "order-history", label: "Order history", Icon: MdOutlineHistory },
     { id: "on-hold-bookings", label: "On hold bookings", Icon: MdPauseCircleOutline },
     { id: "notifications", label: "Notifications", Icon: MdOutlineNotifications },
@@ -391,6 +393,8 @@ export default function Profile() {
           className={
             activeTab === "my-account"
               ? "max-w-[900px] mx-auto my-0"
+              : activeTab === "my-addresses"
+                ? "max-w-[680px] mx-auto my-0"
               : activeTab === "notifications"
                 ? "max-w-[680px] mx-auto my-0"
                 : activeTab === "invite-friend"
@@ -420,6 +424,8 @@ export default function Profile() {
                 ? "Your upcoming and past orders. Select an order to see its details."
                 : activeTab === "on-hold-bookings"
                   ? "Bookings that need your attention."
+                  : activeTab === "my-addresses"
+                    ? "Addresses saved from your bookings."
                   : activeTab === "notifications"
                     ? "Updates about your orders and account."
                     : "Give friends money off their first order, and get credit when they book."}
@@ -536,6 +542,8 @@ export default function Profile() {
                 <Invite />
               ) : activeTab === "on-hold-bookings" ? (
                 <OnHoldbookings />
+              ) : activeTab === "my-addresses" ? (
+                <MyAddresses />
               ) : null}
             </div>
           )}

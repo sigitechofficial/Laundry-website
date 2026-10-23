@@ -28,6 +28,7 @@ import { BASE_URL } from "../../../utilities/URL";
 import OrderHistory from "../../../components/chunks/OrderHistory";
 import Notifications from "../../../components/chunks/Notifications";
 import Invite from "../../../components/chunks/Invite";
+import MyAddresses from "../../../components/chunks/MyAddresses";
 import { setPage } from "../store/slices/cartItemSlice";
 import { useDispatch } from "react-redux";
 import OnHoldbookings from "../../../components/chunks/OnHoldbookings";
@@ -362,6 +363,7 @@ export default function Profile() {
 
   const TABS = [
     { id: "my-account", label: "My account", Icon: MdOutlineAccountCircle },
+    { id: "my-addresses", label: "My addresses", Icon: MdOutlineAccountCircle },
     { id: "order-history", label: "Order history", Icon: MdOutlineHistory },
     { id: "on-hold-bookings", label: "On hold bookings", Icon: MdPauseCircleOutline },
     { id: "notifications", label: "Notifications", Icon: MdOutlineNotifications },
@@ -391,6 +393,10 @@ export default function Profile() {
           className={
             activeTab === "my-account"
               ? "max-w-[900px] mx-auto my-0"
+              : activeTab === "my-addresses"
+                ? "max-w-[680px] mx-auto my-0"
+                : activeTab === "on-hold-bookings"
+                  ? "max-w-[1180px] mx-auto my-0"
               : activeTab === "notifications"
                 ? "max-w-[680px] mx-auto my-0"
                 : activeTab === "invite-friend"
@@ -413,13 +419,15 @@ export default function Profile() {
             </button>
             <h1 className="m-0 mt-1 font-display text-[32px] font-bold leading-[1.15] tracking-[-0.02em] text-jdc-navy max-[720px]:mt-0 max-[720px]:text-[28px]">{TABS.find((t) => t.id === activeTab)?.label ?? "My account"}</h1>
           </div>
-          <p className="m-[8px_0_24px] text-[16px] text-jdc-muted max-[720px]:mb-5 max-[720px]:text-[15px]">
+          <p className="m-[8px_0_24px] max-w-[560px] text-[16px] text-jdc-muted max-[720px]:mb-5 max-[720px]:text-[15px]">
             {activeTab === "my-account"
               ? "Your name, contact details and password."
               : activeTab === "order-history"
                 ? "Your upcoming and past orders. Select an order to see its details."
                 : activeTab === "on-hold-bookings"
-                  ? "Bookings that need your attention."
+                  ? "Our team found a problem with an item. We will not start cleaning until you decide what to do."
+                  : activeTab === "my-addresses"
+                    ? "Addresses saved from your bookings."
                   : activeTab === "notifications"
                     ? "Updates about your orders and account."
                     : "Give friends money off their first order, and get credit when they book."}
@@ -536,6 +544,8 @@ export default function Profile() {
                 <Invite />
               ) : activeTab === "on-hold-bookings" ? (
                 <OnHoldbookings />
+              ) : activeTab === "my-addresses" ? (
+                <MyAddresses />
               ) : null}
             </div>
           )}

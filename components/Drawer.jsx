@@ -167,7 +167,7 @@ export default function CustomDrawer({
     { Icon: MdOutlineHistory, text: "Order history", href: "/profile?tab=order-history" },
     { Icon: MdPauseCircleOutline, text: "On hold bookings", href: "/profile?tab=on-hold-bookings" },
     { Icon: MdOutlineAccountCircle, text: "My account", href: "/profile?tab=my-account" },
-    { Icon: FaRegAddressBook, text: "My addresses", href: "/profile?tab=my-account" },
+    { Icon: FaRegAddressBook, text: "My addresses", href: "/profile?tab=my-addresses" },
     { Icon: MdOutlineNotifications, text: "Notifications", href: "/profile?tab=notifications" },
     { Icon: MdOutlinePeople, text: "Invite friends", href: "/profile?tab=invite-friend" },
     { Icon: MdOutlineSupportAgent, text: "Support", href: "/help-center" },

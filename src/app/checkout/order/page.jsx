@@ -252,6 +252,9 @@ export default function Order() {
   const [washInstructionPanelOpen, setWashInstructionPanelOpen] = useState({});
   /** Wash accordion: `null` = expand first selected row; `"__none__"` = all bodies collapsed; else open that value id */
   const [washAccordionOpenId, setWashAccordionOpenId] = useState(null);
+  // Colour-bleed tick, per service: the customer must accept it to book Mixed Wash
+  // on a service with the admin colour-bleed flag on (same as the app).
+  const [bleedAccepted, setBleedAccepted] = useState({});
 
   const handlePackingModeChange = (mode) => {
     if (mode === "allInOne") {
@@ -787,6 +790,19 @@ export default function Order() {
         description: "Please select at least one wash type.",
         color: "warning",
       });
+      return;
+    }
+
+    const bleedWash = selectedWashTypes.find((v) => shouldShowWashBleedDisclaimer(preferenceServiceMeta, v?.value ?? v));
+    if (bleedWash && !bleedAccepted[currentServiceId]) {
+      const openId = bleedWash?.preferenceValueId ?? bleedWash?.id;
+      if (openId != null) setWashAccordionOpenId(openId);
+      addToast({
+        title: "Please confirm colour bleed",
+        description: "Tick the colour-bleed note under Mixed Wash to continue.",
+        color: "warning",
+      });
+      requestAnimationFrame(() => document.getElementById("bleedAck")?.scrollIntoView({ block: "center", behavior: "smooth" }));
       return;
     }
 
@@ -1413,9 +1429,25 @@ export default function Order() {
                                   {hasWashSubPickOptions ? (
                                     <div className={cx(ui.OPT_MORE, !(isExpanded) && "hidden")} hidden={!isExpanded}>
                                       {shouldShowWashBleedDisclaimer(preferenceServiceMeta, value?.value) ? (
-                                        <p className={ui.QTY_HINT} role="note">
-                                          {WASH_BLEED_DISCLAIMER_TEXT}
-                                        </p>
+                                        // colour-bleed warning (admin flag on the service + Mixed Wash), as in the app
+                                        <label
+                                          htmlFor="bleedAck"
+                                          className="mx-0 mb-4 mt-0 flex cursor-pointer items-start gap-3 rounded-xl border border-[#F3D9A4] bg-[#FFF8E8] px-3.5 py-3 text-[13.5px] font-medium leading-snug text-[#7A4E00]"
+                                        >
+                                          <input
+                                            id="bleedAck"
+                                            type="checkbox"
+                                            className="mt-px size-[18px] flex-none cursor-pointer accent-[#C47F00]"
+                                            checked={Boolean(bleedAccepted[currentServiceId])}
+                                            onChange={(e) =>
+                                              setBleedAccepted((prev) => ({ ...prev, [currentServiceId]: e.target.checked }))
+                                            }
+                                          />
+                                          <span>
+                                            {WASH_BLEED_DISCLAIMER_TEXT}
+                                            <b className="mt-0.5 block font-semibold">I understand and accept this.</b>
+                                          </span>
+                                        </label>
                                       ) : null}
                                       {[
                                         ["temperature", temperaturePref, "Wash temperature"],
@@ -1665,7 +1697,7 @@ export default function Order() {
           ""
         ) : modal.modType === "driverInstructions" ? (
           <div className="">
-            <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+            <div className="h-[58px] flex items-center justify-center relative border-b border-jdc-line">
               <h4 className="font-youth font-bold sm:text-[22px] text-center">
                 Driver instruction
               </h4>

@@ -198,15 +198,19 @@ module.exports = {
     // Scrollbar helpers (were plain CSS in globals.css): thin grey scrollbar, hidden scrollbar
     function scrollbars({ addUtilities }) {
       addUtilities({
+        // Popups / modals: slim light bar on a clear track, same look as .thin-scroll
         ".modal-scroll": {
-          "&::-webkit-scrollbar": { width: "2px", height: "6px" },
-          "&::-webkit-scrollbar-track": { background: "#f1f1f1" },
-          "&::-webkit-scrollbar-thumb": { background: "gray", borderRadius: "10px" },
+          // Firefox only: in Chrome/Edge these would override the ::-webkit rules below and bring the arrows back
+          "@supports not selector(::-webkit-scrollbar)": { scrollbarWidth: "thin", scrollbarColor: "#D5DAE3 transparent" },
+          "&::-webkit-scrollbar": { width: "6px", height: "6px" },
+          "&::-webkit-scrollbar-button": { display: "none" },
+          "&::-webkit-scrollbar-track": { background: "transparent" },
+          "&::-webkit-scrollbar-thumb": { background: "#D5DAE3", borderRadius: "6px" },
         },
         // Slim, light scrollbar for dropdown lists (no Windows arrow buttons)
         ".thin-scroll": {
-          scrollbarWidth: "thin",
-          scrollbarColor: "#D5DAE3 transparent",
+          // Firefox only: in Chrome/Edge these would override the ::-webkit rules below and bring the arrows back
+          "@supports not selector(::-webkit-scrollbar)": { scrollbarWidth: "thin", scrollbarColor: "#D5DAE3 transparent" },
           "&::-webkit-scrollbar": { width: "6px", height: "6px" },
           "&::-webkit-scrollbar-button": { display: "none" },
           "&::-webkit-scrollbar-track": { background: "transparent" },

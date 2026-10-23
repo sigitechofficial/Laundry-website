@@ -47,6 +47,7 @@ export default function InputField({
       "group-data-[invalid=true]:!border-jdc-danger",
       "shadow-none",
       "!cursor-text",
+      "relative",
       "rounded-[14px]",
       "h-[58px]",
       "transition-[border-color,box-shadow]",
@@ -83,7 +84,8 @@ export default function InputField({
           <button
             type="button"
             onClick={() => setIsPasswordVisible((prev) => !prev)}
-            className="text-jdc-muted hover:text-jdc-blue transition-colors"
+            // centred on the whole field (HeroUI pins end content to the bottom when the label sits inside)
+            className="absolute right-2.5 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-jdc-muted transition-colors hover:bg-jdc-paper hover:text-jdc-blue"
             aria-label={isPasswordVisible ? "Hide password" : "Show password"}
           >
             {isPasswordVisible ? <AiOutlineEyeInvisible size={20} /> : <AiOutlineEye size={20} />}
@@ -94,7 +96,7 @@ export default function InputField({
       }
       classNames={{
         label: merge("label"),
-        input: merge("input"),
+        input: [...merge("input"), isPasswordField && "pr-10"].filter(Boolean),
         innerWrapper: merge("innerWrapper"),
         inputWrapper: merge("inputWrapper"),
         errorMessage: merge("errorMessage"),

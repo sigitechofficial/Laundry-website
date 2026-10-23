@@ -898,12 +898,13 @@ export default function Payment() {
                             ["Every Two Weeks", "Every 2 weeks"],
                             ["Every Four Weeks", "Every 4 weeks"],
                           ].map(([value, text]) => {
+                            // soft grey options without borders; the chosen one gets the light blue tint
                             const on = (orderData?.frequency || "Just once") === value;
                             return (
                               <button
                                 key={value}
                                 type="button"
-                                className={cx("flex h-[46px] min-w-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-xl border border-jdc-line bg-white px-2 py-0 text-[14.5px] font-semibold text-jdc-text [transition:background_0.2s,color_0.2s,border-color_0.2s] hover:!border-[#C5CEDD]", on && "!border-jdc-blue bg-jdc-blue-tint text-jdc-blue [box-shadow:inset_0_0_0_1px_var(--jdc-blue)] hover:!border-jdc-blue")}
+                                className={cx("flex h-[46px] min-w-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-xl border-0 bg-[#F3F5F9] px-2 py-0 text-[14.5px] font-semibold text-jdc-text [transition:background_0.2s,color_0.2s] hover:bg-[#EAEEF4]", on && "bg-jdc-blue-tint text-jdc-blue hover:bg-jdc-blue-tint")}
                                 aria-pressed={on ? "true" : "false"}
                                 onClick={() => dispatch(setFrequency(value))}
                               >
@@ -925,7 +926,7 @@ export default function Payment() {
                               <button
                                 key={amount}
                                 type="button"
-                                className={cx("flex h-[46px] min-w-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-xl border border-jdc-line bg-white px-2 py-0 text-[14.5px] font-semibold text-jdc-text [transition:background_0.2s,color_0.2s,border-color_0.2s] hover:!border-[#C5CEDD]", "text-[14px]", on && "!border-jdc-blue bg-jdc-blue-tint text-jdc-blue [box-shadow:inset_0_0_0_1px_var(--jdc-blue)] hover:!border-jdc-blue")}
+                                className={cx("flex h-[46px] min-w-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-xl border-0 bg-[#F3F5F9] px-2 py-0 text-[14.5px] font-semibold text-jdc-text [transition:background_0.2s,color_0.2s] hover:bg-[#EAEEF4]", "text-[14px]", on && "bg-jdc-blue-tint text-jdc-blue hover:bg-jdc-blue-tint")}
                                 aria-pressed={on ? "true" : "false"}
                                 onClick={() => {
                                   setTipOtherActive(false);
@@ -939,7 +940,7 @@ export default function Payment() {
                           })}
                           <button
                             type="button"
-                            className={cx("flex h-[46px] min-w-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-xl border border-jdc-line bg-white px-2 py-0 text-[14.5px] font-semibold text-jdc-text [transition:background_0.2s,color_0.2s,border-color_0.2s] hover:!border-[#C5CEDD]", "text-[14px]", tipIsOther && "!border-jdc-blue bg-jdc-blue-tint text-jdc-blue [box-shadow:inset_0_0_0_1px_var(--jdc-blue)] hover:!border-jdc-blue")}
+                            className={cx("flex h-[46px] min-w-0 cursor-pointer items-center justify-center whitespace-nowrap rounded-xl border-0 bg-[#F3F5F9] px-2 py-0 text-[14.5px] font-semibold text-jdc-text [transition:background_0.2s,color_0.2s] hover:bg-[#EAEEF4]", "text-[14px]", tipIsOther && "bg-jdc-blue-tint text-jdc-blue hover:bg-jdc-blue-tint")}
                             id="coTipEdit"
                             aria-label="Custom tip"
                             aria-pressed={tipIsOther ? "true" : "false"}

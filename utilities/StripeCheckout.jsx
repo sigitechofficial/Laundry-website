@@ -454,6 +454,13 @@ const StripeCheckout = ({
           return;
         }
 
+        // The backend sets up the card for the signed-in account's own Stripe customer
+        // and returns it. createBooking is sent localStorage.stripeCustomerId, so keep
+        // the two the same: a stale value (another account, or a new account whose
+        // Stripe customer was created just now) failed with "The PaymentMethod ...
+        // does not belong to the Customer you supplied".
+        if (res?.data?.customerId) localStorage.setItem("stripeCustomerId", res.data.customerId);
+
         // "pi_xxx_secret_yyy" -> "pi_xxx", "seti_xxx_secret_yyy" -> "seti_xxx"
         setClientSecret(secret);
         setInitError("");

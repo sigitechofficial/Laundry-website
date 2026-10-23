@@ -108,6 +108,24 @@ const CheckoutForm = forwardRef(function CheckoutForm(
   }, [savedCards.length, defaultCardId]);
   const useNew = selected === "new" || !usable.length;
 
+  // When the customer opens Card (or another method) further down the popup, bring its
+  // fields into view instead of making them scroll. Not on the popup's first render.
+  const peWrapRef = useRef(null);
+  const openTypeRef = useRef(null);
+  const peSeenRef = useRef(false);
+  const revealOpenedMethod = (event) => {
+    const type = event?.collapsed === false ? event?.value?.type || "open" : null;
+    const changed = type && type !== openTypeRef.current;
+    openTypeRef.current = type;
+    if (!peSeenRef.current) {
+      peSeenRef.current = true; // first event is Stripe's initial state, not a tap
+      return;
+    }
+    if (!changed) return;
+    // wait for the accordion to expand, then scroll the popup body
+    setTimeout(() => peWrapRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 220);
+  };
+
   // Default card first, then the others; expired cards last. Only the default shows, the rest behind "Show more".
   const SHOWN_CARDS = 1;
   const [showAllCards, setShowAllCards] = useState(false);
@@ -306,7 +324,7 @@ const CheckoutForm = forwardRef(function CheckoutForm(
       </div>
 
       {/* 3) Card, 4) other methods. Closed while a saved card is chosen; opening one selects it. */}
-      <div className="grid gap-2.5">
+      <div ref={peWrapRef} className="grid scroll-mt-3 gap-2.5">
         {usable.length || walletsAvailable ? <p className={LABEL}>{usable.length ? "Or pay another way" : "Card or other ways to pay"}</p> : null}
         {/* mounted after the saved cards have loaded, so it starts closed when there is a saved card */}
         {!cardsReady ? (
@@ -321,6 +339,7 @@ const CheckoutForm = forwardRef(function CheckoutForm(
           onChange={(event) => {
             setPeComplete(Boolean(event?.complete));
             if (event && event.collapsed === false && selected !== "new") choose("new");
+            revealOpenedMethod(event);
           }}
           onLoadError={(error) => setMessage(error?.error?.message || error?.message || "Couldn't load the payment form.")}
         />

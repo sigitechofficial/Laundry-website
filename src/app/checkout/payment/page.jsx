@@ -1274,9 +1274,11 @@ export default function Payment() {
 
             {/* Card details (Stripe) — prototype #payModal shell. Kept mounted so the card stays entered. */}
             {!isRescheduleFlow && paymentType === "card" && modal?.page === "stripe" ? (
-              <div className={cx(cx(ui.MODAL, "!items-center !p-5"), !(payOpen) && "hidden")} id="payModal" hidden={!payOpen}>
+              <div className={cx(cx(ui.MODAL, "min-[721px]:!items-center min-[721px]:!p-5"), !(payOpen) && "hidden")} id="payModal" hidden={!payOpen}>
                 <div className={ui.MODAL_OVERLAY} onClick={closeCard} />
-                <div className={cx(ui.MODAL_PANEL, "m-auto !max-h-[calc(100vh-40px)] !max-w-[440px] !rounded-[22px]")} role="dialog" aria-modal="true" aria-labelledby="payModalTitle">
+                <div className={cx(ui.MODAL_PANEL, "min-[721px]:m-auto min-[721px]:!max-h-[calc(100vh-40px)] min-[721px]:!max-w-[440px] min-[721px]:!rounded-[22px]")} role="dialog" aria-modal="true" aria-labelledby="payModalTitle">
+                  {/* phones: bottom sheet (ui.MODAL) with a grab bar; tablet/desktop: centred popup */}
+                  <span className="mx-auto mb-0 mt-2.5 hidden h-1 w-10 flex-none rounded-full bg-[#DDE3EE] max-[720px]:block" aria-hidden="true" />
                   <div className={ui.MODAL_HEAD}>
                     <b id="payModalTitle">Payment method</b>
                     <button type="button" className={ui.MODAL_X} onClick={closeCard}>
@@ -1329,7 +1331,7 @@ export default function Payment() {
               </div>
             ) : null}
 
-            <div className={cx(cx(ui.MODAL, "!items-center !p-5"), !(cashOpen) && "hidden")} id="cashConfirm" hidden={!cashOpen}>
+            <div className={cx(cx(ui.MODAL, "min-[721px]:!items-center min-[721px]:!p-5"), !(cashOpen) && "hidden")} id="cashConfirm" hidden={!cashOpen}>
               <div
                 className={ui.MODAL_OVERLAY}
                 onClick={() => {
@@ -1337,7 +1339,7 @@ export default function Payment() {
                   lockScroll(false);
                 }}
               />
-              <div className={cx(ui.MODAL_PANEL, "m-auto !max-h-[calc(100vh-40px)] !max-w-[440px] !rounded-[22px]", "!max-w-[400px]")} role="dialog" aria-modal="true" aria-labelledby="cashTitle">
+              <div className={cx(ui.MODAL_PANEL, "min-[721px]:m-auto min-[721px]:!max-h-[calc(100vh-40px)] min-[721px]:!max-w-[440px] min-[721px]:!rounded-[22px]", "min-[721px]:!max-w-[400px]")} role="dialog" aria-modal="true" aria-labelledby="cashTitle">
                 <div className="px-7 pb-7 pt-8 text-center [&_h3]:mx-0 [&_h3]:mb-2 [&_h3]:mt-0 [&_h3]:font-display [&_h3]:text-[22px] [&_h3]:tracking-[-0.01em] [&_h3]:text-jdc-navy [&_p]:m-0 [&_p]:text-[15px] [&_p]:leading-[1.55] [&_p]:text-jdc-muted [&_p_b]:text-jdc-navy">
                   <span className={cx("mx-auto mb-[18px] mt-0 flex h-16 w-16 items-center justify-center rounded-[50%]", "bg-jdc-blue-tint text-jdc-blue")}>
                     <ProtoIcon name="cashMsg" size={26} />
@@ -1381,9 +1383,9 @@ export default function Payment() {
               </div>
             </div>
 
-            <div className={cx(cx(ui.MODAL, "!items-center !p-5"), !(orderDone) && "hidden")} id="orderDone" hidden={!orderDone}>
+            <div className={cx(cx(ui.MODAL, "min-[721px]:!items-center min-[721px]:!p-5"), !(orderDone) && "hidden")} id="orderDone" hidden={!orderDone}>
               <div className={ui.MODAL_OVERLAY} />
-              <div className={cx(ui.MODAL_PANEL, "m-auto !max-h-[calc(100vh-40px)] !max-w-[440px] !rounded-[22px]", "!max-w-[400px]")} role="dialog" aria-modal="true" aria-labelledby="doneTitle">
+              <div className={cx(ui.MODAL_PANEL, "min-[721px]:m-auto min-[721px]:!max-h-[calc(100vh-40px)] min-[721px]:!max-w-[440px] min-[721px]:!rounded-[22px]", "min-[721px]:!max-w-[400px]")} role="dialog" aria-modal="true" aria-labelledby="doneTitle">
                 <div className="px-7 pb-7 pt-8 text-center [&_h3]:mx-0 [&_h3]:mb-2 [&_h3]:mt-0 [&_h3]:font-display [&_h3]:text-[22px] [&_h3]:tracking-[-0.01em] [&_h3]:text-jdc-navy [&_p]:m-0 [&_p]:text-[15px] [&_p]:leading-[1.55] [&_p]:text-jdc-muted [&_p_b]:text-jdc-navy">
                   <span className={cx("mx-auto mb-[18px] mt-0 flex h-16 w-16 items-center justify-center rounded-[50%]", "bg-[#E7F6EE] text-[#1A7F43]")}>
                     <ProtoIcon name="check" size={30} />
@@ -1403,7 +1405,7 @@ export default function Payment() {
               </div>
             </div>
 
-            <div className={cx(cx(ui.MODAL, "!items-center !p-5"), !(chargesOpen) && "hidden")} id="chargesInfo" hidden={!chargesOpen}>
+            <div className={cx(cx(ui.MODAL, "min-[721px]:!items-center min-[721px]:!p-5"), !(chargesOpen) && "hidden")} id="chargesInfo" hidden={!chargesOpen}>
               <div
                 className={ui.MODAL_OVERLAY}
                 onClick={() => {
@@ -1411,7 +1413,7 @@ export default function Payment() {
                   lockScroll(false);
                 }}
               />
-              <div className={cx(ui.MODAL_PANEL, "m-auto !max-h-[calc(100vh-40px)] !max-w-[440px] !rounded-[22px]")} role="dialog" aria-modal="true" aria-labelledby="chargesTitle">
+              <div className={cx(ui.MODAL_PANEL, "min-[721px]:m-auto min-[721px]:!max-h-[calc(100vh-40px)] min-[721px]:!max-w-[440px] min-[721px]:!rounded-[22px]")} role="dialog" aria-modal="true" aria-labelledby="chargesTitle">
                 <div className={ui.MODAL_HEAD}>
                   <b id="chargesTitle">How do charges work?</b>
                   <button

@@ -151,7 +151,8 @@ export const MODAL_HEAD =
   "flex items-center justify-between gap-4 border-b border-jdc-line px-6 py-5 [&>b]:font-display [&>b]:text-[20px] [&>b]:text-jdc-navy";
 export const MODAL_X = "flex-none cursor-pointer border-0 bg-none text-[15px] font-semibold text-jdc-muted hover:text-jdc-navy";
 export const MODAL_BODY = "grid gap-[22px] overflow-auto px-6 py-[22px]";
-export const MODAL_FOOT = "border-t border-jdc-line px-6 py-4";
+// On phones the modal is a bottom sheet: keep the button above the iPhone home bar
+export const MODAL_FOOT = "border-t border-jdc-line px-6 py-4 max-[720px]:pb-[calc(16px+env(safe-area-inset-bottom))]";
 
 /* ---------- Service preferences (inside the modal) ---------- */
 export const SEC_H3 = "mx-0 mb-3 mt-0 font-display text-[16px] text-jdc-navy";

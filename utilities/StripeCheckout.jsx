@@ -114,7 +114,7 @@ const CheckoutForm = forwardRef(function CheckoutForm(
   const openTypeRef = useRef(null);
   const peSeenRef = useRef(false);
   // Is a Payment Element method open? Stripe's accordion can't be closed by tapping it,
-  // so we show our own "Close" link while one is open.
+  // so we show our own "Unselect" link while one is open.
   const [peOpen, setPeOpen] = useState(false);
   const closePaymentElement = () => {
     elements?.getElement(PaymentElement)?.collapse();
@@ -280,7 +280,6 @@ const CheckoutForm = forwardRef(function CheckoutForm(
                   className={OPTION}
                   onClick={() => choose(c.paymentMethodId)}
                 >
-                  <span className={cx(RADIO, on && RADIO_ON)} />
                   <span className="min-w-0 flex-1">
                     <b className="block text-[15px] font-semibold text-jdc-navy">{cardLabel(c)}</b>
                     <small className="block text-[13px] text-jdc-muted">
@@ -290,6 +289,8 @@ const CheckoutForm = forwardRef(function CheckoutForm(
                   {c.isDefault ? (
                     <span className="flex-none rounded-jdc-pill bg-[#F1F3F7] px-2.5 py-1 text-[11.5px] font-bold text-jdc-navy">Default</span>
                   ) : null}
+                  {/* radio on the right, so card names line up with the Card / other rows below */}
+                  <span className={cx(RADIO, on && RADIO_ON)} />
                 </button>
               );
             })}
@@ -341,10 +342,10 @@ const CheckoutForm = forwardRef(function CheckoutForm(
             {peOpen ? (
               <button
                 type="button"
-                className="cursor-pointer border-0 bg-transparent p-0 text-[13.5px] font-bold text-jdc-blue hover:underline"
+                className="flex-none cursor-pointer whitespace-nowrap border-0 bg-transparent p-0 text-[13.5px] font-bold text-jdc-blue hover:underline"
                 onClick={closePaymentElement}
               >
-                {usable.length ? "Close · use saved card" : "Close"}
+                Unselect
               </button>
             ) : null}
           </div>
@@ -355,7 +356,7 @@ const CheckoutForm = forwardRef(function CheckoutForm(
         ) : (
         <PaymentElement
           options={{
-            layout: { type: "accordion", defaultCollapsed: usable.length > 0, radios: true, spacedAccordionItems: true },
+            layout: { type: "accordion", defaultCollapsed: usable.length > 0, radios: false, spacedAccordionItems: true },
             paymentMethodOrder: ["card"],
             wallets: { applePay: "never", googlePay: "never" },
           }}

@@ -53,7 +53,7 @@ export const CTRL_CHEV =
   "pointer-events-none absolute right-3.5 top-1/2 flex -translate-y-1/2 text-[#8A93A6] transition-colors duration-200 group-focus-within/c:text-jdc-blue";
 /* .bk2-in text input / select / slot button */
 export const CTRL_INPUT =
-  "h-[58px] w-full appearance-none text-ellipsis rounded-xl border border-jdc-line bg-white py-0 pl-[46px] pr-4 text-[16px] text-jdc-text [box-shadow:0_1px_3px_rgba(27,34,48,0.05)] [transition:border-color_0.2s,box-shadow_0.2s] placeholder:text-[#8A93A6] hover:border-[#C5CEDD] focus:border-jdc-blue focus:[box-shadow:0_0_0_4px_rgba(2,120,254,0.14)] focus:[outline:none] [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:h-14 [@media(min-width:901px)_and_(max-height:860px)]:h-12 max-[720px]:h-14 max-[720px]:pl-11";
+  "h-[58px] w-full appearance-none text-ellipsis rounded-xl border border-jdc-line bg-white py-0 pl-[46px] pr-4 text-[16px] text-jdc-text [box-shadow:0_1px_3px_rgba(27,34,48,0.05)] [transition:border-color_0.2s,box-shadow_0.2s] placeholder:text-[#8A93A6] hover:border-[#C5CEDD] focus:border-jdc-blue focus:[box-shadow:0_0_0_4px_rgba(2,120,254,0.14)] focus:[outline:none] [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:h-14 [@media(min-width:901px)_and_(max-height:860px)]:h-14 max-[720px]:h-14 max-[720px]:pl-11";
 /* .bk2-sel */
 export const CTRL_SELECT = "cursor-pointer pr-[38px]";
 
@@ -150,7 +150,8 @@ export const MODAL_PANEL_SM = "max-w-[420px] max-[720px]:max-w-[420px]";
 export const MODAL_HEAD =
   "flex items-center justify-between gap-4 border-b border-jdc-line px-6 py-5 [&>b]:font-display [&>b]:text-[20px] [&>b]:text-jdc-navy";
 export const MODAL_X = "flex-none cursor-pointer border-0 bg-none text-[15px] font-semibold text-jdc-muted hover:text-jdc-navy";
-export const MODAL_BODY = "grid gap-[22px] overflow-auto px-6 py-[22px]";
+// Scrolls up/down only, with the slim light scrollbar (no Windows arrows)
+export const MODAL_BODY = "modal-scroll grid gap-[22px] overflow-y-auto overflow-x-hidden px-6 py-[22px]";
 // On phones the modal is a bottom sheet: keep the button above the iPhone home bar
 export const MODAL_FOOT = "border-t border-jdc-line px-6 py-4 max-[720px]:pb-[calc(16px+env(safe-area-inset-bottom))]";
 
@@ -160,7 +161,8 @@ export const OPT =
   "mt-2.5 overflow-hidden rounded-[14px] border-[1.5px] border-jdc-line transition-[border-color] duration-200 first-of-type:mt-0 focus-within:border-[#C4D3EA] hover:border-[#C4D3EA]";
 export const OPT_ON = "border-jdc-blue focus-within:border-jdc-blue hover:border-jdc-blue";
 export const OPT_ROW = "m-0 flex cursor-pointer items-center gap-3 px-4 py-3.5";
-export const CHECKBOX = "mb-[3px] ml-1 mr-[3px] mt-[3px] h-5 w-5 flex-none accent-jdc-blue";
+// mr-3 + the row gap: clear space between the tick box and the option name
+export const CHECKBOX = "mb-[3px] ml-1 mr-3 mt-[3px] h-5 w-5 flex-none accent-jdc-blue";
 export const OPT_MAIN =
   "flex-1 [&>b]:block [&>b]:text-[15px] [&>b]:font-bold [&>b]:text-jdc-navy [&>small]:mt-0.5 [&>small]:block [&>small]:text-[13px] [&>small]:text-jdc-muted";
 export const OPT_EXP = "flex flex-none cursor-pointer border-0 bg-none p-1 text-jdc-muted transition-transform duration-200";

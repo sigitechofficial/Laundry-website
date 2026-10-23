@@ -9,6 +9,7 @@ import { BRAND, MAIN_NAV, ROUTES } from "./siteConfig";
 import { cx } from "./cx";
 import { lockPageScroll } from "../../utilities/scrollLock";
 import { useAccountSession } from "../../utilities/useAccountSession";
+import { useStartBooking } from "../../utilities/useStartBooking";
 // Existing account drawer: menu items, profile tabs and logout logic.
 import AccountDrawer from "../Drawer";
 
@@ -18,9 +19,18 @@ const SCROLL_SOLID_AT = 24;
 const navLinkCls =
   "relative py-1.5 text-inherit no-underline after:absolute after:bottom-0 after:left-0 after:right-full after:h-0.5 after:bg-jdc-blue after:transition-[right] after:duration-[250ms] after:content-[''] hover:after:right-0 aria-[current=page]:after:right-0";
 
-// Round ☰ button. Hidden on wide screens unless signed in.
+// Round ☰ button, shown at every width (site menu when signed out, account menu when signed in).
 const menuBtnCls =
-  "hidden h-[46px] w-[46px] cursor-pointer items-center justify-center rounded-[50%] border-[1.5px] bg-transparent max-[1080px]:inline-flex";
+  "inline-flex h-[46px] w-[46px] flex-none cursor-pointer items-center justify-center rounded-[50%] border-[1.5px] bg-transparent max-[420px]:h-[42px] max-[420px]:w-[42px]";
+
+// Pill button in the header: white over the hero, navy once the header is solid.
+const pillCls = (solid) =>
+  cx(
+    "inline-flex h-[42px] cursor-pointer items-center whitespace-nowrap rounded-jdc-pill border px-[22px] font-body text-jdc-sm font-semibold no-underline transition-colors max-[720px]:h-10 max-[720px]:px-4 max-[420px]:px-3 max-[420px]:text-[13.5px]",
+    solid
+      ? "border-jdc-navy bg-jdc-navy text-white hover:bg-[#13265A]"
+      : "border-white bg-white text-jdc-navy hover:bg-white/90"
+  );
 
 /**
  * Global site header.
@@ -34,6 +44,9 @@ export default function SiteHeader({ variant = "overlay" }) {
   const [accountOpen, setAccountOpen] = useState(false);
   const session = useAccountSession();
   const signedIn = session.mounted && session.isLoggedIn;
+  const startBooking = useStartBooking();
+  // No "Book a pickup" while already booking (address/time, services, payment)
+  const inBooking = /^\/(place-order|checkout)(\/|$)/.test(pathname || "");
 
   useEffect(() => {
     if (variant !== "overlay") return undefined;
@@ -58,8 +71,8 @@ export default function SiteHeader({ variant = "overlay" }) {
           <Link href={ROUTES.home} className="flex flex-none items-center gap-3" aria-label={`${BRAND.name} home`}>
             <BrandLockup
               tone={solid ? "dark" : "light"}
-              markClassName="h-[46px] w-auto max-[720px]:h-[38px]"
-              wordClassName="h-[34px] w-auto max-[720px]:h-[26px]"
+              markClassName="h-[46px] w-auto max-[720px]:h-[38px] max-[420px]:h-[32px]"
+              wordClassName="h-[34px] w-auto max-[720px]:h-[26px] max-[420px]:h-[21px]"
               priority
             />
           </Link>
@@ -84,23 +97,30 @@ export default function SiteHeader({ variant = "overlay" }) {
           </nav>
 
           {/*
-            Right side (prototype rules):
-            - signed out: Log in; ☰ (site menu) on small screens
-            - signed in: no Log in; ☰ at every width opens the account menu
+            Right side:
+            - signed out: Log in (hidden on phones, it is in the menu) + ☰ site menu
+            - signed in: Book a pickup + ☰ account menu
             Nothing auth-specific renders until the session is known, so
             signed-in users never see a flash of "Log in".
           */}
           <div
             className={cx(
-              "ml-auto flex items-center gap-[22px] font-body text-jdc-sm font-semibold",
+              "ml-auto flex items-center gap-[22px] font-body text-jdc-sm font-semibold max-[720px]:gap-2.5 max-[420px]:gap-2",
               solid ? "text-jdc-navy" : "text-jdc-white",
               !session.mounted && "invisible"
             )}
           >
-            {signedIn ? null : (
+            {signedIn ? (
+              inBooking ? null : (
+              <button type="button" className={pillCls(solid)} onClick={() => startBooking()}>
+                Book a pickup
+              </button>
+              )
+            ) : (
               <Link
                 href={ROUTES.signIn}
-                className="text-inherit no-underline hover:underline hover:underline-offset-4 max-[1080px]:hidden"
+                // not on the login page itself
+                className={cx(pillCls(solid), "max-[720px]:hidden", pathname === ROUTES.signIn && "!hidden")}
               >
                 Log in
               </Link>
@@ -108,7 +128,7 @@ export default function SiteHeader({ variant = "overlay" }) {
             {signedIn ? (
               <button
                 type="button"
-                className={cx(menuBtnCls, menuTone, "inline-flex")}
+                className={cx(menuBtnCls, menuTone)}
                 aria-label={`Account menu for ${session.firstName}`}
                 aria-haspopup="dialog"
                 aria-expanded={accountOpen}
@@ -290,7 +310,8 @@ function MobileDrawer({ open, onClose, pathname, signedIn, onAccount }) {
             >
               My account
             </button>
-          ) : (
+          ) : pathname === ROUTES.signIn ? null : (
+            // no "Log in" item while already on the login page
             <Link href={ROUTES.signIn} className={navItem(MAIN_NAV.length + 1, false)}>
               Log in
             </Link>

@@ -15,6 +15,11 @@ export const api = createApi({
         const token = localStorage.getItem("accessToken");
         if (token) {
           headers.set("Authorization", `Bearer ${token}`);
+          // Signed-in endpoints (createBooking, payments, saved cards) use the backend's
+          // validateAccessToken, which reads the cookie or this header but not Bearer.
+          // Browsers that block third-party cookies (Safari/iPhone, incognito) never
+          // send the cookie, so without this header payment failed with "Access Denied".
+          headers.set("accesstoken", token);
         }
       }
       return headers;

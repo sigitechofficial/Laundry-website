@@ -1948,7 +1948,7 @@ export default function OrderHistory() {
               className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain hideScrollbar modal-scroll px-4 sm:px-6 pt-4 pb-8"
             >
               {bookingDtails?.data?.orderTrackId && !isBookingDetailsLoading ? (
-                <div className="h-[58px] shrink-0 flex items-center justify-center relative border-b border-theme-gray-2 -mx-4 sm:-mx-6 px-4 sm:px-6 mb-2">
+                <div className="h-[58px] shrink-0 flex items-center justify-center relative border-b border-jdc-line -mx-4 sm:-mx-6 px-4 sm:px-6 mb-2">
                   <h4 className="font-youth font-bold sm:text-[22px] text-center">
                     Order ID: {bookingDtails.data.orderTrackId}
                   </h4>
@@ -2025,7 +2025,7 @@ export default function OrderHistory() {
             onScroll={handleModalScroll}
             className="modal-scroll overflow-auto max-h-[85vh]"
           >
-            <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+            <div className="h-[58px] flex items-center justify-center relative border-b border-jdc-line">
               <h4 className="font-youth font-bold sm:text-[22px] text-center">
                 Track Order
               </h4>
@@ -2218,7 +2218,7 @@ export default function OrderHistory() {
         backdrop="blur"
         className="custom-modal-class max-h-[95vh] overflow-hidden"
       >
-        <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
+        <div className="h-[58px] flex items-center justify-center relative border-b border-jdc-line">
           <h4 className="font-youth font-bold sm:text-[22px] text-center">
             Live tracking
           </h4>

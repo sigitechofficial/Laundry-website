@@ -1,4 +1,4 @@
-// // vapidKey: "BHqdkpwqEH9B9Rnw_lsvJz9cfuNyo-c8wPXLLexm6X9E0gryGLxztXXvGfqazZL7frP2D6GL9B1MO9JObNiYrRE",
+// // vapidKey: "BFohnl1Bjomlc23ckMV-X79dFQS-asckaSFyGFxPnGsTjzQeZXdgBAhiTZysp181XDGZ6vEnsNgbN7eVPoBXtYI",
 // import { addToast } from "@heroui/react";
 // import { messaging, getToken } from "./firebase";
 
@@ -19,7 +19,7 @@
 
 //     const currentToken = await getToken(messaging, {
 //       vapidKey:
-//         "BHqdkpwqEH9B9Rnw_lsvJz9cfuNyo-c8wPXLLexm6X9E0gryGLxztXXvGfqazZL7frP2D6GL9B1MO9JObNiYrRE",
+//         "BFohnl1Bjomlc23ckMV-X79dFQS-asckaSFyGFxPnGsTjzQeZXdgBAhiTZysp181XDGZ6vEnsNgbN7eVPoBXtYI",
 //     });
 
 //     if (currentToken) {
@@ -80,7 +80,7 @@ export const requestDeviceToken = async () => {
     console.log("🔥 Step 4: Getting FCM token...");
     const currentToken = await getToken(messaging, {
       vapidKey:
-        "BHqdkpwqEH9B9Rnw_lsvJz9cfuNyo-c8wPXLLexm6X9E0gryGLxztXXvGfqazZL7frP2D6GL9B1MO9JObNiYrRE",
+        "BFohnl1Bjomlc23ckMV-X79dFQS-asckaSFyGFxPnGsTjzQeZXdgBAhiTZysp181XDGZ6vEnsNgbN7eVPoBXtYI",
       serviceWorkerRegistration: registration,
     });
 

@@ -1,40 +1,78 @@
 "use client";
-import React, { useEffect, useImperativeHandle, useRef, useState, forwardRef } from "react";
+import React, { useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from "react";
 import { loadStripe } from "@stripe/stripe-js";
-import {
-  Elements,
-  PaymentElement,
-  useStripe,
-  useElements,
-} from "@stripe/react-stripe-js";
+import { Elements, PaymentElement, ExpressCheckoutElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { addToast, Spinner } from "@heroui/react";
-import { useCreateIntentMutation } from "@/app/store/services/api";
+import { useCreateIntentMutation, useGetPaymentMethodsQuery } from "@/app/store/services/api";
+import { cx } from "../components/ds/cx";
+
+/*
+ * Payment form in the checkout "Card details" popup:
+ *  1. Saved cards (customer/payment-methods) — pick one, nothing to type.
+ *  2. "Use a new payment method": Apple Pay / Google Pay buttons (Stripe Express
+ *     Checkout, only where the device supports them), then Stripe's Payment Element
+ *     with every method enabled in the Stripe Dashboard (card, Link, …), styled like the site.
+ * Methods that send the customer to their bank/app come back here (return_url) and the
+ * order is placed then (see the return handler in StripeCheckout below).
+ * Previous version: see git history (before the 2026 redesign)
+ */
 
 // Stripe public key - only initialize if key exists
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_2;
 
-// Debug log (remove in production)
-if (typeof window !== "undefined") {
-  console.log("Stripe Publishable Key loaded:", stripePublishableKey ? "✅ Yes" : "❌ No");
-  if (stripePublishableKey) {
-    // Extract account ID from publishable key for verification
-    const accountId = stripePublishableKey.split('_')[2]?.substring(0, 24);
-    console.log("Stripe Account ID (first 24 chars):", accountId);
-  }
-}
-
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null;
+
+// Payment Element look: site font, colours, 12px corners, thin borders, no shadows
+const APPEARANCE = {
+  theme: "stripe",
+  variables: {
+    fontFamily: "Figtree, system-ui, sans-serif",
+    fontSizeBase: "15px",
+    colorPrimary: "#0278FE",
+    colorText: "#1B2230",
+    colorTextSecondary: "#56617A",
+    colorTextPlaceholder: "#8A93A6",
+    colorDanger: "#C0392B",
+    borderRadius: "12px",
+    spacingUnit: "4px",
+  },
+  rules: {
+    ".Input": { border: "1px solid #DDE3EE", boxShadow: "none", padding: "14px" },
+    ".Input:focus": { borderColor: "#0278FE", boxShadow: "0 0 0 3px rgba(2,120,254,0.14)" },
+    ".Label": { fontSize: "13.5px", fontWeight: "500", color: "#56617A" },
+    ".AccordionItem": { border: "1px solid #DDE3EE", boxShadow: "none" },
+    ".Tab": { border: "1px solid #DDE3EE", boxShadow: "none" },
+  },
+};
+
+const ELEMENTS_OPTIONS = {
+  appearance: APPEARANCE,
+  fonts: [{ cssSrc: "https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600&display=swap" }],
+};
+
+const LABEL = "m-0 text-[12px] font-bold uppercase tracking-[0.1em] text-jdc-muted";
+const OPTION =
+  "flex w-full cursor-pointer items-center gap-3 border-0 border-b border-jdc-line bg-white px-4 py-3.5 text-left last:border-b-0 hover:bg-[#F7F8FA] disabled:cursor-not-allowed disabled:opacity-55";
+const RADIO = "flex size-[18px] flex-none items-center justify-center rounded-full border-[1.5px] border-[#C5CEDD]";
+const RADIO_ON = "border-jdc-blue after:size-2.5 after:rounded-full after:bg-jdc-blue after:content-['']";
+
+const BRAND = { visa: "Visa", mastercard: "Mastercard", amex: "Amex", discover: "Discover", diners: "Diners", jcb: "JCB", unionpay: "UnionPay" };
+const cardLabel = (c) => `${BRAND[c?.brand] || (c?.brand ? c.brand[0].toUpperCase() + c.brand.slice(1) : "Card")} •••• ${c?.last4 || "····"}`;
+const cardExpiry = (c) => (c?.expMonth && c?.expYear ? `${String(c.expMonth).padStart(2, "0")}/${String(c.expYear).slice(-2)}` : "");
 
 const CheckoutForm = forwardRef(function CheckoutForm(
   {
+    clientSecret,
+    savedCards = [],
+    defaultCardId = null,
     setModal,
-    modal,
     booking,
     onOpen,
     intentMode = "payment",
     intentId = "",
-    displayAmount = "",
     beforePay,
+    onCompleteChange,
+    onProcessingChange,
   },
   ref
 ) {
@@ -43,94 +81,128 @@ const CheckoutForm = forwardRef(function CheckoutForm(
   const formRef = useRef(null);
   const [isProcessing, setProcessing] = useState(false);
   const [message, setMessage] = useState("");
-  const [isPaymentElementReady, setIsPaymentElementReady] = useState(false);
+  const [peComplete, setPeComplete] = useState(false);
+  const [walletsAvailable, setWalletsAvailable] = useState(false);
+
+  // Saved card chosen ("new" = enter a new payment method).
+  const usable = savedCards.filter((c) => !c.isExpired);
+  const [selected, setSelected] = useState("");
+  const pickedByUser = useRef(false);
+  const choose = (id) => {
+    pickedByUser.current = true;
+    setSelected(id);
+  };
+  // Pre-select the default card once the list has loaded (it arrives after the form mounts)
+  useEffect(() => {
+    if (pickedByUser.current) return;
+    const pick = usable.find((c) => c.paymentMethodId === defaultCardId) || usable[0];
+    setSelected(pick ? pick.paymentMethodId : "new");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedCards.length, defaultCardId]);
+  const useNew = selected === "new" || !usable.length;
+
+  // Default card first, then the others; expired cards last. Show 3, the rest behind "Show more".
+  const SHOWN_CARDS = 3;
+  const [showAllCards, setShowAllCards] = useState(false);
+  const orderedCards = useMemo(
+    () =>
+      [...savedCards].sort(
+        (a, b) =>
+          Number(b.paymentMethodId === defaultCardId) - Number(a.paymentMethodId === defaultCardId) ||
+          Number(a.isExpired) - Number(b.isExpired)
+      ),
+    [savedCards, defaultCardId]
+  );
+  const visibleCards = showAllCards
+    ? orderedCards
+    : orderedCards.filter((c, i) => i < SHOWN_CARDS || c.paymentMethodId === selected);
+  const hiddenCount = orderedCards.length - visibleCards.length;
+
+  useEffect(() => {
+    onCompleteChange?.(useNew ? peComplete : Boolean(selected));
+  }, [useNew, peComplete, selected, onCompleteChange]);
 
   useImperativeHandle(ref, () => ({
     requestSubmit: () => formRef.current?.requestSubmit(),
   }));
 
+  useEffect(() => {
+    onProcessingChange?.(isProcessing);
+  }, [isProcessing, onProcessingChange]);
+
+  const placeBooking = async (payData) => {
+    try {
+      await booking(payData);
+      setProcessing(false);
+      setMessage("");
+      setModal({ page: "success", modType: "success" });
+      onOpen();
+      return true;
+    } catch (err) {
+      setMessage(err?.message || "Booking failed. Please try again.");
+      setProcessing(false);
+      return false;
+    }
+  };
+
+  // After Stripe confirms a new method: create the booking with what Stripe returned.
+  const finishBooking = async ({ error, setupIntent, paymentIntent }) => {
+    if (error) {
+      setMessage(error.message);
+      setProcessing(false);
+      return false;
+    }
+    const intent = setupIntent || paymentIntent;
+    const ok =
+      intentMode === "setup"
+        ? intent?.status === "succeeded"
+        : intent?.status === "requires_capture" || intent?.status === "succeeded";
+    if (!ok) {
+      setMessage(`${intentMode === "setup" ? "Setup" : "Payment"} status: ${intent?.status}`);
+      setProcessing(false);
+      return false;
+    }
+    return placeBooking(
+      intentMode === "setup"
+        ? { setupIntentId: intent?.id || intentId, paymentMethodId: intent?.payment_method }
+        : { paymentIntentId: intent?.id || intentId, paymentMethodId: intent?.payment_method }
+    );
+  };
+
+  const confirmNewMethod = async () => {
+    const params = {
+      elements,
+      clientSecret,
+      // methods that open the customer's bank/app return to this page to finish
+      confirmParams: { return_url: window.location.href.split("?")[0] },
+      redirect: "if_required",
+    };
+    return intentMode === "setup" ? stripe.confirmSetup(params) : stripe.confirmPayment(params);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!stripe || !elements) {
-      setMessage("Stripe is not loaded. Please wait...");
+      setMessage("Payment form is still loading. Please wait…");
       return;
     }
-
-    if (!isPaymentElementReady) {
-      setMessage("Payment form is not ready. Please wait...");
-      return;
-    }
-
-    if (typeof beforePay === "function" && beforePay() === false) {
-      return;
-    }
+    if (typeof beforePay === "function" && beforePay() === false) return;
 
     setProcessing(true);
     setMessage("");
-
     try {
-      if (intentMode === "setup") {
-        const { error, setupIntent } = await stripe.confirmSetup({
-          elements,
-          redirect: "if_required",
-        });
-
-        if (error) {
-          setMessage(error.message);
-          setProcessing(false);
-          return;
-        }
-
-        if (setupIntent?.status === "succeeded") {
-          try {
-            await booking({
-              setupIntentId: setupIntent?.id || intentId, // Use confirmed ID or fallback to extracted ID
-              paymentMethodId: setupIntent?.payment_method,
-            });
-            setProcessing(false);
-            setMessage("");
-            setModal({ page: "success", modType: "success" });
-            onOpen();
-          } catch (err) {
-            setMessage(err?.message || "Booking failed. Please try again.");
-            setProcessing(false);
-          }
-        } else {
-          setMessage(`Setup status: ${setupIntent?.status}`);
-          setProcessing(false);
-        }
+      if (!useNew) {
+        // saved card: the backend charges it after the items are weighed
+        await placeBooking({ paymentMethodId: selected });
         return;
       }
-
-      const { error, paymentIntent } = await stripe.confirmPayment({
-        elements,
-        redirect: "if_required",
-      });
-
-      if (paymentIntent?.status === "requires_capture" || paymentIntent?.status === "succeeded") {
-        try {
-          await booking({
-            paymentIntentId: paymentIntent?.id || intentId, // Use confirmed ID or fallback to extracted ID
-            paymentMethodId: paymentIntent?.payment_method,
-          });
-          setProcessing(false);
-          setMessage("");
-          setModal({ page: "success", modType: "success" });
-          onOpen();
-        } catch (err) {
-          setMessage(err?.message || "Booking failed. Please try again.");
-          setProcessing(false);
-        }
-      } else {
-        setMessage(`Payment status: ${paymentIntent?.status}`);
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        setMessage(submitError.message);
         setProcessing(false);
+        return;
       }
-
-      if (error) {
-        setMessage(error.message);
-        setProcessing(false);
-      }
+      await finishBooking(await confirmNewMethod());
     } catch (err) {
       console.error("Payment error:", err);
       setMessage(err?.message || "An error occurred during payment");
@@ -138,51 +210,122 @@ const CheckoutForm = forwardRef(function CheckoutForm(
     }
   };
 
+  // Apple Pay / Google Pay
+  const onWalletClick = (event) => {
+    if (typeof beforePay === "function" && beforePay() === false) return;
+    setMessage("");
+    event.resolve();
+  };
+  const onWalletConfirm = async () => {
+    if (!stripe || !elements) return;
+    setProcessing(true);
+    try {
+      await finishBooking(await confirmNewMethod());
+    } catch (err) {
+      setMessage(err?.message || "An error occurred during payment");
+      setProcessing(false);
+    }
+  };
+
   return (
-    <form ref={formRef} onSubmit={handleSubmit}>
-      <PaymentElement
-        onReady={() => {
-          setIsPaymentElementReady(true);
-          console.log("✅ PaymentElement is ready");
-        }}
-        onLoadError={(error) => {
-          console.error("❌ PaymentElement load error:", error);
-          setMessage(error?.message || "Failed to load payment form. Please check your Stripe keys match.");
-        }}
-        options={{
-          layout: "tabs",
-          wallets: {
-            applePay: "auto",
-            googlePay: "auto",
-          },
-        }}
-      />
-      <button
-        type="submit"
-        disabled={!stripe || isProcessing || !isPaymentElementReady}
-        className={`mt-4 w-full flex justify-center items-center ${isProcessing || !isPaymentElementReady ? "bg-theme-blue/50" : "bg-theme-blue"
-          }  font-youth font-bold text-white px-4 py-4 rounded`}
-      >
-        {isProcessing ? (
-          <div className="flex items-center h-full">
-            <Spinner
-              classNames={{ label: "text-foreground" }}
-              variant="simple"
-            />
+    <form ref={formRef} onSubmit={handleSubmit} className="grid w-full gap-[18px]">
+      {usable.length || savedCards.length ? (
+        <div className="grid gap-2.5">
+          <p className={LABEL}>Saved cards</p>
+          <div className="overflow-hidden rounded-2xl border border-jdc-line" role="radiogroup" aria-label="Saved cards">
+            {visibleCards.map((c) => {
+              const on = selected === c.paymentMethodId;
+              return (
+                <button
+                  key={c.paymentMethodId}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  disabled={c.isExpired}
+                  className={OPTION}
+                  onClick={() => choose(c.paymentMethodId)}
+                >
+                  <span className={cx(RADIO, on && RADIO_ON)} />
+                  <span className="min-w-0 flex-1">
+                    <b className="block text-[15px] font-semibold text-jdc-navy">{cardLabel(c)}</b>
+                    <small className="block text-[13px] text-jdc-muted">
+                      {c.isExpired ? "Expired" : `Expires ${cardExpiry(c)}`}
+                    </small>
+                  </span>
+                  {c.isDefault ? (
+                    <span className="flex-none rounded-jdc-pill bg-[#F1F3F7] px-2.5 py-1 text-[11.5px] font-bold text-jdc-navy">Default</span>
+                  ) : null}
+                </button>
+              );
+            })}
+            {hiddenCount > 0 || showAllCards ? (
+              <button
+                type="button"
+                className="flex w-full cursor-pointer items-center justify-center gap-1.5 border-0 border-b border-jdc-line bg-[#F7F8FA] px-4 py-2.5 text-[13.5px] font-bold text-jdc-navy hover:bg-[#EEF2F8]"
+                onClick={() => setShowAllCards((v) => !v)}
+                aria-expanded={showAllCards}
+              >
+                {showAllCards ? "Show fewer cards" : `Show ${hiddenCount} more card${hiddenCount === 1 ? "" : "s"}`}
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 256 256"
+                  fill="currentColor"
+                  aria-hidden="true"
+                  className={showAllCards ? "rotate-180" : ""}
+                >
+                  <path d="M216.49,104.49l-80,80a12,12,0,0,1-17,0l-80-80a12,12,0,0,1,17-17L128,159l71.51-71.52a12,12,0,0,1,17,17Z" />
+                </svg>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={useNew}
+              className={OPTION}
+              onClick={() => choose("new")}
+            >
+              <span className={cx(RADIO, useNew && RADIO_ON)} />
+              <b className="text-[15px] font-semibold text-jdc-navy">Use a new payment method</b>
+            </button>
           </div>
-        ) : intentMode === "setup" ? (
-          "Pay now"
-        ) : (
-          displayAmount ? `Pay Now ${displayAmount}` : "Pay Now"
-        )}
-      </button>
-      {message && <div className="text-red-500 mt-2">{message}</div>}
+        </div>
+      ) : null}
+
+      {/* New method: wallets first (only shown where available), then Stripe's form */}
+      <div className={cx("grid gap-[18px]", !useNew && "hidden")}>
+        <div className={walletsAvailable ? "grid gap-[18px]" : "hidden"}>
+          <ExpressCheckoutElement
+            options={{
+              buttonHeight: 48,
+              buttonType: { applePay: "plain", googlePay: "plain" },
+              paymentMethods: { applePay: "auto", googlePay: "auto", link: "never", paypal: "never", amazonPay: "never", klarna: "never" },
+              layout: { maxColumns: 2, maxRows: 1, overflow: "never" },
+            }}
+            onReady={({ availablePaymentMethods }) => setWalletsAvailable(Boolean(availablePaymentMethods))}
+            onClick={onWalletClick}
+            onConfirm={onWalletConfirm}
+          />
+          <div className="flex items-center gap-3 text-[12px] font-bold uppercase tracking-[0.1em] text-jdc-muted before:h-px before:flex-1 before:bg-jdc-line before:content-[''] after:h-px after:flex-1 after:bg-jdc-line after:content-['']">
+            or
+          </div>
+        </div>
+        <PaymentElement
+          options={{
+            layout: { type: "accordion", defaultCollapsed: false, radios: true, spacedAccordionItems: true },
+            wallets: { applePay: "never", googlePay: "never" },
+          }}
+          onChange={(event) => setPeComplete(Boolean(event?.complete))}
+          onLoadError={(error) => setMessage(error?.error?.message || error?.message || "Couldn't load the payment form.")}
+        />
+      </div>
+
+      {message ? <p className="m-0 text-[13.5px] text-jdc-danger">{message}</p> : null}
     </form>
   );
 });
 
 const StripeCheckout = ({
-  paymentMethod,
   setModal,
   modal,
   booking,
@@ -191,22 +334,49 @@ const StripeCheckout = ({
   customerId,
   beforePay,
   stripeSubmitRef,
+  onCompleteChange,
+  onProcessingChange,
 }) => {
   const [clientSecret, setClientSecret] = useState("");
   const [intentMode, setIntentMode] = useState("payment"); // "payment" | "setup"
   const [intentId, setIntentId] = useState(""); // Payment Intent ID or Setup Intent ID extracted from client secret
-  const [displayAmount, setDisplayAmount] = useState(""); // Formatted amount for button (empty for Setup Intent)
-  const [createPaymentIntent, { data, isSuccess, isLoading }] =
-    useCreateIntentMutation();
+  const [createPaymentIntent, { isLoading }] = useCreateIntentMutation();
   const [initError, setInitError] = useState("");
+  const { data: savedData } = useGetPaymentMethodsQuery(undefined, { skip: !customerId });
+  const savedCards = savedData?.data?.cards || [];
+  const defaultCardId = savedData?.data?.defaultPaymentMethodId || null;
 
-  const formatAmount = (value) => {
-    if (value == null || value === "") return "";
-    const num = typeof value === "number" ? value : parseFloat(value);
-    if (Number.isNaN(num)) return "";
-    const dollars = num >= 1000 ? num / 100 : num;
-    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(dollars);
-  };
+  // Back from a bank/app redirect (some payment methods): finish placing the order.
+  const returnHandledRef = useRef(false);
+  useEffect(() => {
+    if (returnHandledRef.current || typeof window === "undefined" || !stripePromise) return;
+    const params = new URLSearchParams(window.location.search);
+    const setupSecret = params.get("setup_intent_client_secret");
+    const paySecret = params.get("payment_intent_client_secret");
+    if (!setupSecret && !paySecret) return;
+    returnHandledRef.current = true;
+    window.history.replaceState(null, "", window.location.pathname);
+    (async () => {
+      const stripe = await stripePromise;
+      const res = setupSecret ? await stripe.retrieveSetupIntent(setupSecret) : await stripe.retrievePaymentIntent(paySecret);
+      const intent = res?.setupIntent || res?.paymentIntent;
+      const ok = ["succeeded", "requires_capture", "processing"].includes(intent?.status);
+      if (!ok) {
+        addToast({ title: "Payment not completed", description: "Please try again or choose another way to pay.", color: "warning" });
+        return;
+      }
+      try {
+        await booking(
+          setupSecret
+            ? { setupIntentId: intent.id, paymentMethodId: intent.payment_method }
+            : { paymentIntentId: intent.id, paymentMethodId: intent.payment_method }
+        );
+      } catch {
+        // handleCreateBooking already shows the error
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const getIntent = async () => {
     if (!customerId) {
@@ -221,12 +391,10 @@ const StripeCheckout = ({
       }).unwrap();
 
       if (res?.status === "1") {
-        console.log("Payment Intent created:", res?.data);
-        const clientSecret = res?.data?.clientSecret;
+        const secret = res?.data?.clientSecret;
 
         // Accept Payment Intent (pi_) or Setup Intent (seti_) from API
-        if (!clientSecret || (!clientSecret.startsWith('pi_') && !clientSecret.startsWith('seti_'))) {
-          console.error("Invalid client secret format:", clientSecret);
+        if (!secret || (!secret.startsWith("pi_") && !secret.startsWith("seti_"))) {
           addToast({
             title: "Payment Error",
             description: "Invalid payment or setup intent received from server",
@@ -235,21 +403,13 @@ const StripeCheckout = ({
           return;
         }
 
-        const isSetupIntent = clientSecret.startsWith('seti_');
-        // Extract Intent ID from client secret: "pi_xxx_secret_yyy" -> "pi_xxx" or "seti_xxx_secret_yyy" -> "seti_xxx"
-        const extractedIntentId = clientSecret.split('_secret_')[0];
-        console.log(isSetupIntent ? "Setup Intent ID:" : "Payment Intent ID:", extractedIntentId);
-        console.log("Using Publishable Key:", stripePublishableKey?.substring(0, 30) + "...");
-        console.log("⚠️ IMPORTANT: Ensure your backend uses the SECRET KEY that matches this publishable key!");
-
-        setClientSecret(clientSecret);
+        // "pi_xxx_secret_yyy" -> "pi_xxx", "seti_xxx_secret_yyy" -> "seti_xxx"
+        setClientSecret(secret);
         setInitError("");
-        setIntentMode(isSetupIntent ? "setup" : "payment");
-        setIntentId(extractedIntentId); // Store the extracted intent ID
-        setDisplayAmount(res?.data?.amount != null ? formatAmount(res.data.amount) : "");
+        setIntentMode(secret.startsWith("seti_") ? "setup" : "payment");
+        setIntentId(secret.split("_secret_")[0]);
         setModal({ ...modal, page: "stripe" });
       } else {
-        console.error("Failed to create payment intent:", res);
         addToast({
           title: "Payment Error",
           description: res?.message || "Failed to initialize payment",
@@ -258,80 +418,60 @@ const StripeCheckout = ({
         setInitError(res?.message || "Failed to initialize payment");
       }
     } catch (error) {
-      console.error("Error creating payment intent:", error);
-      const errorMessage =
-        error?.data?.message || error?.message || "Failed to initialize payment";
-      addToast({
-        title: "Payment Error",
-        description: errorMessage,
-        color: "danger",
-      });
+      const errorMessage = error?.data?.message || error?.message || "Failed to initialize payment";
+      addToast({ title: "Payment Error", description: errorMessage, color: "danger" });
       setInitError(errorMessage);
     }
   };
 
   useEffect(() => {
-    if (customerId) {
+    // A setup intent (save the card, charge later) doesn't depend on the total,
+    // so keep it: fetching a new one swapped the form for a spinner mid-order.
+    if (customerId && !(clientSecret && intentMode === "setup")) {
       getIntent();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalAmount, customerId]);
 
-  const appearance = { theme: "stripe" };
-  const options = {
-    clientSecret,
-    appearance,
-  };
-
-  // Don't render Stripe if publishable key is not configured
   if (!stripePublishableKey) {
     return (
-      <div className="mx-auto p-4 text-red-500">
+      <div className="p-4 text-[14px] text-jdc-danger">
         Stripe is not configured. Please set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY_2 environment variable.
       </div>
     );
   }
 
-  // Show loading state while creating payment intent
   if (isLoading) {
     return (
-      <div className="mx-auto p-4 flex justify-center items-center">
-        <Spinner size="lg" />
-        <span className="ml-2">Initializing payment...</span>
+      <div className="flex items-center justify-center gap-2 p-4 text-[14px] text-jdc-muted">
+        <Spinner size="sm" />
+        <span>Loading payment options…</span>
       </div>
     );
   }
 
-  // Show error if no client secret
-  if (!clientSecret && !isLoading) {
-    return (
-      <div className="mx-auto p-4 text-red-500">
-        {initError || "Failed to initialize payment. Please try again."}
-      </div>
-    );
+  if (!clientSecret) {
+    return <div className="p-4 text-[14px] text-jdc-danger">{initError || "Failed to initialize payment. Please try again."}</div>;
   }
 
   return (
-    <div className="mx-auto">
-      {clientSecret && stripePromise && (
-        <Elements options={options} stripe={stripePromise}>
-          <CheckoutForm
-            ref={stripeSubmitRef}
-            setModal={setModal}
-            modal={modal}
-            booking={booking}
-            onOpen={onOpen}
-            intentMode={intentMode}
-            intentId={intentId}
-            displayAmount={displayAmount}
-            beforePay={beforePay}
-          />
-        </Elements>
-      )}
-      {!stripePromise && (
-        <div className="mx-auto p-4 text-red-500">
-          Stripe is not initialized. Please check your configuration.
-        </div>
-      )}
+    <div className="w-full">
+      <Elements key={clientSecret} options={{ ...ELEMENTS_OPTIONS, clientSecret }} stripe={stripePromise}>
+        <CheckoutForm
+          ref={stripeSubmitRef}
+          clientSecret={clientSecret}
+          savedCards={savedCards}
+          defaultCardId={defaultCardId}
+          setModal={setModal}
+          booking={booking}
+          onOpen={onOpen}
+          intentMode={intentMode}
+          intentId={intentId}
+          beforePay={beforePay}
+          onCompleteChange={onCompleteChange}
+          onProcessingChange={onProcessingChange}
+        />
+      </Elements>
     </div>
   );
 };

@@ -1,5 +1,7 @@
 import localFont from "next/font/local";
+import { Figtree, Outfit } from "next/font/google";
 import "./globals.css";
+import "../design-system/tokens.css";
 import { Providers } from "./store/Providers";
 import {
   GoogleMapsProviderWrapper,
@@ -96,6 +98,21 @@ const youth = localFont({
   variable: "--font-youth",
 });
 
+// Design system typefaces (Just Dry Cleans)
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-outfit",
+});
+
+const figtree = Figtree({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-figtree",
+});
+
 export const metadata = {
   title: "Laundry Service",
   description: "Do your laundry smartly",
@@ -110,8 +127,13 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className={`${sfPro.variable} ${youth.variable}`}>
-      <body className="antialiased">
+    // overscroll-none: no "rubber band" stretch / bounce when a drag or swipe goes past
+    // the edge of the page (Microsoft Edge does this on Windows; Chrome does not).
+    <html
+      lang="en"
+      className={`${sfPro.variable} ${youth.variable} ${outfit.variable} ${figtree.variable} overscroll-none`}
+    >
+      <body className="antialiased overscroll-none">
         <Providers>
           <HeroUIProvidersNoSSR>
             <GoogleMapsProviderWrapper>{children}</GoogleMapsProviderWrapper>

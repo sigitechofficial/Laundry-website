@@ -1,7 +1,14 @@
 "use client";
 import React, { useState } from "react";
 import { GoArrowUp, GoClock } from "react-icons/go";
-import { IoBagCheck, IoLocation, IoClose, IoCalendarOutline, IoTimeOutline, IoInformationCircleOutline, IoLocationOutline } from "react-icons/io5";
+import {
+  IoBagCheck,
+  IoClose,
+  IoCalendarOutline,
+  IoTimeOutline,
+  IoInformationCircleOutline,
+  IoLocationOutline,
+} from "react-icons/io5";
 import { PurpleButton } from "../Buttons";
 import { MdKeyboardArrowRight } from "react-icons/md";
 import {
@@ -59,7 +66,6 @@ export default function OrderHistory() {
       refetchOnFocus: true,
     }
   );
-  const [order, setOrder] = useState("");
   const [modalScroll, setModalScroll] = useState(false);
   const [panelScroll, setPanelScroll] = useState(false);
   const { isOpen, onOpen, onClose, onOpenChange } = useDisclosure();
@@ -93,11 +99,8 @@ export default function OrderHistory() {
     orderId: "",
   });
   const [cancellationReason, setCancellationReason] = useState("");
-  const [cancellationCharge, setCancellationCharge] = useState(null);
   const [isCheckingCancellation, setIsCheckingCancellation] = useState(false);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
-  const [showManageDetails, setShowManageDetails] = useState(false);
-  const [shouldRenderManageDetails, setShouldRenderManageDetails] = useState(false);
   const [isOrderItemsExpanded, setIsOrderItemsExpanded] = useState(true);
   const [bookingTab, setBookingTab] = useState("active");
   const clientTimeZone = React.useMemo(
@@ -193,25 +196,6 @@ export default function OrderHistory() {
     }
   }, [bookingDtails, isBookingDetailsLoading, manageOrder?.orderId]);
 
-  // Handle smooth transition for manage order details section
-  React.useEffect(() => {
-    if (manageOrder?.manage) {
-      // Render the element first
-      setShouldRenderManageDetails(true);
-      // Small delay to trigger opening animation
-      setTimeout(() => {
-        setShowManageDetails(true);
-      }, 10);
-    } else {
-      // Start closing animation first
-      setShowManageDetails(false);
-      // Remove from DOM after animation completes (500ms)
-      setTimeout(() => {
-        setShouldRenderManageDetails(false);
-      }, 500);
-    }
-  }, [manageOrder?.manage]);
-
   const policyZoneId =
     bookingDtails?.data?.zoneId ?? bookingDtails?.data?.zone?.id ?? undefined;
   const { data: activePoliciesData } =
@@ -272,26 +256,6 @@ export default function OrderHistory() {
     }
     if (paymentMethodId?.startsWith("pm_")) return "Card on file";
     return paymentMethodId || "Payment Method";
-  };
-
-  const getCardPaymentSubtext = (cardDetails) => {
-    if (!cardDetails) return null;
-    const parts = [];
-    if (cardDetails.cardholderName) {
-      parts.push(cardDetails.cardholderName);
-    }
-    if (cardDetails.expMonth && cardDetails.expYear) {
-      const month = String(cardDetails.expMonth).padStart(2, "0");
-      const year = String(cardDetails.expYear).slice(-2);
-      parts.push(`Expires ${month}/${year}`);
-    }
-    if (cardDetails.funding) {
-      parts.push(
-        String(cardDetails.funding).charAt(0).toUpperCase() +
-          String(cardDetails.funding).slice(1).toLowerCase()
-      );
-    }
-    return parts.length > 0 ? parts.join(" · ") : null;
   };
 
   // Check if an order is cancelled
@@ -466,7 +430,6 @@ export default function OrderHistory() {
         // Close modal and reset state
         onCancelModalClose();
         setCancellationReason("");
-        setCancellationCharge(null);
 
         // Refetch orders to update the list
         refetchOrders();
@@ -539,28 +502,6 @@ export default function OrderHistory() {
     }
 
     return null;
-  };
-
-  const formatMinutesWindow = (minutes) => {
-    const value = Number(minutes);
-    if (!Number.isFinite(value) || value <= 0) return "No free window";
-    if (value % 60 === 0) {
-      const hours = value / 60;
-      return `${hours} hour${hours === 1 ? "" : "s"}`;
-    }
-    return `${value} minute${value === 1 ? "" : "s"}`;
-  };
-
-  const formatChargeWithFallback = (amount, currency, percentage) => {
-    const numericAmount = Number.parseFloat(amount);
-    if (Number.isFinite(numericAmount)) {
-      return `${currency || ""} ${numericAmount.toFixed(2)}`.trim();
-    }
-    const numericPercentage = Number.parseFloat(percentage);
-    if (Number.isFinite(numericPercentage) && numericPercentage > 0) {
-      return `${numericPercentage}% of order value`;
-    }
-    return "N/A";
   };
 
   const formatTo24Hour = (timeStr) => {
@@ -637,7 +578,7 @@ export default function OrderHistory() {
           handleSelectBooking(order);
         }
       }}
-      className="w-full xl:max-w-[859px] rounded-2xl bg-[#FBFBFB] shadow-theme-shadow-light px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
+      className="w-full xl:max-w-[859px] rounded-[20px] bg-white border border-jdc-line hover:border-jdc-line-strong transition-colors px-4 sm:px-5 py-3 space-y-2 cursor-pointer"
     >
       <div className="flex items-start justify-between gap-2">
         <h6 className="font-youth font-bold text-base sm:text-lg">
@@ -845,7 +786,6 @@ export default function OrderHistory() {
       cardDetails,
       bookingDtails?.data?.paymentMethodId
     );
-    const cardPaymentSubtext = getCardPaymentSubtext(cardDetails);
 
     // Promotions (display only): the total is already inside the discount row and
     // amount due, so nothing here feeds back into the money above.
@@ -1889,13 +1829,10 @@ export default function OrderHistory() {
   }, [activePoliciesData]);
 
   return (
-    <section className="w-full md:mt-6 px-4 sm:px-6 md:px-10 pb-4 sm:pb-6 md:pb-10">
-      <h2 className="font-youth font-medium text-2xl sm:text-3xl md:text-[40px] mb-4 pt-4 sm:pt-8 md:pt-4">
-        Here's What You've Ordered
-      </h2>
+    <section className="w-full" aria-label="Orders">
 
-      <div className="w-full flex flex-col md:flex-row md:items-start gap-5 min-h-0">
-        <div className="w-full font-sf space-y-5">
+      <div className="w-full flex flex-col md:flex-row md:items-start gap-6 min-h-0">
+        <div className={`w-full font-sf space-y-5 ${manageOrder?.orderId ? "md:flex-1 md:min-w-0" : ""}`}>
           {/* Loading Spinner */}
           {isLoading ? (
             <div className="w-full flex items-center justify-center py-20">
@@ -1978,7 +1915,7 @@ export default function OrderHistory() {
         {/* Desktop/Tablet Side Panel - Hidden on mobile */}
         {manageOrder?.orderId ? (
           <div
-            className={`hidden md:flex md:flex-col w-full max-w-[600px] shrink-0 min-h-0 sticky top-4 self-start h-[calc(100vh-6rem)] overflow-hidden shadow-theme-shadow-light rounded-[20px] transition-all duration-500 ease-in-out ${
+            className={`hidden md:flex md:flex-col md:w-[360px] lg:w-[400px] xl:w-[440px] md:flex-none min-h-0 sticky top-[104px] self-start h-[calc(100vh-128px)] overflow-hidden bg-white border border-jdc-line rounded-[24px] transition-all duration-500 ease-in-out ${
               showOrderDetails || isBookingDetailsLoading
                 ? "opacity-100 translate-x-0"
                 : "opacity-0 translate-x-4"
@@ -2188,17 +2125,25 @@ export default function OrderHistory() {
                             >
                               <div className="flex flex-col items-center">
                                 {index === 0 ? (
-                                  <div
-                                    className={`track-current-dot${
-                                      isException
-                                        ? " track-current-dot--exception"
-                                        : ""
-                                    }`}
-                                    aria-hidden="true"
-                                  >
-                                    <span className="track-current-dot__ring" />
-                                    <span className="track-current-dot__ring track-current-dot__ring--delayed" />
-                                    <span className="track-current-dot__core" />
+                                  // Live pulse on the current status (red when the order has an exception)
+                                  <div className="relative mt-1.5 h-3 w-3 shrink-0" aria-hidden="true">
+                                    <span
+                                      className={`pointer-events-none absolute inset-0 block animate-track-pulse rounded-full will-change-[transform,opacity] motion-reduce:!animate-none ${
+                                        isException ? "bg-[#ef4444]" : "bg-[#0278fe]"
+                                      }`}
+                                    />
+                                    <span
+                                      className={`pointer-events-none absolute inset-0 block animate-track-pulse rounded-full will-change-[transform,opacity] [animation-delay:1.1s] motion-reduce:!animate-none ${
+                                        isException ? "bg-[#ef4444]" : "bg-[#0278fe]"
+                                      }`}
+                                    />
+                                    <span
+                                      className={`relative z-[2] block h-full w-full rounded-full will-change-[transform,box-shadow] motion-reduce:!animate-none ${
+                                        isException
+                                          ? "animate-track-core-exception bg-[#ef4444] [box-shadow:0_0_0_0_rgba(239,68,68,0.35)]"
+                                          : "animate-track-core bg-[#0278fe]"
+                                      }`}
+                                    />
                                   </div>
                                 ) : (
                                   <div
@@ -2254,110 +2199,7 @@ export default function OrderHistory() {
               </>
             )}
           </div>
-        ) : manageOrder?.modType === "iron" ? (
-          <div
-            onScroll={handleModalScroll}
-            className="modal-scroll overflow-auto"
-          >
-            <div className="h-[58px] flex items-center justify-center relative border-b border-theme-gray-2">
-              <h4 className="font-youth font-bold text-[22px] text-center">
-                Service Preferences
-              </h4>
-
-              <p
-                onClick={() => onClose()}
-                className="font-sf text-base absolute top-4 right-4 cursor-pointer"
-              >
-                Cancel
-              </p>
-            </div>
-
-            <div className="w-full px-6 py-6 font-sf">
-              <div className="space-y-2">
-                <p className="font-sf text-lg">After ironing:</p>
-                <div className="grid grid-cols-2 h-[53px]">
-                  <div
-                    onClick={() =>
-                      setPreferences((prev) => ({
-                        ...prev,
-                        ironingAfter: "hung",
-                      }))
-                    }
-                    className={`flex justify-center items-center cursor-pointer ${preferences.ironingAfter === "hung"
-                      ? "bg-theme-blue text-white"
-                      : "bg-theme-gray"
-                      }`}
-                  >
-                    Hung
-                  </div>
-                  <div
-                    onClick={() =>
-                      setPreferences((prev) => ({
-                        ...prev,
-                        ironingAfter: "folded",
-                      }))
-                    }
-                    className={`flex justify-center items-center cursor-pointer ${preferences.ironingAfter === "folded"
-                      ? "bg-theme-blue text-white"
-                      : "bg-theme-gray"
-                      }`}
-                  >
-                    Folded
-                  </div>
-                </div>
-
-                <p className="font-sf text-lg">Choose Iron Temperature</p>
-                <div className="grid grid-cols-4 h-[53px]">
-                  {["30 C", "40 C", "50 C", "60 C"].map((temp) => (
-                    <div
-                      key={temp}
-                      onClick={() =>
-                        setPreferences((prev) => ({
-                          ...prev,
-                          ironingTemperature: temp,
-                        }))
-                      }
-                      className={`flex justify-center items-center cursor-pointer ${preferences.ironingTemperature === temp
-                        ? "bg-theme-blue text-white"
-                        : "bg-theme-gray"
-                        }`}
-                    >
-                      {temp}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-3">
-                <p className="font-sf text-lg pb-3">
-                  Additional Service instructions
-                </p>
-
-                <textarea
-                  className="w-full h-40 bg-theme-gray rounded-lg p-5 text-base text-theme-gray-2 resize-none outline-none"
-                  type="text"
-                  name=""
-                  id=""
-                  placeholder="Enter your instructions"
-                  value={preferences.additionalInstructionsIroning}
-                  onChange={(e) =>
-                    setPreferences((prev) => ({
-                      ...prev,
-                      additionalInstructionsIroning: e.target.value,
-                    }))
-                  }
-                />
-
-                <p className="font-sf pb-5 text-sm text-theme-psGray">
-                  The user is responsible if the clothes color bleeds due to the
-                  selected wash settings and temperature.
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          "dddd"
-        )}
+        ) : null}
       </ReusableModal>
 
       {/* Live driver map — mirrors customer app LiveTrackingMapScreen */}

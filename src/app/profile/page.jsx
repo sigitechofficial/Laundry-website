@@ -1,38 +1,30 @@
 "use client";
 import React, { useEffect } from "react";
-import Header from "../../../components/Header";
+
+import PageShell from "../../../components/ds/PageShell";
 import { useState } from "react";
-import DrawerItem from "../../../components/DrawerItem";
-import { 
-  MdOutlineSupportAgent, 
-  MdPayment, 
-  MdLogout,
-  MdOutlineLanguage,
+import {
   MdPauseCircleOutline,
   MdOutlinePeople,
   MdOutlineHistory,
   MdOutlineAccountCircle,
   MdOutlineNotifications,
-  MdOutlinePublic,
 } from "react-icons/md";
-import { FaChevronLeft, FaRegAddressBook, FaUser } from "react-icons/fa";
-import { GrUserAdmin } from "react-icons/gr";
-import { FiLogOut } from "react-icons/fi";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { FaChevronLeft, FaUser } from "react-icons/fa";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   useGetProfileQuery,
   useUpdateProfileMutation,
   useDeleteAccountMutation,
 } from "../store/services/api";
 import InputHeroUi from "../../../components/InputHeroUi";
-import { addToast, Spinner, useDisclosure } from "@heroui/react";
+import { addToast, useDisclosure } from "@heroui/react";
 import PhoneInputComp from "../../../components/PhoneInputComp";
 import { ButtonYouth70018 } from "../../../components/Buttons";
 import { BASE_URL } from "../../../utilities/URL";
 import OrderHistory from "../../../components/chunks/OrderHistory";
 import Notifications from "../../../components/chunks/Notifications";
 import Invite from "../../../components/chunks/Invite";
-import HomeClientWrapper from "../../../utilities/Test";
 import { setPage } from "../store/slices/cartItemSlice";
 import { useDispatch } from "react-redux";
 import OnHoldbookings from "../../../components/chunks/OnHoldbookings";
@@ -54,7 +46,7 @@ export default function Profile() {
     typeof window !== "undefined" ? localStorage.getItem("userId") : null
   );
 
-  const { data, error, isLoading, refetch } = useGetProfileQuery(currentUserId, {
+  const { data, refetch } = useGetProfileQuery(currentUserId, {
     skip: !currentUserId, // Skip if no userId
     refetchOnMountOrArgChange: true, // Always refetch when userId changes
   });
@@ -85,15 +77,11 @@ export default function Profile() {
   let userName = "";
   let phoneNumber = "";
   let userEmail = "";
-  let loginStatus = "";
-  let userId = "";
 
   if (typeof window !== "undefined") {
     userName = localStorage.getItem("userName");
     phoneNumber = localStorage.getItem("phoneNum");
     userEmail = localStorage.getItem("email");
-    loginStatus = localStorage.getItem("loginStatus");
-    userId = localStorage.getItem("userId");
   }
 
   const logoutFunc = async () => {
@@ -366,335 +354,189 @@ export default function Profile() {
     }
   }, [data]);
 
+  // No tab in the URL: show the account details rather than an empty panel.
+  const activeTab = currentTab || "my-account";
+
+  const TABS = [
+    { id: "my-account", label: "My account", Icon: MdOutlineAccountCircle },
+    { id: "order-history", label: "Order history", Icon: MdOutlineHistory },
+    { id: "on-hold-bookings", label: "On hold bookings", Icon: MdPauseCircleOutline },
+    { id: "notifications", label: "Notifications", Icon: MdOutlineNotifications },
+    { id: "invite-friend", label: "Invite friends", Icon: MdOutlinePeople },
+  ];
+
+  const displayName =
+    (userData?.firstName ? `${userData.firstName} ${userData?.lastName || ""}`.trim() : userName) || "Your account";
+  const initials = userData?.firstName
+    ? `${userData.firstName[0] || ""}${userData?.lastName?.[0] || ""}`.toUpperCase()
+    : "";
+  const displayPhone = (() => {
+    const phoneNum = userData?.phoneNum || phoneNumber || "";
+    const countryCode =
+      userData?.countryCode || (typeof window !== "undefined" ? localStorage.getItem("countryCode") : "") || "";
+    if (phoneNum && countryCode) {
+      return `${countryCode.startsWith("+") ? countryCode : `+${countryCode}`} ${phoneNum}`;
+    }
+    return phoneNumber || "";
+  })();
+
   return (
-    <>
-      <HomeClientWrapper>
-        <div className="w-full relative min-h-screen md:h-screen md:overflow-hidden">
-          <div className="fixed top-0 left-0 right-0 z-50 w-full">
-            <Header type="profile" />
-          </div>
+    <PageShell header="solid">
+      <div className="pt-10 px-jdc-gutter pb-20 max-[720px]:pt-5 max-[720px]:pb-12">
+        {/* single-column tabs use a narrower centred page, so there is no empty space beside them */}
+        <div
+          className={
+            activeTab === "my-account"
+              ? "max-w-[900px] mx-auto my-0"
+              : activeTab === "notifications"
+                ? "max-w-[680px] mx-auto my-0"
+                : activeTab === "invite-friend"
+                  ? "max-w-[900px] mx-auto my-0 max-[1100px]:max-w-[680px]"
+                : "max-w-[1280px] mx-auto my-0"
+          }
+        >
+          <button type="button" className="inline-flex items-center gap-2 mb-3 py-[6px] px-0 [border:0] text-[15px] font-semibold text-jdc-navy cursor-pointer hover:text-jdc-blue" onClick={() => router.back()}>
+            <FaChevronLeft aria-hidden="true" /> Back
+          </button>
+          {/* account heading as in the prototype (.acc-h1 / .acc-sub) */}
+          <h1 className="m-0 mt-1 font-display text-[32px] font-bold leading-[1.15] tracking-[-0.02em] text-jdc-navy max-[720px]:text-[28px]">{TABS.find((t) => t.id === activeTab)?.label ?? "My account"}</h1>
+          <p className="m-[8px_0_24px] text-[16px] text-jdc-muted max-[720px]:mb-5 max-[720px]:text-[15px]">
+            {activeTab === "my-account"
+              ? "Your name, contact details and password."
+              : activeTab === "order-history"
+                ? "Your upcoming and past orders. Select an order to see its details."
+                : activeTab === "on-hold-bookings"
+                  ? "Bookings that need your attention."
+                  : activeTab === "notifications"
+                    ? "Updates about your orders and account."
+                    : "Give friends money off their first order, and get credit when they book."}
+          </p>
 
-          <div className="w-full flex gap-5 md:gap-10 px-4 sm:px-5 py-16 sm:py-20 md:pt-20 md:h-[calc(100vh-5rem)]">
-            <section className="font-sf pt-8 min-w-[300px] 2xl:min-w-[378px] max-xl:hidden fixed top-20 h-[calc(100vh-5rem)] overflow-y-auto sidebar-scroll hideScrollbar z-10 border-r border-gray-300">
-              <div className="space-y-6">
-                <div className="flex items-start justify-start gap-7">
-                  <label
-                    htmlFor="profileImage"
-                    className={` h-[120px] uppercase font-bold text-3xl  rounded-full w-[120px] md:h-[120px] flex justify-center items-center cursor-pointer ${false
-                      ? "bg-theme-red bg-opacity-20 text-theme-red"
-                      : "bg-gray-300 bg-opacity-60 text-white"
-                      }`}
-                  >
-                    {userData?.firstName ? (
-                      userData?.profileImage ? (
-                        !isLoadingUpdateProfile ? (
-                          <img
-                            src={BASE_URL + userData?.profileImage}
-                            alt="image"
-                            className="w-[120px]  h-[120px] object-cover rounded-full"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex justify-center items-center -mt-4">
-                            <Spinner size="lg" variant="wave" />
-                          </div>
-                        )
-                      ) : (
-                        <span className="initials">
-                          {userData?.firstName[0] + userData?.lastName[0]}
-                        </span>
-                      )
-                    ) : (
-                      <FaUser />
-                    )}
-                  </label>
-
-                  <input
-                    type="file"
-                    accept="image/*"
-                    name="profileImage"
-                    id="profileImage"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
-
-                  <div className="flex flex-col gap-2 text-theme-black-2">
-                    <h2 className="text-2xl font-semibold font-omnes mt-3 capitalize">
-                      Hi,
-                      {userName ? userName?.split(" ")[0] : "User"}
-                    </h2>
-                    <p className="font-sf  text-sm font-normal text-theme-black-2 text-opacity-60">
-                      {userName ? (() => {
-                        // Get phone from API data first, then localStorage
-                        const phoneNum = userData?.phoneNum || phoneNumber || "";
-                        const countryCode = userData?.countryCode || (typeof window !== "undefined" ? localStorage.getItem("countryCode") : "") || "";
-                        
-                        if (phoneNum && countryCode) {
-                          // Ensure country code has + prefix
-                          const formattedCountryCode = countryCode.startsWith("+") ? countryCode : `+${countryCode}`;
-                          return formattedCountryCode + " " + phoneNum;
-                        } else if (phoneNumber) {
-                          // If phoneNumber already includes country code, use as is
-                          return phoneNumber;
-                        }
-                        return "";
-                      })() : <></>}
-                    </p>
-                    <p className="font-sf  text-sm font-normal text-theme-black-2 text-opacity-60">
-                      {userEmail ?? "user@gmail.com"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6 my-2">
-                <div>
-                  <DrawerItem
-                    Icon={MdOutlinePeople}
-                    text={"Invite Friends"}
-                    onClick={() => handleTabChange("invite-friend")}
-                  />
-                  <DrawerItem Icon={MdOutlineSupportAgent} text={"Support"} />
-
-                  <DrawerItem
-                    Icon={MdOutlineHistory}
-                    text={"Order history"}
-                    onClick={() => handleTabChange("order-history")}
-                  />
-                  <DrawerItem
-                    Icon={MdPauseCircleOutline}
-                    text={"On Hold Bookings"}
-                    onClick={() => handleTabChange("on-hold-bookings")}
-                  />
-
-                  <DrawerItem
-                    Icon={MdOutlineAccountCircle}
-                    text={"My Account"}
-                    onClick={() => handleTabChange("my-account")}
-                  />
-                  {/* <DrawerItem Icon={MdPayment} text={"Payment methods"} />
-                <DrawerItem Icon={FaRegAddressBook} text={"My addresses"} /> */}
-
-                  <DrawerItem
-                    Icon={MdOutlineNotifications}
-                    text={"Notifications"}
-                    // onClick={() => {
-                    //   router.push("/profile?tab=notifications");
-                    // }}
-
-                    onClick={() => handleTabChange("notifications")}
-                  />
-                  <DrawerItem
-                    Icon={MdOutlinePublic}
-                    text={"Country"}
-                  // onClick={() => {
-                  //   router.push("/order-history");
-                  // }}
-                  />
-                  <DrawerItem
-                    Icon={MdOutlineLanguage}
-                    text={"Language"}
-                  // onClick={() => {
-                  //   router.push("");
-                  // }}
-                  />
-                </div>
-
-                <div>
-                  <div className="text-theme-black-2 font-omnes text-2xl font-semibold mb-3">
-                    {"Quick links"}
-                  </div>
-                  {/* <div className="md:hidden">
-                  <DrawerItem
-                    Icon={LiaUserFriendsSolid}
-                    text={"Our Story"}
-                    onClick={() => {
-                      router.push("/our-story");
-                    }}
-                  />
-                  <DrawerItem
-                    Icon={LiaUserFriendsSolid}
-                    text={"Financing"}
-                    onClick={() => {
-                      router.push("/Financing");
-                    }}
-                  />
-                  <DrawerItem
-                    Icon={LiaUserFriendsSolid}
-                    text={"Resources"}
-                    onClick={() => {
-                      router.push("/recepies");
-                    }}
-                  />
-                  <DrawerItem
-                    Icon={LiaUserFriendsSolid}
-                    text={"Products"}
-                    onClick={() => {
-                      router.push("/product");
-                    }}
-                  />
-                </div> */}
-
-                  {loginStatus ? (
-                    <>
-                      <DrawerItem
-                        onClick={logoutFunc}
-                        Icon={MdLogout}
-                        text={"Logout"}
-                      />
-                    </>
+          {isLoadingUpdateProfile ? (
+            <div className="flex justify-center py-20 px-0">
+              <MiniLoader />
+            </div>
+          ) : activeTab === "my-account" ? (
+            <>
+              <section className="flex items-center gap-4 mb-5 py-[18px] px-5 border border-jdc-line rounded-jdc-lg bg-jdc-white max-[720px]:flex-wrap" aria-label="Profile photo">
+                <label htmlFor="profileImage" className="relative flex-none w-16 h-16 rounded-[50%] overflow-hidden flex items-center justify-center bg-jdc-blue-tint text-jdc-blue font-display font-extrabold text-[22px] cursor-pointer [&_img]:w-full [&_img]:h-full [&_img]:object-cover" title="Change photo">
+                  {userData?.profileImage ? (
+                    <img src={BASE_URL + userData?.profileImage} alt="" />
+                  ) : initials ? (
+                    initials
                   ) : (
-                    <>
-                      <DrawerItem
-                        Icon={GrUserAdmin}
-                        onClick={() => {
-                          dispatch(setPage(true));
-                          router.replace("/sign-in");
-                        }}
-                        text="Log in"
-                      />
-                      <DrawerItem
-                        Icon={FiLogOut}
-                        onClick={() => {
-                          dispatch(setPage(true));
-                          router.replace("/sign-in");
-                        }}
-                        text="Sign up"
-                      />
-                    </>
+                    <FaUser aria-hidden="true" />
                   )}
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  name="profileImage"
+                  id="profileImage"
+                  onChange={handleFileChange}
+                  className="sr-only"
+                  aria-label="Upload a profile photo"
+                />
+                <div className="min-w-0">
+                  <strong className="block overflow-hidden text-ellipsis whitespace-nowrap font-display text-[19px] text-jdc-navy">{displayName}</strong>
+                  {userEmail ? <small className="block overflow-hidden text-ellipsis whitespace-nowrap text-[13.5px] text-jdc-muted">{userEmail}</small> : null}
+                  {displayPhone ? <small className="block overflow-hidden text-ellipsis whitespace-nowrap text-[13.5px] text-jdc-muted">{displayPhone}</small> : null}
                 </div>
-              </div>
-            </section>
+                <label htmlFor="profileImage" className="ml-auto flex-none h-[38px] py-0 px-4 inline-flex items-center border border-jdc-line rounded-jdc-pill text-[14px] font-bold text-jdc-navy cursor-pointer hover:border-jdc-line-strong hover:bg-jdc-paper max-[720px]:ml-0">
+                  Change photo
+                </label>
+              </section>
 
-            {isLoadingUpdateProfile ? (
-              <div className="w-full flex justify-center items-center">
-                <MiniLoader />
-              </div>
-            ) : currentTab === "my-account" ? (
-              <section className="w-full flex flex-col gap-6 mt-8 sm:mt-12 md:mt-16 px-0 sm:px-4 md:px-6 2xl:px-10 xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
-                <div className="flex flex-col lg:flex-row gap-6 md:gap-10 2xl:gap-28 w-full">
-                <div className="flex-1 font-sf">
-                  <h2 className="font-youth font-medium text-[40px] mb-4">
-                    Profile
+              <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-5 [align-items:start] max-[1080px]:grid-cols-[1fr]">
+                <section className="p-[26px] bg-jdc-white border border-jdc-line rounded-jdc-lg max-[720px]:p-[18px]" aria-labelledby="acc-details">
+                  <h2 id="acc-details" className="m-[0_0_18px] font-display text-[20px] text-jdc-navy">
+                    Personal details
                   </h2>
-                  <div className="space-y-5">
+                  <div className="grid gap-[14px]">
                     <InputHeroUi
                       type="text"
-                      label="First Name"
+                      label="First name"
                       value={userData?.firstName}
                       name="firstName"
-                      onChange={(e) =>
-                        setUserData({ ...userData, firstName: e.target.value })
-                      }
+                      onChange={(e) => setUserData({ ...userData, firstName: e.target.value })}
                     />
                     <InputHeroUi
                       type="text"
-                      label="last Name"
+                      label="Last name"
                       value={userData?.lastName}
                       name="lastName"
-                      onChange={(e) =>
-                        setUserData({ ...userData, lastName: e.target.value })
-                      }
+                      onChange={(e) => setUserData({ ...userData, lastName: e.target.value })}
                     />
                     <InputHeroUi
                       type="email"
                       label="Email"
                       value={userData?.email}
                       name="email"
-                      onChange={(e) =>
-                        setUserData({ ...userData, email: e.target.value })
-                      }
+                      onChange={(e) => setUserData({ ...userData, email: e.target.value })}
                     />
-
-                    <PhoneInputComp
-                      value={userData?.countryCode + userData?.phoneNum}
-                      onChange={handlePhoneChange}
-                    />
-                    <div className="max-lg:hidden">
-                      <ButtonYouth70018
-                        text={"Update"}
-                        onClick={handleUpdateProfile}
-                      />
-                    </div>
+                    <PhoneInputComp value={userData?.countryCode + userData?.phoneNum} onChange={handlePhoneChange} />
+                    <ButtonYouth70018 text="Save changes" onClick={handleUpdateProfile} />
                   </div>
-                </div>
+                </section>
 
-                <div className="flex-1 font-sf">
-                  <h2 className="font-youth font-medium text-[40px] mb-4">
-                    Update Password
+                <section className="p-[26px] bg-jdc-white border border-jdc-line rounded-jdc-lg max-[720px]:p-[18px]" aria-labelledby="acc-password">
+                  <h2 id="acc-password" className="m-[0_0_18px] font-display text-[20px] text-jdc-navy">
+                    Change password
                   </h2>
-                  <div className="space-y-5">
+                  <div className="grid gap-[14px]">
                     <InputHeroUi
                       type="password"
-                      label="Password"
+                      label="New password"
                       name="password"
                       value={userData?.password}
-                      onChange={(e) =>
-                        setUserData({ ...userData, password: e.target.value })
-                      }
+                      onChange={(e) => setUserData({ ...userData, password: e.target.value })}
                     />
                     <InputHeroUi
                       type="password"
-                      label="Confirm Password"
+                      label="Confirm password"
                       name="confirmPassword"
                       value={userData?.confirmPassword}
-                      onChange={(e) =>
-                        setUserData({
-                          ...userData,
-                          confirmPassword: e.target.value,
-                        })
-                      }
+                      onChange={(e) => setUserData({ ...userData, confirmPassword: e.target.value })}
                     />
-                    <div className="lg:hidden">
-                      <ButtonYouth70018
-                        text={"Update"}
-                        onClick={handleUpdateProfile}
-                      />
-                    </div>
+                    <ButtonYouth70018 text="Update password" variant="outline" onClick={handleUpdateProfile} />
                   </div>
-                </div>
-                </div>
+                </section>
+              </div>
 
-                <div className="w-full pt-6 border-t border-gray-200">
-                  <button
-                    type="button"
-                    onClick={onDeleteModalOpen}
-                    className="w-full sm:w-auto min-w-[220px] h-12 sm:h-14 px-8 rounded-full border-2 border-[#5c1a2e] bg-white text-[#5c1a2e] font-youth font-bold text-base sm:text-lg hover:bg-[#5c1a2e]/5 active:bg-[#5c1a2e]/10 transition-colors"
-                  >
-                    Delete my account
-                  </button>
+              <section className="flex flex-wrap items-center justify-between gap-4 mt-5 py-[22px] px-[26px] border border-[#f3c9c4] rounded-jdc-lg bg-jdc-white max-[720px]:p-[18px]" aria-labelledby="acc-delete">
+                <div>
+                  <h2 id="acc-delete" className="m-[0_0_4px] font-display text-[18px] text-jdc-navy">Delete account</h2>
+                  <p className="m-0 text-[14.5px] text-jdc-muted">Permanently remove your account and personal data.</p>
                 </div>
+                <button type="button" className="h-12 py-0 px-[22px] border-[1.5px] border-jdc-danger rounded-jdc-pill bg-jdc-white text-jdc-danger font-bold cursor-pointer [transition:background_0.2s] hover:bg-jdc-danger-tint max-[720px]:w-full" onClick={onDeleteModalOpen}>
+                  Delete my account
+                </button>
               </section>
-            ) : currentTab === "order-history" ? (
-              <div className="w-full xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
+            </>
+          ) : (
+            <div className="min-h-[320px] py-2 px-0">
+              {activeTab === "order-history" ? (
                 <OrderHistory />
-              </div>
-            ) : currentTab === "notifications" ? (
-              <div className="w-full xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
+              ) : activeTab === "notifications" ? (
                 <Notifications />
-              </div>
-            ) : currentTab === "invite-friend" ? (
-              <div className="w-full xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
+              ) : activeTab === "invite-friend" ? (
                 <Invite />
-              </div>
-            ) : currentTab === "on-hold-bookings" ? (
-              <div className="w-full xl:ml-[320px] 2xl:ml-[398px] md:h-[calc(100vh-5rem)] md:overflow-y-auto hideScrollbar">
+              ) : activeTab === "on-hold-bookings" ? (
                 <OnHoldbookings />
-              </div>
-            ) : (
-              ""
-            )}
-          </div>
+              ) : null}
+            </div>
+          )}
         </div>
-        <DeleteAccountModal
-          isOpen={isDeleteModalOpen}
-          onOpenChange={onDeleteModalOpenChange}
-          onClose={onDeleteModalClose}
-          userEmail={userData?.email || userEmail}
-          onDeleteAccount={handleDeleteAccount}
-          isDeleting={isDeletingAccount}
-        />
-      </HomeClientWrapper>
-    </>
+      </div>
+
+      <DeleteAccountModal
+        isOpen={isDeleteModalOpen}
+        onOpenChange={onDeleteModalOpenChange}
+        onClose={onDeleteModalClose}
+        userEmail={userData?.email || userEmail}
+        onDeleteAccount={handleDeleteAccount}
+        isDeleting={isDeletingAccount}
+      />
+    </PageShell>
   );
 }

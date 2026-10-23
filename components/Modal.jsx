@@ -1,11 +1,4 @@
-import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-  Button,
-} from "@heroui/react";
+import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
 import { IoClose } from "react-icons/io5";
 import { FaArrowLeftLong } from "react-icons/fa6";
 
@@ -36,11 +29,6 @@ const ReusableModal = ({
 
   const handleBack = () => {
     if (onBack) onBack();
-  };
-
-  const handleFooterAction = () => {
-    if (onFooterAction) onFooterAction();
-    else handleClose();
   };
 
   return (

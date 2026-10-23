@@ -1,14 +1,12 @@
 "use client";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import InputHeroUi from "../../../components/InputHeroUi";
+import { takeBookingDraft } from "../../../utilities/useStartBooking";
+import { ensureGuestSession } from "../../../utilities/guestSession";
 import { ButtonYouth70018 } from "../../../components/Buttons";
 import { PiArrowRight } from "react-icons/pi";
-import SelectHero from "../../../components/SelectHero";
-import { FaPlus } from "react-icons/fa6";
 import { FaChevronLeft } from "react-icons/fa";
 import ReusableModal from "../../../components/Modal";
 import { Spinner, addToast, useDisclosure } from "@heroui/react";
-import { IoSearchOutline } from "react-icons/io5";
 import { TbLocation } from "react-icons/tb";
 import { useRouter } from "next/navigation";
 import {
@@ -33,14 +31,17 @@ import {
   getMaxTurnaroundDays,
   getTurnaroundConflict,
 } from "../../../utilities/turnaroundTime";
-import Link from "next/link";
-import Header from "../../../components/Header";
-import HomeClientWrapper from "../../../utilities/Test";
+import PageShell from "../../../components/ds/PageShell";
+import { cx } from "../../../components/ds/cx";
+import { BTN, BTN_BLOCK, CTRL, CTRL_CHEV, CTRL_ICON, CTRL_INPUT, FIELD, FIELD_LABEL, FIELDSET, LEGEND, ROOT } from "../../../components/booking/ui";
 import { MiniLoader } from "../../../components/Loader";
 import { BASE_URL } from "../../../utilities/URL";
-import PostcodeAddressLookup from "../../../components/PostcodeAddressLookup";
 import AddressFilterLookup from "../../../components/AddressFilterLookup";
 import { mapPostcodeAddressToFormFields } from "../../../utilities/postcodeLookup";
+import ProtoIcon from "../../../components/proto/ProtoIcon";
+import ProtoSelect from "../../../components/proto/ProtoSelect";
+import BookAddressFields from "../../../components/booking/BookAddressFields";
+import SlotSheet, { slotNiceDay } from "../../../components/booking/SlotSheet";
 
 const collection = [
   { key: "Collect from me in person", label: "Collect from me in person" },
@@ -84,7 +85,7 @@ function SlotTimezoneBanner({ operational, clientLocal }) {
   );
 }
 
-export default function orderRegistration() {
+export default function PlaceOrderPage() {
   const router = useRouter();
   const orderData = useSelector((state) => state.cart.orderData);
   const preferencesData = useSelector((state) => state.cart.preferences) || [];
@@ -117,19 +118,47 @@ export default function orderRegistration() {
     [ordersData]
   );
 
+  // The "Action required" popup is shown once per order: orders the customer has
+  // already seen it for are remembered, so it only comes back for a new one.
+  // (Those orders stay flagged in Order history.)
+  const FAILED_SEEN_KEY = "jdc:failedAttemptSeen";
+  const readFailedSeen = () => {
+    try {
+      return JSON.parse(localStorage.getItem(FAILED_SEEN_KEY) || "[]");
+    } catch {
+      return [];
+    }
+  };
+  const markFailedAttemptsSeen = () => {
+    try {
+      const seen = new Set(readFailedSeen().map(String));
+      failedAttemptBookings.forEach(({ order }) => seen.add(String(order.id)));
+      localStorage.setItem(FAILED_SEEN_KEY, JSON.stringify([...seen]));
+    } catch {
+      // storage unavailable: the popup may show again next time
+    }
+  };
+  const closeFailedAttemptModal = () => {
+    markFailedAttemptsSeen();
+    onFailedAttemptModalClose();
+  };
+
   useEffect(() => {
     if (failedAttemptModalShown) return;
     if (failedAttemptBookings.length === 0) return;
     if (isRescheduleFlow) return;
+    const seen = new Set(readFailedSeen().map(String));
+    if (failedAttemptBookings.every(({ order }) => seen.has(String(order.id)))) return;
     const t = setTimeout(() => {
       setFailedAttemptModalShown(true);
       onFailedAttemptModalOpen();
     }, 300);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [failedAttemptBookings, failedAttemptModalShown, onFailedAttemptModalOpen, isRescheduleFlow]);
 
   const goToFailedAttemptOrder = (bookingId) => {
-    onFailedAttemptModalClose();
+    closeFailedAttemptModal();
     router.push(`/profile?tab=order-history&bookingId=${bookingId}`);
   };
 
@@ -139,6 +168,8 @@ export default function orderRegistration() {
     modType: "",
   });
   const [modalScroll, setModalScroll] = useState(false);
+  const [sheet, setSheet] = useState(""); // "Col" | "Del" slot sheet
+  const [noteOpen, setNoteOpen] = useState(false);
   const [turnaroundModal, setTurnaroundModal] = useState({
     open: false,
     minDeliveryDate: "",
@@ -189,18 +220,6 @@ export default function orderRegistration() {
   };
 
   /** ISO yyyy-mm-dd → DD/MM/YY for read-only field display */
-  const formatIsoDateAsDdMmYy = (isoDate) => {
-    if (!isoDate || typeof isoDate !== "string") return "";
-    const parts = isoDate.split("-");
-    if (parts.length < 3) return "";
-    const y = parseInt(parts[0], 10);
-    const m = parseInt(parts[1], 10);
-    const d = parseInt(parts[2], 10);
-    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return "";
-    const yy = String(y).slice(-2);
-    return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${yy}`;
-  };
-
   const initialCollectionSlot = useMemo(() => slots?.[0] || null, [slots]);
 
   const initialDeliverySlot = useMemo(() => {
@@ -521,25 +540,30 @@ export default function orderRegistration() {
     parseTimeToMinutes(deliveryData.deliveryTimeFrom) < parseTimeToMinutes(collectionData.collectionTimeTo);
 
   useEffect(() => {
-    const ensureGuestSession = async () => {
-      if (typeof window === "undefined") return;
-      if (localStorage.getItem("accessToken")) return;
-
-      try {
-        const response = await fetch(`${BASE_URL}customer/guest/start`, {
-          method: "POST",
-          credentials: "include",
-        });
-        const json = await response.json();
-        if (json?.data?.accessToken) {
-          localStorage.setItem("accessToken", json.data.accessToken);
-        }
-      } catch {
-        // Guest session optional; logged-in users still work.
-      }
-    };
-
     void ensureGuestSession();
+  }, []);
+
+  // Postcode typed on the home page: start this booking at that postcode and list
+  // its addresses. Applied after the saved-booking sync so that doesn't overwrite it.
+  const [draftPostcode, setDraftPostcode] = useState("");
+  const draftRef = useRef(undefined); // read once; effects can run twice in development
+  useEffect(() => {
+    if (isRescheduleFlow) return undefined;
+    if (draftRef.current === undefined) draftRef.current = takeBookingDraft();
+    const draft = draftRef.current;
+    if (!draft?.postcode) return undefined;
+    const t = setTimeout(() => {
+      setCollectionData((prev) => ({
+        ...prev,
+        postalCode: draft.postcode,
+        streetAddress: "",
+        lat: null,
+        lng: null,
+      }));
+      setDraftPostcode(draft.postcode);
+    }, 0);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyPostcodeAddress = (address, target = "collection") => {
@@ -645,7 +669,7 @@ export default function orderRegistration() {
       }
     } else {
       if (!navigator.geolocation) {
-        setError("Geolocation is not supported by your browser");
+        addToast({ title: "Your browser can't share your location. Please enter your postcode.", color: "warning" });
         return;
       }
 
@@ -841,6 +865,14 @@ export default function orderRegistration() {
     }
   }, [orderData]);
 
+  // Handover selects always show an option (prototype); default to the first.
+  useEffect(() => {
+    if (!collectionData?.driverInstructionOptions)
+      setCollectionData((prev) => ({ ...prev, driverInstructionOptions: collection[0].key }));
+    if (!deliveryData?.driverInstructionOptions1)
+      setDeliveryData((prev) => ({ ...prev, driverInstructionOptions1: delivery[0].key }));
+  }, [collectionData?.driverInstructionOptions, deliveryData?.driverInstructionOptions1]);
+
   // Ensure time slots are set when modal opens for collection date
   useEffect(() => {
     if (modal?.modType === "collection-date" && collectionData?.collectionDate) {
@@ -891,8 +923,7 @@ export default function orderRegistration() {
     if (typeof window === "undefined") return;
     if (sessionStorage.getItem("openDeliveryDateModal") === "1") {
       sessionStorage.removeItem("openDeliveryDateModal");
-      setModal({ modType: "delivery-date" });
-      onOpen();
+      setSheet("Del");
     }
   }, [onOpen]);
 
@@ -1108,322 +1139,341 @@ export default function orderRegistration() {
   const handleChangeDeliveryFromTurnaround = () => {
     setTurnaroundModal((prev) => ({ ...prev, open: false }));
     setProceedAfterTurnaroundAccept(false);
-    setModal({ modType: "delivery-date" });
-    onOpen();
+    setSheet("Del");
   };
 
+  // Slots come from the pickup address, so the pickers wait for it.
+  const hasPickupAddress = Boolean(collectionData?.lat && collectionData?.lng);
+  const slotText = (date, from, to) =>
+    date && from
+      ? `${slotNiceDay(date)} · ${formatTo24HourDisplay(from)} – ${formatTo24HourDisplay(to)}`
+      : hasPickupAddress
+        ? "Choose a slot"
+        : "Add your address first";
+  const openSlot = (kind) => {
+    if (!hasPickupAddress) {
+      addToast({ title: "Add your address first", description: "We show the times available at your address.", color: "warning" });
+      const pc = document.getElementById("bkPc");
+      pc?.scrollIntoView({ block: "center", behavior: "smooth" });
+      pc?.focus({ preventScroll: true });
+      return;
+    }
+    setSheet(kind);
+  };
+
+  // Delivery days/times offered in the slot sheet (same rules as before).
+  const deliveryDays = (
+    collectionData?.collectionDate
+      ? slotsDelivery?.filter(
+          (item) => item.date >= (minDeliveryForCart || getMinDeliveryDate(collectionData.collectionDate, 0))
+        )
+      : slotsDelivery
+  ) || [];
+  const deliveryTimesFor = (date) => {
+    const raw = slotsDelivery?.find((s) => s.date === date)?.timeSlots || [];
+    return date === collectionData?.collectionDate && collectionData?.collectionTimeTo
+      ? raw.filter((s) => parseTimeToMinutes(s?.start) >= parseTimeToMinutes(collectionData.collectionTimeTo))
+      : raw;
+  };
+  const noteIsOpen = noteOpen || Boolean(driverInstruction);
+  const growNote = (el) => {
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  const continueDisabled =
+    isCheckingZone ||
+    isRescheduling ||
+    isDeliveryBeforeMinimum ||
+    isDeliverySameOrBeforeCollection ||
+    isSameDayDeliveryBeforeCollection ||
+    !collectionData?.collectionDate ||
+    !collectionData?.collectionTimeTo ||
+    !deliveryData?.deliveryDate ||
+    !deliveryData?.deliveryTimeTo ||
+    (!isRescheduleFlow && !collectionData?.streetAddress) ||
+    !collectionData?.driverInstructionOptions ||
+    !deliveryData?.driverInstructionOptions1;
+
   return (
-    <HomeClientWrapper>
-        <div className="w-full grid lg:grid-cols-2">
-          <div className="h-[300px] max-sm:hidden sm:h-[600px] lg:h-screen w-full bg-sign-in bg-cover bg-center bg-no-repeat relative">
-            <video
-              autoPlay
-              muted
-              loop
-              className="w-full h-full object-cover object-center lg:hidden"
-              src="/images/signInVideo.mp4"
-            ></video>
-
-            <div className="w-full max-w-[565px] mx-auto my-auto absolute bottom-5 left-1/2 -translate-x-1/2 lg:hidden">
-              <div className="mx-auto w-max pb-1 sm:pb-4">
-                <p className="font-sf sm:text-xl font-medium text-theme-blue">
-                  Welcome to
-                </p>
-                <h4 className="font-youth font-bold text-2xl sm:text-[40px] leading-8 text-theme-blue">
-                  Just Dry Cleaners
-                </h4>
-              </div>
-              <Link onClick={() => dispatch(setPage(true))} href="/">
-                <img
-                  className="mx-auto w-12 sm:w-auto"
-                  src="/images/logo.png"
-                  alt="logo"
-                />
-              </Link>
+    <PageShell header="solid">
+      {/* Booking form: layout from the prototype (book.html), styled with Tailwind */}
+      <div id="jdcBookRoot" className={cx(ROOT, "bg-white")}>
+        {step === "new-order" ? (
+          <section className="px-jdc-gutter pb-[72px] pt-8 max-[720px]:pb-12 max-[720px]:pt-5">
+            <div className="mx-auto max-w-[720px]">
+              <button
+                type="button"
+                className="inline-flex cursor-pointer items-center gap-2 border-0 bg-none px-0 py-1.5 text-[15px] font-semibold text-jdc-navy hover:text-jdc-blue"
+                onClick={() => {
+                  dispatch(setPage(true));
+                  router.push("/");
+                }}
+              >
+                <FaChevronLeft aria-hidden="true" /> Back
+              </button>
+              <h1 className="mx-0 mb-0 mt-3.5 font-display text-[clamp(28px,3vw,38px)] font-extrabold leading-[1.08] tracking-[-0.02em] text-jdc-navy">Ready for your next pickup?</h1>
+              <p className="mx-0 mb-[26px] mt-2 text-[16px] text-jdc-muted">Start a new order and we&apos;ll collect from your door.</p>
+              <button type="button" className="mt-2 flex w-full cursor-pointer items-center gap-[18px] rounded-jdc-lg border border-jdc-line bg-jdc-white p-[22px] text-left transition-[border-color] duration-200 hover:border-jdc-blue" onClick={() => setStep("get-started")}>
+                <span className="flex h-14 w-14 flex-none items-center justify-center rounded-2xl bg-[#F1F3F7] text-[#6B7385]">
+                  <TbLocation size={26} aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1 [&>small]:block [&>small]:text-[12.5px] [&>small]:font-bold [&>small]:uppercase [&>small]:tracking-[0.12em] [&>small]:text-jdc-blue [&>span]:mt-0.5 [&>span]:block [&>span]:text-[14.5px] [&>span]:text-jdc-muted [&>strong]:mt-0.5 [&>strong]:block [&>strong]:font-display [&>strong]:text-[22px] [&>strong]:text-jdc-navy">
+                  <small>New order</small>
+                  <strong>Do my laundry</strong>
+                  <span>Choose your address and a one-hour window.</span>
+                </span>
+                <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[50%] bg-jdc-blue text-jdc-white" aria-hidden="true">
+                  <PiArrowRight size={20} />
+                </span>
+              </button>
             </div>
-
-            <div className="w-full h-14 flex justify-center items-center absolute z-20 -bottom-14 left-0 px-8 bg-theme-gray lg:hidden">
-              <p className="max-w-[565px] font-sf text-xs sm:text-base">
-                Create an account and start enjoying cleaner clothes with zero
-                effort!
-              </p>
-            </div>
-          </div>
-
-          <div className="max-xl:fixed max-xl:z-50 w-full sm:hidden">
-            <Header type="" />
-          </div>
-
-          <div className="w-full flex justify-center items-center">
-            {step === "new-order" ? (
-              <div className="w-full h-screen flex justify-center lg:items-center overflow-auto px-8 py-10 sm:py-16 lg:py-20 relative">
-                {/* Back Button - Desktop Only */}
-                <button
-                  onClick={() => {
+          </section>
+        ) : step === "get-started" ? (
+          <div className="bg-white">
+            <div className="mx-auto max-w-[820px] px-8 pb-16 pt-7 max-[1080px]:px-jdc-gutter [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:pb-7 [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:pt-5 [@media(min-width:901px)_and_(max-height:860px)]:pb-5 [@media(min-width:901px)_and_(max-height:860px)]:pt-3 max-[720px]:px-5 max-[720px]:pb-12 max-[720px]:pt-5">
+              <div className="mb-[18px] flex items-center justify-between gap-4">
+                <a
+                  className="-ml-1 inline-flex items-center gap-1.5 rounded-[10px] pb-1.5 pl-1 pr-2.5 pt-1.5 text-[14.5px] font-semibold text-jdc-navy no-underline hover:bg-jdc-paper"
+                  href="/"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (isRescheduleFlow) {
+                      router.back();
+                      return;
+                    }
                     dispatch(setPage(true));
                     router.push("/");
                   }}
-                  className="hidden lg:flex absolute top-8 left-8 items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm z-10"
-                  aria-label="Go back"
                 >
-                  <FaChevronLeft className="text-theme-blue text-lg" />
-                </button>
-
-                <div className="w-full max-w-[565px] mx-auto h-[84vh  ]">
-                  <img
-                    className="mx-auto max-lg:hidden"
-                    src="/images/logo.png"
-                    alt="logo"
+                  <ProtoIcon name="back" size={16} />
+                  Back
+                </a>
+              </div>
+              <h1 className="m-0 font-display text-[34px] font-bold leading-[1.15] tracking-[-0.02em] text-jdc-navy [@media(min-width:901px)_and_(max-height:860px)]:text-[28px] max-[720px]:text-[28px]">{isRescheduleFlow ? "Reschedule your booking" : "Book your pickup"}</h1>
+              <p className="mx-0 mb-0 mt-2 text-[16.5px] text-jdc-muted [@media(min-width:901px)_and_(max-height:860px)]:mt-1 [@media(min-width:901px)_and_(max-height:860px)]:text-[15px] max-[720px]:text-[15.5px]">
+                {isRescheduleFlow
+                  ? "Choose new collection and delivery windows."
+                  : "Tell us where to come and when suits you."}
+              </p>
+              <form
+                className="mt-[34px] [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:mt-[26px] [@media(min-width:901px)_and_(max-height:860px)]:mt-4 max-[720px]:mt-[26px] [&>*]:[transition:opacity_0.2s]"
+                noValidate
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!continueDisabled) handleProceedToCheckout();
+                }}
+              >
+                {!isRescheduleFlow && (
+                  <BookAddressFields
+                    postcode={collectionData?.postalCode || ""}
+                    onPostcodeChange={(next) => setCollectionData((prev) => ({ ...prev, postalCode: next }))}
+                    address={collectionData?.streetAddress || ""}
+                    savedAddresses={data?.data}
+                    onPickAddress={(a) => applyPostcodeAddress(a, "collection")}
+                    onPickSaved={(a) => handleUseCurrentLocation(a)}
+                    onClearAddress={() =>
+                      setCollectionData((prev) => ({ ...prev, streetAddress: "", lat: null, lng: null }))
+                    }
+                    disabled={isPostcodeDisabled}
+                    autoSearch={draftPostcode}
                   />
+                )}
 
-                  <div className="mx-auto w-max pt-3 max-lg:hidden">
-                    <p className="font-sf text-xl font-medium text-theme-blue">
-                      Welcome to
-                    </p>
-                    <h4 className="font-youth font-bold text-[40px] leading-8 text-theme-blue">
-                      Just Dry Cleaners
-                    </h4>
-                  </div>
-
-                  <div className="flex justify-center pt-12 2xl:pt-20 text-theme-blue">
-                    <div
-                      onClick={() => setStep("get-started")}
-                      className="size-[320px] 2xl:size-[480px] rounded-full shrink-0 bg-theme-gray border-4 border-theme-blue flex flex-col justify-center items-center cursor-pointer"
-                    >
-                      <p className="font-sf font-semibold text-xl 2xl:text-3xl text-center">
-                        New Order
-                      </p>
-                      <h4 className="font-sf font-semibold text-3xl 2xl:text-[40px] text-center">
-                        Do my Laundry
-                      </h4>
-
-                      <div className="">
-                        <PiArrowRight className="text-5xl 2xl:text-7xl text-theme-blue" />
+                <fieldset className={FIELDSET} data-slot="Col">
+                  <legend className={LEGEND}>Collection</legend>
+                  <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-[18px] max-[720px]:grid-cols-[minmax(0,1fr)] max-[720px]:gap-3.5">
+                    <div className={FIELD}>
+                      <label htmlFor="bkColWhen" className={FIELD_LABEL}>Date &amp; time</label>
+                      <div className={CTRL}>
+                        <span className={CTRL_ICON}>
+                          <ProtoIcon name="calendar" size={18} />
+                        </span>
+                        <button
+                          type="button"
+                          className={cx(CTRL_INPUT, "cursor-pointer overflow-hidden whitespace-nowrap pr-10 text-left font-semibold text-jdc-navy", !hasPickupAddress && "font-normal text-[#8A93A6]")}
+                          id="bkColWhen"
+                          aria-haspopup="dialog"
+                          disabled={isDeliveryOnlyReschedule}
+                          onClick={() => openSlot("Col")}
+                        >
+                          {slotText(
+                            collectionData?.collectionDate,
+                            collectionData?.collectionTimeFrom,
+                            collectionData?.collectionTimeTo
+                          )}
+                        </button>
+                        <span className={CTRL_CHEV} aria-hidden="true">
+                          <ProtoIcon name="chevDown" size={14} />
+                        </span>
                       </div>
                     </div>
+                    <div className={FIELD}>
+                      <label htmlFor="bkColMethod" className={FIELD_LABEL}>Handover</label>
+                      <ProtoSelect
+                        id="bkColMethod"
+                        name="collection_method"
+                        options={collection}
+                        disabled={isDeliveryOnlyReschedule}
+                        value={collectionData?.driverInstructionOptions || ""}
+                        onChange={(v) => setCollectionData((prev) => ({ ...prev, driverInstructionOptions: v }))}
+                      />
+                    </div>
                   </div>
-                </div>
-              </div>
-            ) : step === "get-started" ? (
-              <div className="w-full h-screen flex justify-center 2xl:items-center overflow-auto px-5 sm:px-8 py-10 sm:py-16 md:py-20  relative">
-                {/* Back Button - Desktop Only */}
-                <button
-                  onClick={() => setStep("new-order")}
-                  className="hidden lg:flex absolute top-8 left-8 items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm z-10"
-                  aria-label="Go back"
-                >
-                  <FaChevronLeft className="text-theme-blue text-lg" />
-                </button>
+                </fieldset>
 
-                <div className="w-full max-w-[565px] mx-auto h-[86vh]">
-                  <Link onClick={() => dispatch(setPage(true))} href="/">
-                    <img
-                      className="mx-auto cursor-pointer max-lg:hidden"
-                      src="/images/logo.png"
-                      alt="logo"
-                    />
-                  </Link>
-
-                  <div className="mx-auto w-max pt-3 max-lg:hidden">
-                    <p className="font-sf text-xl font-medium text-theme-blue">
-                      Welcome to
-                    </p>
-                    <h4 className="font-youth font-bold text-[40px] leading-8 text-theme-blue">
-                      Just Dry Cleaners
-                    </h4>
-                  </div>
-
-                  <div className="space-y-5 pt-10 font-sf">
-                    {/* Mobile Back Button and Heading in Row */}
-                    <div className="md:hidden flex items-center gap-4 mb-4">
-                      <button
-                        onClick={() => setStep("new-order")}
-                        className="flex items-center justify-center w-10 h-10 rounded-full bg-white border border-gray-300 hover:bg-gray-50 transition-colors shadow-sm shrink-0"
-                        aria-label="Go back"
-                      >
-                        <FaChevronLeft className="text-theme-blue text-lg" />
-                      </button>
-                      <h4 className="font-youth font-bold text-[32px]">
-                        Let's get Started
-                      </h4>
-                    </div>
-                    <h4 className="font-youth font-bold text-[32px] text-center max-md:hidden">
-                      Let's get Started
-                    </h4>
-                    {!isRescheduleFlow && (
-                      <PostcodeAddressLookup
-                        value={collectionData?.postalCode || ""}
-                        disabled={isPostcodeDisabled}
-                        onChange={(next) =>
-                          setCollectionData((prev) => ({
-                            ...prev,
-                            postalCode: next,
-                          }))
-                        }
-                        onPostcodeSelected={() => {
-                          setModal((prev) => ({ ...prev, modType: "address" }));
-                          onOpen();
-                        }}
-                      />
-                    )}
-                    <div
-                      className={`relative z-0 ${
-                        isRescheduleFlow ? "pointer-events-none opacity-80" : ""
-                      }`}
-                      onClick={() => {
-                        if (isRescheduleFlow) return;
-                        setModal({ ...modal, modType: "address" });
-                        onOpen();
-                      }}
-                    >
-                      <InputHeroUi
-                        type="text"
-                        label="Address"
-                        value={collectionData?.streetAddress}
-                        isDisabled={isRescheduleFlow}
-                      />
-                    </div>
-
-                    <div
-                      onClick={() => {
-                        if (isDeliveryOnlyReschedule) return;
-                        setModal({ ...modal, modType: "collection-date" });
-                        onOpen();
-                      }}
-                      className={isDeliveryOnlyReschedule ? "pointer-events-none opacity-60" : ""}
-                    >
-                      <InputHeroUi
-                        type="text"
-                        label="Collection"
-                        value={formatIsoDateAsDdMmYy(collectionData?.collectionDate)}
-                        isDisabled={isDeliveryOnlyReschedule}
-                        endContent={
-                          <span className="whitespace-nowrap">
-                            {collectionData?.collectionTimeFrom
-                              ? `${formatTo24HourDisplay(
-                                  collectionData?.collectionTimeFrom
-                                )} - ${formatTo24HourDisplay(
-                                  collectionData?.collectionTimeTo
-                                )}`
-                              : ""}
-                          </span>
-                        }
-                      />
-                    </div>
-                    <SelectHero
-                      label="Select collection method"
-                      list={collection}
-                      value={[collectionData?.driverInstructionOptions]}
-                      onChange={(e) => {
-                        if (isDeliveryOnlyReschedule) return;
-                        setCollectionData({
-                          ...collectionData,
-                          driverInstructionOptions: e.target.value,
-                        });
-                      }}
-                      isDisabled={isDeliveryOnlyReschedule}
-                    />
-
-                    <div
-                      onClick={() => {
-                        setModal({ ...modal, modType: "delivery-date" });
-                        onOpen();
-                      }}
-                    >
-                      <InputHeroUi
-                        type="text"
-                        label="Delivery"
-                        value={formatIsoDateAsDdMmYy(deliveryData?.deliveryDate)}
-                        endContent={
-                          <span className="whitespace-nowrap">
-                            {deliveryData?.deliveryTimeFrom
-                              ? `${formatTo24HourDisplay(
-                                  deliveryData?.deliveryTimeFrom
-                                )} - ${formatTo24HourDisplay(
-                                  deliveryData?.deliveryTimeTo
-                                )}`
-                              : ""}
-                          </span>
-                        }
-                      />
+                <fieldset className={FIELDSET} data-slot="Del">
+                  <legend className={LEGEND}>Delivery</legend>
+                  <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-[18px] max-[720px]:grid-cols-[minmax(0,1fr)] max-[720px]:gap-3.5">
+                    <div className={FIELD}>
+                      <label htmlFor="bkDelWhen" className={FIELD_LABEL}>Date &amp; time</label>
+                      <div className={CTRL}>
+                        <span className={CTRL_ICON}>
+                          <ProtoIcon name="calendar" size={18} />
+                        </span>
+                        <button
+                          type="button"
+                          className={cx(CTRL_INPUT, "cursor-pointer overflow-hidden whitespace-nowrap pr-10 text-left font-semibold text-jdc-navy", !hasPickupAddress && "font-normal text-[#8A93A6]")}
+                          id="bkDelWhen"
+                          aria-haspopup="dialog"
+                          onClick={() => openSlot("Del")}
+                        >
+                          {slotText(deliveryData?.deliveryDate, deliveryData?.deliveryTimeFrom, deliveryData?.deliveryTimeTo)}
+                        </button>
+                        <span className={CTRL_CHEV} aria-hidden="true">
+                          <ProtoIcon name="chevDown" size={14} />
+                        </span>
+                      </div>
                       {isDeliverySameOrBeforeCollection && (
-                        <p className="font-sf text-sm text-red-600 mt-1">
+                        <p role="alert" className="mx-0 mb-0 mt-2 text-[13.5px] text-[#D92D20]">
                           Delivery date must be after collection date.
                         </p>
                       )}
                       {isSameDayDeliveryBeforeCollection && (
-                        <p className="font-sf text-sm text-red-600 mt-1">
+                        <p role="alert" className="mx-0 mb-0 mt-2 text-[13.5px] text-[#D92D20]">
                           On the same day, delivery time must be after collection time.
                         </p>
                       )}
                     </div>
-                    <SelectHero
-                      label="Select delivery method"
-                      list={delivery}
-                      value={deliveryData?.driverInstructionOptions1 ? [deliveryData?.driverInstructionOptions1] : []}
-                      onChange={(e) =>
-                        setDeliveryData({
-                          ...deliveryData,
-                          driverInstructionOptions1: e.target.value,
-                        })
-                      }
-                    />
-
-                    <div
-                      onClick={() => {
-                        setModal({ ...modal, modType: "driver" });
-                        onOpen();
-                      }}
-                      className="h-[60px] px-4 text-white bg-theme-blue rounded-lg font-sf flex justify-between items-center cursor-pointer"
-                    >
-                      <div className="">
-                        <h6>Driver instruction</h6>
-                        <p className="line-clamp-1">
-                          {driverInstruction
-                            ? driverInstruction
-                            : "Instructions for the driver"}
-                        </p>
-                      </div>
-
-                      <FaPlus className="text-2xl text-white" />
-                    </div>
-                    <div className="pt-6 pb-10">
-                      <ButtonYouth70018
-                        text={
-                          isCheckingZone
-                            ? "Checking..."
-                            : isRescheduling
-                              ? "Rescheduling..."
-                              : isRescheduleFlow
-                                ? "Reschedule"
-                                : "Continue"
-                        }
-                        isPending={isRescheduling}
-                        isDisabled={
-                          isCheckingZone ||
-                          isRescheduling ||
-                          isDeliveryBeforeMinimum ||
-                          isDeliverySameOrBeforeCollection ||
-                          isSameDayDeliveryBeforeCollection ||
-                          !collectionData?.collectionDate ||
-                          !collectionData?.collectionTimeTo ||
-                          !deliveryData?.deliveryDate ||
-                          !deliveryData?.deliveryTimeTo ||
-                          (!isRescheduleFlow && !collectionData?.streetAddress) ||
-                          !collectionData?.driverInstructionOptions ||
-                          !deliveryData?.driverInstructionOptions1
-                        }
-                        onClick={handleProceedToCheckout}
+                    <div className={FIELD}>
+                      <label htmlFor="bkDelMethod" className={FIELD_LABEL}>Handover</label>
+                      <ProtoSelect
+                        id="bkDelMethod"
+                        name="delivery_method"
+                        options={delivery}
+                        value={deliveryData?.driverInstructionOptions1 || ""}
+                        onChange={(v) => setDeliveryData((prev) => ({ ...prev, driverInstructionOptions1: v }))}
                       />
                     </div>
                   </div>
+                </fieldset>
+
+                <div className={cx("mt-8 rounded-xl border border-transparent bg-jdc-blue-tint [transition:background_0.2s,border-color_0.2s,box-shadow_0.2s] [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:mt-[26px] [@media(min-width:901px)_and_(max-height:860px)]:mt-4 max-[720px]:mt-7", noteIsOpen && "border-jdc-line bg-white focus-within:border-jdc-blue focus-within:[box-shadow:0_0_0_4px_rgba(2,120,254,0.14)]")} id="bkNote">
+                  <button
+                    type="button"
+                    className={cx("flex h-14 w-full cursor-pointer items-center justify-center gap-[9px] rounded-xl border-0 bg-none text-[15px] font-bold text-jdc-blue [@media(min-width:901px)_and_(max-height:860px)]:h-12", noteIsOpen && "hidden")}
+                    onClick={() => {
+                      setNoteOpen(true);
+                      requestAnimationFrame(() => {
+                        const ta = document.getElementById("bkNotes");
+                        if (ta) {
+                          ta.focus();
+                          growNote(ta);
+                        }
+                      });
+                    }}
+                  >
+                    <ProtoIcon name="note" size={16} />
+                    Add a note for the driver
+                  </button>
+                  <textarea
+                    className={cx("hidden min-h-[56px] w-full resize-none overflow-hidden border-0 bg-transparent px-[18px] py-4 text-[16px] leading-[1.5] text-jdc-text [outline:none] [@media(min-width:901px)_and_(max-height:860px)]:min-h-[48px] [@media(min-width:901px)_and_(max-height:860px)]:px-4 [@media(min-width:901px)_and_(max-height:860px)]:py-3", noteIsOpen && "block")}
+                    id="bkNotes"
+                    name="driver_notes"
+                    rows={1}
+                    placeholder="Gate code, buzzer or drop-off note"
+                    aria-label="Note for the driver"
+                    value={driverInstruction}
+                    ref={(el) => {
+                      if (el && noteIsOpen) growNote(el);
+                    }}
+                    onChange={(e) => {
+                      setDriverInstruction(e.target.value);
+                      growNote(e.target);
+                    }}
+                    onBlur={(e) => {
+                      if (!e.target.value.trim()) {
+                        setDriverInstruction("");
+                        setNoteOpen(false);
+                      }
+                    }}
+                  />
                 </div>
-              </div>
-            ) : (
-              <MiniLoader />
-            )}
+
+                <button className={cx(BTN, BTN_BLOCK, "mt-6 h-[58px] rounded-xl text-[16.5px] [@media(min-width:901px)_and_(max-height:860px)]:mt-3.5 [@media(min-width:901px)_and_(max-height:860px)]:h-[52px]")} type="submit" disabled={continueDisabled}>
+                  {isCheckingZone
+                    ? "Checking..."
+                    : isRescheduling
+                      ? "Rescheduling..."
+                      : isRescheduleFlow
+                        ? "Reschedule"
+                        : "Continue"}
+                  <ProtoIcon name="arrow" size={18} />
+                </button>
+                {!isRescheduleFlow ? (
+                  <p className="mx-0 mb-0 mt-3.5 flex items-center justify-center gap-2 text-[13.5px] text-jdc-muted [@media(min-width:901px)_and_(max-height:860px)]:mt-2.5 [&>svg]:flex-none [&>svg]:text-[#8A93A6] [&>svg]:transition-colors [&>svg]:duration-200">
+                    <ProtoIcon name="shield" size={15} />
+                    <span>No charge to book &mdash; we will confirm your slot by text.</span>
+                  </p>
+                ) : null}
+              </form>
+            </div>
           </div>
-        </div>
+        ) : (
+          <MiniLoader />
+        )}
+
+        <SlotSheet
+          open={sheet === "Col"}
+          loading={slotsLoading}
+          title="Collection slot"
+          days={slots || []}
+          timesFor={(date) => slots?.find((s) => s.date === date)?.timeSlots || []}
+          value={{ date: collectionData?.collectionDate, start: collectionData?.collectionTimeFrom }}
+          fmt={formatTo24HourDisplay}
+          onClose={() => setSheet("")}
+          onConfirm={(day, slot) => {
+            setCollectionData((prev) => ({
+              ...prev,
+              collectionDate: day?.date,
+              availableTimeSlots: day?.timeSlots || [],
+              collectionTimeFrom: slot?.start,
+              collectionTimeTo: slot?.end,
+            }));
+            setSheet("");
+          }}
+        />
+        <SlotSheet
+          open={sheet === "Del"}
+          loading={slotsLoading}
+          title="Delivery slot"
+          days={deliveryDays}
+          timesFor={deliveryTimesFor}
+          value={{ date: deliveryData?.deliveryDate, start: deliveryData?.deliveryTimeFrom }}
+          fmt={formatTo24HourDisplay}
+          onClose={() => setSheet("")}
+          onConfirm={(day, slot) => {
+            setDeliveryData((prev) => ({
+              ...prev,
+              deliveryDate: day?.date,
+              availableTimeSlots: day?.timeSlots || [],
+              deliveryTimeFrom: slot?.start,
+              deliveryTimeTo: slot?.end,
+            }));
+            setSheet("");
+          }}
+        />
+      </div>
 
         {/* =======================Modal======================== */}
 
@@ -1519,7 +1569,7 @@ export default function orderRegistration() {
                       Use my current location
                     </h6>
                     <p className="text-sm text-theme-psGray">
-                      Fomino will use your location
+                      We'll use your location to find your address
                     </p>
                   </div>
                 </div>
@@ -1705,7 +1755,7 @@ export default function orderRegistration() {
                       Use my current location
                     </h6>
                     <p className="text-sm text-theme-psGray">
-                      Fomino will use your location
+                      We'll use your location to find your address
                     </p>
                   </div>
                 </div>
@@ -1903,7 +1953,7 @@ export default function orderRegistration() {
                       Use my current location
                     </h6>
                     <p className="text-sm text-theme-psGray">
-                      Fomino will use your location
+                      We'll use your location to find your address
                     </p>
                   </div>
                 </div>
@@ -2010,11 +2060,14 @@ export default function orderRegistration() {
 
         <ReusableModal
           isOpen={isFailedAttemptModalOpen}
-          onOpenChange={onFailedAttemptModalOpenChange}
+          onOpenChange={(open) => {
+            if (!open) markFailedAttemptsSeen();
+            onFailedAttemptModalOpenChange(open);
+          }}
           showHeader
           headerTitle="Action Required"
           modalScroll={modalScroll}
-          onClose={onFailedAttemptModalClose}
+          onClose={closeFailedAttemptModal}
           isDismissable
           backdrop="blur"
           size="sm"
@@ -2023,59 +2076,47 @@ export default function orderRegistration() {
             onScroll={handleModalScroll}
             className="max-h-[85vh] overflow-y-auto modal-scroll"
           >
-            <div className="px-6 pt-8 pb-6 space-y-5">
-              {/* Header */}
-              <div className="flex flex-col items-center text-center gap-2">
-                <div className="w-14 h-14 rounded-full bg-red-100 flex items-center justify-center mb-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                  </svg>
-                </div>
-                <h3 className="font-youth font-bold text-[22px] text-gray-900">Action Required</h3>
-                <p className="font-sf text-base text-theme-psGray">
+            <div className="space-y-5 px-6 pb-6 pt-8 font-body max-[720px]:px-5">
+              {/* Header: neutral, like the prototype's On hold screens */}
+              <div className="flex flex-col items-center gap-2 text-center">
+                <span className="mb-1 flex size-[52px] items-center justify-center rounded-[14px] bg-[#F1F3F7] text-jdc-navy">
+                  <ProtoIcon name="ntWarn" size={24} />
+                </span>
+                <h3 className="m-0 font-display text-[22px] font-bold text-jdc-navy">Action required</h3>
+                <p className="m-0 text-[15px] text-jdc-muted">
                   {failedAttemptBookings.length === 1
-                    ? "One of your orders needs attention."
-                    : `${failedAttemptBookings.length} of your orders need attention.`}
+                    ? "One of your orders needs a new time."
+                    : `${failedAttemptBookings.length} of your orders need a new time.`}
                 </p>
               </div>
 
-              {/* Order cards */}
-              <div className="space-y-3">
+              {/* Orders */}
+              <div className="overflow-hidden rounded-2xl border border-jdc-line bg-white">
                 {failedAttemptBookings.map(({ order, attemptType }) => (
-                  <div
-                    key={order.id}
-                    className="rounded-2xl bg-red-50 border border-red-100 px-4 py-4 space-y-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-sf text-sm text-theme-psGray">Order ID</span>
-                      <span className="font-youth font-bold text-sm text-gray-900">
-                        #{order.orderTrackId || order.id}
-                      </span>
+                  <div key={order.id} className="flex items-center gap-3 border-b border-jdc-line px-4 py-3.5 last:border-b-0">
+                    <div className="min-w-0 flex-1">
+                      <b className="block text-[14.5px] text-jdc-navy">#{order.orderTrackId || order.id}</b>
+                      <small className="mt-0.5 block text-[13px] leading-[1.45] text-jdc-muted">
+                        {attemptType === "delivery"
+                          ? "We couldn’t deliver your laundry. Please choose a new delivery time."
+                          : "We couldn’t collect your laundry. Please choose a new collection time."}
+                      </small>
                     </div>
-                    <p className="font-sf text-sm text-theme-psGray leading-snug">
-                      {attemptType === "delivery"
-                        ? "We were unable to deliver your laundry. Please reschedule your delivery slot."
-                        : "Our driver was unable to collect your laundry. Please reschedule your collection slot."}
-                    </p>
-                    <ButtonYouth70018
-                      size="compact"
-                      text="View Order"
+                    <button
+                      type="button"
+                      className="h-9 flex-none cursor-pointer rounded-jdc-pill border border-jdc-line bg-white px-3.5 text-[13.5px] font-bold text-jdc-navy hover:border-[#C5CEDD] hover:bg-jdc-paper"
                       onClick={() => goToFailedAttemptOrder(order.id)}
-                    />
+                    >
+                      View
+                    </button>
                   </div>
                 ))}
               </div>
 
-              {/* Dismiss */}
-              <ButtonYouth70018
-                size="compact"
-                variant="outline"
-                text="Dismiss"
-                onClick={onFailedAttemptModalClose}
-              />
+              <ButtonYouth70018 size="compact" text="Got it" onClick={closeFailedAttemptModal} />
             </div>
           </div>
         </ReusableModal>
-</HomeClientWrapper>
+    </PageShell>
   );
 }

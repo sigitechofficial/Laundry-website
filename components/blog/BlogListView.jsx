@@ -27,7 +27,7 @@ export default function BlogListView() {
   return (
     <PageShell header="overlay">
       <PageHero
-        image="/jdc/media/8338be42a81f.jpg"
+        image="/jdc/media/hero-blog-white-shirts.jpg"
         title={
           <>
             Tips, guides <span>&amp; advice.</span>

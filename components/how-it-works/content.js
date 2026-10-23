@@ -2,7 +2,7 @@ const MEDIA = "/jdc/media";
 
 export const HIW = {
   hero: {
-    image: `${MEDIA}/00f939003323.jpg`,
+    image: `${MEDIA}/hero-how-folded-stack.jpg`,
     titleA: "Laundry day,",
     titleB: "sorted.",
     lead: "Book in two minutes. We collect, clean and deliver in a one-hour window that suits you.",

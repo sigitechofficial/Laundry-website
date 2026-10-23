@@ -31,7 +31,10 @@ export default function PageHero({ title, lead, crumbs, image, size = "md", chil
           // eslint-disable-next-line @next/next/no-img-element
           <img className="absolute inset-0 h-full w-full object-cover opacity-[0.35]" src={image} alt="" />
         ) : (
-          <Image className="object-cover opacity-[0.35]" src={image} alt="" fill priority sizes="100vw" />
+          // On phones the hero is taller than a landscape photo, so object-cover crops the
+          // sides and draws it ~1.7x the screen width; ask for a file that wide, or it is
+          // stretched and looks blurred.
+          <Image className="object-cover opacity-[0.35]" src={image} alt="" fill priority sizes="(max-width: 720px) 170vw, 100vw" />
         )
       ) : null}
       <div className="relative z-[1] px-jdc-gutter">

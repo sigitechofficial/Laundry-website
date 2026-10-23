@@ -45,7 +45,7 @@ export default function PartnerView() {
   return (
     <PageShell header="overlay">
       <PageHero
-        image="/jdc/media/15888cdab31e.jpg"
+        image="/jdc/media/hero-partner-garment-rail.jpg"
         title={
           <>
             More customers, <span>without the stress.</span>

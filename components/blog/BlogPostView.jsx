@@ -16,7 +16,9 @@ import { GRID, PostCard, STATUS } from "./BlogListView";
 
 export default function BlogPostView({ id }) {
   const startBooking = useStartBooking();
-  const { data, isLoading, isError, refetch } = useGetBlogByIdQuery(id);
+  const { data, isLoading, isError: failed, error, refetch } = useGetBlogByIdQuery(id);
+  // 404 = the article doesn't exist: show "Article not found", not a connection error
+  const isError = failed && error?.status !== 404;
   const { data: allData } = useGetBlogsQuery();
   const post = toBlogPost(data);
   const related = toBlogList(allData)

@@ -187,6 +187,15 @@ export default function BookAddressFields({
       } catch (error) {
         const retry = getRetryAfterSeconds(error);
         if (retry) setCooldown(retry);
+        // 404 = no addresses for this postcode: a warning with a hint, not an error
+        if (error?.status === 404) {
+          addToast({
+            title: "No addresses found for this postcode.",
+            description: "Please check the postcode and try again.",
+            color: "warning",
+          });
+          return;
+        }
         addToast({
           title: error?.data?.message || error?.data?.error || "Could not fetch addresses. Please try again.",
           color: "danger",

@@ -18,6 +18,7 @@ const twMerge = extendTailwindMerge({
       "font-family": [{ font: ["display", "body", "sf", "youth", "omnes", "inter"] }],
       ease: [{ ease: ["jdc"] }],
       duration: [{ duration: ["jdc"] }],
+      z: [{ z: ["jdc-bar", "jdc-header", "jdc-dropdown", "jdc-menu", "jdc-dialog", "jdc-progress", "jdc-alert", "jdc-toast"] }],
     },
   },
 });

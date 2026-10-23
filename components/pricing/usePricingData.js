@@ -25,7 +25,8 @@ export function usePricingData() {
     services,
     currency,
     isLoading: query.isLoading,
-    isError: query.isError && !data,
+    // 404 means "no services" (shown as empty), not a loading error
+    isError: query.isError && !data && query.error?.status !== 404,
     refetch: query.refetch,
   };
 }

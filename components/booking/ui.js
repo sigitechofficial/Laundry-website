@@ -141,12 +141,7 @@ export const REQ_GROUP_NOTE = "mt-1.5 border-t border-jdc-line pt-1.5 text-[12.5
 export const REQ_NOTE =
   "mx-0 mb-3.5 mt-0 flex items-start gap-2 text-[12.5px] leading-[1.5] text-jdc-muted [&>svg]:mt-px [&>svg]:flex-none [&>svg]:text-[#1A7F43]";
 
-/* ---------- Modal shell (.svc-modal), used by preferences + checkout popups ---------- */
-export const MODAL = "fixed inset-0 z-[100] flex items-center justify-center p-6 max-[720px]:items-end max-[720px]:p-0";
-export const MODAL_OVERLAY = "absolute inset-0 bg-[rgba(27,34,48,0.5)] backdrop-blur-[2px]";
-export const MODAL_PANEL =
-  "relative flex max-h-[calc(100vh-48px)] w-full max-w-[560px] flex-col overflow-hidden rounded-[22px] bg-white [box-shadow:0_40px_90px_rgba(15,20,28,0.4)] max-[720px]:max-h-[92vh] max-[720px]:max-w-none max-[720px]:rounded-[22px_22px_0_0]";
-export const MODAL_PANEL_SM = "max-w-[420px] max-[720px]:max-w-[420px]";
+/* ---------- Popup content (inside components/ds/Dialog, which draws the popup itself) ---------- */
 export const MODAL_HEAD =
   "flex items-center justify-between gap-4 border-b border-jdc-line px-6 py-5 [&>b]:font-display [&>b]:text-[20px] [&>b]:text-jdc-navy";
 export const MODAL_X = "flex-none cursor-pointer border-0 bg-none text-[15px] font-semibold text-jdc-muted hover:text-jdc-navy";
@@ -154,6 +149,10 @@ export const MODAL_X = "flex-none cursor-pointer border-0 bg-none text-[15px] fo
 export const MODAL_BODY = "modal-scroll grid gap-[22px] overflow-y-auto overflow-x-hidden px-6 py-[22px]";
 // On phones the modal is a bottom sheet: keep the button above the iPhone home bar
 export const MODAL_FOOT = "border-t border-jdc-line px-6 py-4 max-[720px]:pb-[calc(16px+env(safe-area-inset-bottom))]";
+// Short centred confirmation (icon, title, text, buttons), e.g. "Confirm your order"
+export const CONFIRM_BODY =
+  "px-7 pb-7 pt-8 text-center max-[720px]:pb-[calc(24px+env(safe-area-inset-bottom))] [&_h3]:mx-0 [&_h3]:mb-2 [&_h3]:mt-0 [&_h3]:font-display [&_h3]:text-[22px] [&_h3]:tracking-[-0.01em] [&_h3]:text-jdc-navy [&_p]:m-0 [&_p]:text-[15px] [&_p]:leading-[1.55] [&_p]:text-jdc-muted [&_p_b]:text-jdc-navy";
+export const CONFIRM_ICON = "mx-auto mb-[18px] mt-0 flex h-16 w-16 items-center justify-center rounded-[50%]";
 
 /* ---------- Service preferences (inside the modal) ---------- */
 export const SEC_H3 = "mx-0 mb-3 mt-0 font-display text-[16px] text-jdc-navy";
@@ -204,8 +203,8 @@ export const MODAL_RM =
   "h-[52px] flex-none cursor-pointer rounded-jdc-pill border border-jdc-line bg-white px-5 py-0 text-[15px] font-semibold text-[#C0392B] hover:border-[#F1C4BE] hover:bg-[#FDF3F2]";
 
 /* .svc-bar (fixed bottom bar) */
-// z-40: under the header (z-50) and under menus / drawers, which open on top of it
-export const BAR = "fixed inset-x-0 bottom-0 z-40border-t border-jdc-line bg-white/[0.96] pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 backdrop-blur-[12px]";
+// under the header and under menus / popups, which open on top of it
+export const BAR = "fixed inset-x-0 bottom-0 z-jdc-bar border-t border-jdc-line bg-white/[0.96] pb-[calc(12px+env(safe-area-inset-bottom))] pt-3 backdrop-blur-[12px]";
 export const BAR_IN =
   "mx-auto flex max-w-[1560px] items-center justify-between gap-4 px-5 min-[721px]:max-w-none min-[721px]:px-24";
 export const BAR_TXT =
@@ -214,3 +213,6 @@ export const BAR_TXT_TOTAL =
   "flex-col items-start gap-0 leading-[1.2] [&>small]:text-[12.5px] [&>small]:font-medium [&>small]:text-jdc-muted [&>strong]:font-display [&>strong]:text-[20px] [&>strong]:text-jdc-navy";
 export const BAR_GO =
   "h-[52px] rounded-xl px-[34px] max-[720px]:h-[50px] max-[720px]:max-w-[210px] max-[720px]:flex-1 max-[720px]:justify-center max-[720px]:px-[22px]";
+
+// Small spinner inside a busy button (uses the button's text colour)
+export const SPIN = "inline-block size-[18px] flex-none animate-spin rounded-full border-2 border-current border-r-transparent";

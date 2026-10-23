@@ -24,6 +24,30 @@
     -webkit-user-drag: none;
   }
 
+  /* Keyboard focus ring for the whole document, including popups and toasts that are
+     drawn outside the page wrapper. Text fields are left out: they turn their own
+     border blue on focus, and a second ring looked like a double border. Elements only
+     focused from code (tabindex=-1: a popup panel, the main area after "Skip to content")
+     are left out too, or the whole popup got a blue outline. */
+  :focus-visible:not(input):not(textarea):not(select):not([tabindex="-1"]) {
+    outline: 3px solid var(--jdc-blue);
+    outline-offset: 3px;
+  }
+  a:focus-visible {
+    border-radius: 6px;
+  }
+
+  /* Reduced motion: switch off animations and transitions everywhere */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
   input,
   select,
   textarea {
@@ -58,9 +82,9 @@
 /* Google Places autocomplete dropdown (markup injected by Google Maps) */
 .pac-container {
   border-radius: 0.5rem;
-  border: 1px solid #ccc;
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-  font-family: "Inter", sans-serif;
+  border: 1px solid var(--jdc-line);
+  box-shadow: none; /* flat: a 1px line, no shadow */
+  font-family: var(--jdc-font-body);
 }
 
 .pac-item {

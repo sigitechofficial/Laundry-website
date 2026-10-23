@@ -1,21 +1,11 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import HeroUIProviders from "./HeroUIProviders";
+import GoogleMapsProvider from "./GoogleMapsProvider";
 
-const Header = dynamic(() => import("../components/Header"), { ssr: false });
-const HeroUIProviders = dynamic(
-  () => import("../utilities/HeroUIProviders").then((mod) => mod.default),
-  { ssr: false }
-);
-const GoogleMapsProvider = dynamic(() => import("./GoogleMapsProvider"), {
-  ssr: false,
-});
-
-export default function HeaderWrapper(props) {
-  return <Header {...props} />;
-}
-
-export function HeroUIProvidersNoSSR({ children }) {
+// Client providers used by the root layout (src/app/layout.js). Both render on the
+// server too, so pages arrive with their content instead of blank.
+export function HeroUIProvidersWrapper({ children }) {
   return <HeroUIProviders>{children}</HeroUIProviders>;
 }
 export function GoogleMapsProviderWrapper({ children }) {

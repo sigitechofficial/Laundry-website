@@ -31,8 +31,9 @@ import {
 import ProtoIcon from "../proto/ProtoIcon";
 import { cx } from "../ds/cx";
 import { BASE_URL } from "../../utilities/URL";
-import { lockPageScroll } from "../../utilities/scrollLock";
-import { MiniLoader } from "../Loader";
+import Dialog from "../ds/Dialog";
+import { DetailsSkeleton, OrderCardSkeleton } from "../ds/Skeleton";
+import EmptyState from "../ds/EmptyState";
 
 /* ---------- formatting ---------- */
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -286,13 +287,7 @@ function Leg({ title, day, time, how }) {
 }
 
 function Details({ order, answers, onAsk, loading }) {
-  if (loading || !order) {
-    return (
-      <div className="flex justify-center py-16">
-        <MiniLoader />
-      </div>
-    );
-  }
+  if (loading || !order) return <DetailsSkeleton />;
   const open = order.flags.filter((f) => !answers[keyOf(order, f)]);
   return (
     <>
@@ -489,28 +484,9 @@ function RealDetails({ booking, answers, onAsk }) {
 /* ---------- confirm popup (bottom sheet on phones) ---------- */
 function ConfirmSheet({ ask, busy, onYes, onClose }) {
   const isX = ask?.kind === "remove";
-  useEffect(() => {
-    if (!ask) return undefined;
-    lockPageScroll(true);
-    const onKey = (e) => e.key === "Escape" && onClose();
-    document.addEventListener("keydown", onKey);
-    return () => {
-      lockPageScroll(false);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [ask, onClose]);
-  if (!ask) return null;
-  const name = ask.flag.name;
+  const name = ask?.flag?.name;
   return (
-    <div className="fixed inset-0 z-[1200] flex items-center justify-center p-6 max-[720px]:items-end max-[720px]:p-0" role="presentation">
-      <div className="absolute inset-0 bg-[rgba(15,20,28,0.5)]" onClick={onClose} />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="holdQ"
-        className="relative flex max-h-[calc(100vh-48px)] w-full max-w-[420px] flex-col rounded-[22px] border border-jdc-line bg-white max-[720px]:max-h-[92vh] max-[720px]:max-w-none max-[720px]:rounded-[22px_22px_0_0] max-[720px]:border-x-0 max-[720px]:border-b-0"
-      >
-        <span className="mx-auto mt-2.5 hidden h-[5px] w-10 rounded-[3px] bg-[#D5DAE3] max-[720px]:block" aria-hidden="true" />
+    <Dialog open={Boolean(ask)} onClose={onClose} dismissible={!busy} labelledBy="holdQ" className="max-w-[420px]">
         <div className="grid gap-4 overflow-y-auto px-[22px] pb-1.5 pt-[22px] text-center max-[720px]:px-5">
           <span
             className={cx(
@@ -545,8 +521,7 @@ function ConfirmSheet({ ask, busy, onYes, onClose }) {
             Go back
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -588,16 +563,6 @@ export default function OnHoldbookings() {
     setCurrent(id);
     if (!wide) setSheetOpen(true);
   };
-  useEffect(() => {
-    if (!sheetOpen || wide) return undefined;
-    lockPageScroll(true);
-    const onKey = (e) => e.key === "Escape" && !ask && setSheetOpen(false);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      if (!ask) lockPageScroll(false);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [sheetOpen, wide, ask]);
 
   const onAsk = useCallback((kind, order, flag) => setAsk({ kind, order, flag }), []);
   const closeAsk = useCallback(() => setAsk(null), []);
@@ -647,8 +612,10 @@ export default function OnHoldbookings() {
 
   if (!demo && isLoading) {
     return (
-      <div className="flex justify-center py-20">
-        <MiniLoader />
+      <div className="grid gap-3.5">
+        <span className="sr-only" role="status">Loading bookings on hold…</span>
+        <OrderCardSkeleton />
+        <OrderCardSkeleton />
       </div>
     );
   }
@@ -707,15 +674,11 @@ export default function OnHoldbookings() {
             ) : null}
           </>
         ) : (
-          <div className="rounded-[18px] border border-dashed border-jdc-line px-5 py-[30px] text-center">
-            <span className="mx-auto mb-3 flex size-[52px] items-center justify-center rounded-[14px] bg-[#F1F3F7] text-jdc-navy">
-              <ProtoIcon name="checkCircle" size={22} />
-            </span>
-            <h2 className="m-0 font-display text-[22px] font-bold text-jdc-navy">Nothing on hold</h2>
-            <p className="mx-auto mb-0 mt-2 max-w-[420px] text-[15px] text-jdc-muted">
-              All your orders are going ahead. If we find a problem with an item, it will show here for you to decide.
-            </p>
-          </div>
+          <EmptyState
+            title="Nothing on hold"
+            text="All your orders are going ahead. If we find a problem with an item, it will show here for you to decide."
+            actions={[{ label: "View your orders", href: "/profile?tab=order-history" }]}
+          />
         )}
       </div>
 
@@ -732,18 +695,15 @@ export default function OnHoldbookings() {
       ) : null}
 
       {/* details: side drawer on tablets, bottom sheet on phones */}
-      {!wide && sheetOpen && currentItem ? (
-        <div className="fixed inset-0 z-[1100]">
-          <div className="absolute inset-0 bg-[rgba(15,20,28,0.45)]" onClick={() => setSheetOpen(false)} />
-          <aside
-            role="dialog"
-            aria-modal="true"
-            aria-label={panelTitle}
-            className="absolute bottom-0 right-0 top-0 flex w-[min(480px,100%)] flex-col border-l border-jdc-line bg-white max-[720px]:left-0 max-[720px]:top-auto max-[720px]:h-[94vh] max-[720px]:w-full max-[720px]:rounded-[22px_22px_0_0] max-[720px]:border-l-0"
-          >
-            <header className="relative flex flex-none flex-col items-center justify-center border-b border-jdc-line px-14 py-[18px] max-[720px]:pb-3 max-[720px]:pt-3.5">
-              <span className="absolute left-1/2 top-[7px] hidden h-[5px] w-10 -translate-x-1/2 rounded-[3px] bg-[#D5DAE3] max-[720px]:block" aria-hidden="true" />
-              <h2 className="m-0 font-display text-[18px] font-bold text-jdc-navy max-[720px]:mt-1 max-[720px]:text-[17px]">{panelTitle}</h2>
+      <Dialog
+        open={!wide && sheetOpen && Boolean(currentItem)}
+        onClose={() => setSheetOpen(false)}
+        labelledBy="holdDetailsTitle"
+        placement="side"
+        className="max-[720px]:h-[94vh]"
+      >
+            <header className="relative flex flex-none flex-col items-center justify-center border-b border-jdc-line px-14 py-[18px] max-[720px]:pb-3 max-[720px]:pt-2">
+              <h2 id="holdDetailsTitle" className="m-0 font-display text-[18px] font-bold text-jdc-navy max-[720px]:text-[17px]">{panelTitle}</h2>
               <button
                 type="button"
                 aria-label="Close"
@@ -756,9 +716,7 @@ export default function OnHoldbookings() {
             <div className="thin-scroll grid flex-1 content-start gap-3 overflow-y-auto overscroll-contain bg-[#F7F8FA] px-5 pb-7 pt-4 max-[720px]:px-4 max-[720px]:pb-[calc(24px+env(safe-area-inset-bottom))]">
               {detailsBody}
             </div>
-          </aside>
-        </div>
-      ) : null}
+      </Dialog>
 
       <ConfirmSheet ask={ask} busy={sending} onYes={confirm} onClose={closeAsk} />
     </div>

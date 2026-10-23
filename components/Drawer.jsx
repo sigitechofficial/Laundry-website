@@ -191,7 +191,11 @@ export default function CustomDrawer({
         if (!open) onClose?.(); // closes on outside click or Esc
       }}
       // part of the screen on phones (like the site menu), a 380px side panel on larger screens
-      classNames={{ base: "!max-w-[380px] bg-white font-body max-[720px]:!w-[max(270px,72vw)] max-[720px]:!max-w-[320px]" }}
+      classNames={{
+        base: "!max-w-[380px] bg-white font-body max-[720px]:!w-[max(270px,72vw)] max-[720px]:!max-w-[320px]",
+        // same dimmed backdrop as the site menu and every popup
+        backdrop: "bg-jdc-scrim",
+      }}
     >
       <DrawerContent aria-label="Your account">
         <DrawerHeader className="p-0">
@@ -230,7 +234,7 @@ export default function CustomDrawer({
           </div>
         </DrawerHeader>
 
-        <DrawerBody className="px-3 pb-6 pt-3">
+        <DrawerBody className="thin-scroll px-3 pb-6 pt-3">
           {bodyContent || (
             <nav aria-label="Account">
               {accountItems.map((item) => (

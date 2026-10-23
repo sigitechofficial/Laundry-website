@@ -18,7 +18,9 @@ export const STATUS =
 const CARD = "flex flex-col w-full overflow-hidden border border-jdc-line rounded-jdc-lg text-inherit no-underline [transition:box-shadow_0.2s]";
 
 export default function BlogListView() {
-  const { data, isLoading, isError, refetch } = useGetBlogsQuery();
+  const { data, isLoading, isError: failed, error, refetch } = useGetBlogsQuery();
+  // the backend answers 404 when there are no articles: that is "empty", not an error
+  const isError = failed && error?.status !== 404;
   const posts = toBlogList(data);
   const [featured, ...rest] = posts;
 
@@ -51,7 +53,8 @@ export default function BlogListView() {
           ) : !posts.length ? (
             <div className={STATUS} role="status">
               <h2>No articles yet</h2>
-              <p>We&apos;re writing our first guides. Check back soon.</p>
+              <p>We&apos;re writing our first guides. In the meantime, our help centre answers the common questions.</p>
+              <Button href="/help-center">Visit the help centre</Button>
             </div>
           ) : (
             <>

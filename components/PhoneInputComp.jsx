@@ -19,7 +19,7 @@ const FLAG_BUTTON =
 // Country list: same look as the site's other dropdowns (white panel, 1px border, slim
 // scrollbar, no shadow) and above the fields below it, whose labels showed through.
 const DROPDOWN = cx(
-  "thin-scroll !z-[60] !m-0 !mt-1.5 !w-[calc(var(--tel-w,340px)-12px)] !max-h-[300px] !rounded-[14px] !border !border-solid !border-jdc-line !bg-white !p-1.5 ![box-shadow:none] !font-body",
+  "thin-scroll !z-jdc-dropdown !m-0 !mt-1.5 !w-[calc(var(--tel-w,340px)-12px)] !max-h-[300px] !rounded-[14px] !border !border-solid !border-jdc-line !bg-white !p-1.5 ![box-shadow:none] !font-body",
   // rows
   "[&_.country]:!flex [&_.country]:!items-center [&_.country]:!gap-2.5 [&_.country]:!rounded-[10px] [&_.country]:!px-3 [&_.country]:!py-2.5 [&_.country]:!text-[15px] [&_.country]:!text-jdc-navy",
   "[&_.country:hover]:!bg-jdc-paper [&_.country.highlight]:!bg-[#EAF3FF] [&_.country.highlight]:!font-semibold",

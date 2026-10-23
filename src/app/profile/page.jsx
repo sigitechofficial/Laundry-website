@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect } from "react";
+import React, { Suspense, useEffect } from "react";
 
 import PageShell from "../../../components/ds/PageShell";
 import { cx } from "../../../components/ds/cx";
@@ -39,7 +39,17 @@ import { clearAllCookies } from "../../../utilities/cookieUtils";
 import { api } from "../store/services/api";
 import DeleteAccountModal from "../../../components/DeleteAccountModal";
 
-export default function Profile() {
+// The tab comes from the URL (?tab=), which useSearchParams reads; Next.js needs a Suspense
+// boundary around it when building the page. The fallback is the same empty page frame.
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<PageShell header="solid" clientOnly />}>
+      <Profile />
+    </Suspense>
+  );
+}
+
+function Profile() {
   const router = useRouter();
   const dispatch = useDispatch();
   const searchParams = useSearchParams();
@@ -358,8 +368,9 @@ export default function Profile() {
     }
   }, [data]);
 
-  // No tab in the URL: show the account details rather than an empty panel.
-  const activeTab = currentTab || "my-account";
+  // No tab, or an unknown one, in the URL: show the account details rather than an empty panel.
+  const KNOWN_TABS = ["my-account", "my-addresses", "order-history", "on-hold-bookings", "notifications", "invite-friend"];
+  const activeTab = KNOWN_TABS.includes(currentTab) ? currentTab : "my-account";
 
   const TABS = [
     { id: "my-account", label: "My account", Icon: MdOutlineAccountCircle },
@@ -386,16 +397,14 @@ export default function Profile() {
   })();
 
   return (
-    <PageShell header="solid">
+    <PageShell header="solid" clientOnly>
       <div className="pt-10 px-jdc-gutter pb-20 max-[720px]:pt-5 max-[720px]:pb-12">
         {/* single-column tabs use a narrower centred page, so there is no empty space beside them */}
         <div
           className={
             activeTab === "my-account"
               ? "max-w-[900px] mx-auto my-0"
-              : activeTab === "my-addresses"
-                ? "max-w-[680px] mx-auto my-0"
-                : activeTab === "on-hold-bookings"
+              : activeTab === "on-hold-bookings"
                   ? "max-w-[1180px] mx-auto my-0"
               : activeTab === "notifications"
                 ? "max-w-[680px] mx-auto my-0"

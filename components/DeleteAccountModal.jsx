@@ -166,10 +166,10 @@ export default function DeleteAccountModal({
       onClose={null}
       onBack={null}
       showHeader={false}
+      ariaLabel="Delete account"
       showFooter
       footerContent={footerContent}
       size="xl"
-      backdrop="blur"
       isDismissable={!isDeleting}
       className="custom-modal-class max-h-[90vh] overflow-auto"
     >

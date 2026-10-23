@@ -3,6 +3,8 @@
 import { useGetAllAddressQuery } from "@/app/store/services/api";
 import ProtoIcon from "../proto/ProtoIcon";
 import { useStartBooking } from "../../utilities/useStartBooking";
+import EmptyState from "../ds/EmptyState";
+import { Bone } from "../ds/Skeleton";
 
 /*
  * Profile → My addresses. Lists the addresses saved from the customer's bookings
@@ -12,8 +14,6 @@ import { useStartBooking } from "../../utilities/useStartBooking";
  */
 const CARD = "flex items-start gap-3.5 rounded-jdc-lg border border-jdc-line bg-white px-5 py-[18px]";
 const ICON = "flex size-10 flex-none items-center justify-center rounded-full bg-jdc-paper text-jdc-muted";
-const BTN =
-  "inline-flex h-12 cursor-pointer items-center justify-center gap-2 rounded-jdc-pill border-0 bg-jdc-blue px-6 text-[15px] font-bold text-white hover:bg-jdc-blue-dark";
 
 export default function MyAddresses() {
   const { data, isLoading, isError } = useGetAllAddressQuery(undefined, { refetchOnMountOrArgChange: true });
@@ -21,28 +21,29 @@ export default function MyAddresses() {
   const list = Array.isArray(data?.data) ? data.data : [];
 
   if (isLoading) {
-    return <p className="m-0 py-10 text-center text-[15px] text-jdc-muted">Loading your addresses…</p>;
-  }
-
-  if (isError || !list.length) {
     return (
-      <div className="grid justify-items-center gap-3 rounded-jdc-lg border border-jdc-line bg-white px-6 py-12 text-center">
-        <span className={ICON}>
-          <ProtoIcon name="home" size={20} />
-        </span>
-        <p className="m-0 text-[17px] font-bold text-jdc-navy">No saved addresses yet</p>
-        <p className="m-0 max-w-[380px] text-[14.5px] text-jdc-muted">
-          Addresses you book a pickup with are saved here, so you can pick them next time.
-        </p>
-        <button type="button" className={BTN} onClick={() => startBooking()}>
-          Book a pickup <ProtoIcon name="arrow" size={18} />
-        </button>
+      <div className="grid w-full gap-3 xl:max-w-[859px]">
+        <span className="sr-only" role="status">Loading your addresses…</span>
+        <Bone className="h-[78px] w-full rounded-jdc-lg" />
+        <Bone className="h-[78px] w-full rounded-jdc-lg" />
       </div>
     );
   }
 
+  if (isError || !list.length) {
+    return (
+      <EmptyState
+        className="w-full xl:max-w-[859px]"
+        icon="home"
+        title="No saved addresses yet"
+        text="Addresses you book a pickup with are saved here, so you can pick them next time."
+        actions={[{ label: "Book a pickup", onClick: () => startBooking() }]}
+      />
+    );
+  }
+
   return (
-    <div className="grid gap-3">
+    <div className="grid w-full gap-3 xl:max-w-[859px]">
       {list.map((a) => {
         const line1 = a?.streetAddress || a?.title || "Address";
         const line2 = [a?.district, a?.province].filter(Boolean).join(", ");

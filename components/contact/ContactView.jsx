@@ -57,7 +57,7 @@ export default function ContactView() {
   return (
     <PageShell header="overlay">
       <PageHero
-        image="/jdc/media/941c3769fd6b.jpg"
+        image="/jdc/media/hero-contact-shirts.jpg"
         title={
           <>
             We are here <span>to help.</span>

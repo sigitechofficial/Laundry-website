@@ -1,7 +1,7 @@
 import { BASE_URL } from "../../utilities/URL";
 import { htmlToText } from "../../utilities/sanitizeHtml";
 
-const FALLBACK_IMAGE = "/jdc/media/8338be42a81f.jpg";
+const FALLBACK_IMAGE = "/jdc/media/hero-blog-white-shirts.jpg";
 const WORDS_PER_MINUTE = 200;
 
 /** The blogs endpoint has returned several shapes; accept them all. */

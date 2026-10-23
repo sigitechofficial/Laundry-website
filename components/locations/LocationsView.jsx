@@ -28,7 +28,7 @@ export default function LocationsView() {
     <PageShell header="overlay">
       <PageHero
         size="sm"
-        image="/jdc/media/f0f6adb5a1cc.jpg"
+        image="/jdc/media/hero-locations-knitwear.jpg"
         title={
           <>
             Where <span>we collect.</span>

@@ -150,7 +150,8 @@ export const MODAL_PANEL_SM = "max-w-[420px] max-[720px]:max-w-[420px]";
 export const MODAL_HEAD =
   "flex items-center justify-between gap-4 border-b border-jdc-line px-6 py-5 [&>b]:font-display [&>b]:text-[20px] [&>b]:text-jdc-navy";
 export const MODAL_X = "flex-none cursor-pointer border-0 bg-none text-[15px] font-semibold text-jdc-muted hover:text-jdc-navy";
-export const MODAL_BODY = "grid gap-[22px] overflow-auto px-6 py-[22px]";
+// Scrolls up/down only, with the slim light scrollbar (no Windows arrows)
+export const MODAL_BODY = "modal-scroll grid gap-[22px] overflow-y-auto overflow-x-hidden px-6 py-[22px]";
 // On phones the modal is a bottom sheet: keep the button above the iPhone home bar
 export const MODAL_FOOT = "border-t border-jdc-line px-6 py-4 max-[720px]:pb-[calc(16px+env(safe-area-inset-bottom))]";
 

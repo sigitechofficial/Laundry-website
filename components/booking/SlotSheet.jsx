@@ -23,14 +23,15 @@ const DAYS =
   "flex snap-x snap-proximity gap-2 overflow-x-auto px-0.5 pb-2 pt-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
 const DAY =
   "flex w-16 flex-none cursor-pointer snap-start flex-col items-center gap-0.5 rounded-[14px] border border-jdc-line bg-white px-0 py-[9px] text-jdc-navy hover:border-[#C5CEDD] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-jdc-blue";
-const DAY_ON = "border-jdc-blue bg-jdc-blue text-white hover:border-jdc-blue";
+// selected day / time: light blue tint with blue text (same as "Add a note for the driver")
+const DAY_ON = "border-jdc-blue bg-jdc-blue-tint text-jdc-blue hover:border-jdc-blue";
 const DAY_SMALL = "text-[11.5px] leading-[1.2] text-jdc-muted";
 const TIMES =
   "-mx-[22px] flex min-h-0 flex-1 grid-cols-[repeat(3,minmax(0,1fr))] flex-col gap-2.5 max-[720px]:grid-cols-[repeat(2,minmax(0,1fr))] thin-scroll overflow-y-auto overscroll-contain px-[22px] pb-4 pt-0.5 max-[720px]:-mx-5 max-[720px]:px-5 max-[720px]:pb-3.5";
 const TIME =
   "flex h-[52px] flex-none cursor-pointer items-center justify-center rounded-[14px] border border-jdc-line bg-white px-4 py-0 text-center font-display text-[16px] font-semibold tracking-[0.01em] text-jdc-navy tabular-nums hover:border-[#C5CEDD] hover:bg-white focus:[outline:none] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-jdc-blue";
 const TIME_ON =
-  "border-transparent bg-transparent bg-[linear-gradient(135deg,#2D8CFF,var(--jdc-blue))] text-white hover:border-transparent hover:bg-transparent hover:bg-[linear-gradient(135deg,#2D8CFF,var(--jdc-blue))]";
+  "border-jdc-blue bg-jdc-blue-tint text-jdc-blue hover:border-jdc-blue hover:bg-jdc-blue-tint";
 const FOOT =
   "mt-0 flex items-center justify-between gap-3.5 border-t border-jdc-line px-[22px] pb-5 pt-3.5 max-[720px]:flex-col max-[720px]:items-stretch max-[720px]:gap-2.5 max-[720px]:px-5 max-[720px]:pb-[calc(16px+env(safe-area-inset-bottom))] max-[720px]:pt-3";
 const OK = "h-12 flex-none rounded-xl px-[26px] disabled:cursor-not-allowed disabled:opacity-50 max-[720px]:w-full";
@@ -180,9 +181,9 @@ export default function SlotSheet({ open, title, days = [], timesFor, value, fmt
                     });
                   }}
                 >
-                  <small className={cx(DAY_SMALL, on && "text-white/85")}>{o === 0 ? "Today" : o === 1 ? "Tmrw" : dt ? DN[dt.getDay()] : ""}</small>
+                  <small className={cx(DAY_SMALL, on && "text-jdc-blue")}>{o === 0 ? "Today" : o === 1 ? "Tmrw" : dt ? DN[dt.getDay()] : ""}</small>
                   <b className="font-display text-[20px] leading-[1.15]">{dt ? dt.getDate() : ""}</b>
-                  <small className={cx(DAY_SMALL, on && "text-white/85")}>{dt ? MN[dt.getMonth()] : ""}</small>
+                  <small className={cx(DAY_SMALL, on && "text-jdc-blue")}>{dt ? MN[dt.getMonth()] : ""}</small>
                 </button>
               );
             })}

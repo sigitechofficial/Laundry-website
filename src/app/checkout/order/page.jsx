@@ -1413,8 +1413,15 @@ export default function Order() {
                                   {hasWashSubPickOptions ? (
                                     <div className={cx(ui.OPT_MORE, !(isExpanded) && "hidden")} hidden={!isExpanded}>
                                       {shouldShowWashBleedDisclaimer(preferenceServiceMeta, value?.value) ? (
-                                        <p className={ui.QTY_HINT} role="note">
-                                          {WASH_BLEED_DISCLAIMER_TEXT}
+                                        // colour-bleed warning (admin flag on the service + Mixed Wash), as in the app
+                                        <p
+                                          className="m-0 flex items-start gap-2.5 rounded-xl border border-[#F3D9A4] bg-[#FFF8E8] px-3.5 py-3 text-[13.5px] font-medium leading-snug text-[#7A4E00]"
+                                          role="note"
+                                        >
+                                          <span className="mt-px flex flex-none text-[#C47F00]">
+                                            <ProtoIcon name="ntWarn" size={18} />
+                                          </span>
+                                          <span>{WASH_BLEED_DISCLAIMER_TEXT}</span>
                                         </p>
                                       ) : null}
                                       {[

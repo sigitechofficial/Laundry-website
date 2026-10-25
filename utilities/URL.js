@@ -16,7 +16,7 @@
  * Keep the trailing slash: requests are built as `${BASE_URL}customer/...`.
  */
 const PRODUCTION_API = "https://prodlaundry.sigisolutions.net/";
-const STAGING_API = "https://stagelaundry.sigisolutions.net/";
+const STAGING_API = "https://prodlaundry.sigisolutions.net/";
 
 const withSlash = (url) => (url.endsWith("/") ? url : `${url}/`);
 

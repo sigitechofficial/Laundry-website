@@ -1,28 +1,32 @@
 /*
  * Backend API address.
  *
- * Do NOT hard-code or swap this per branch any more. `main` and `dev` used to carry
- * different hard-coded values, so every `dev -> main` merge risked pointing Production
- * at the staging API (and staging at production).
+ * Chosen per deployment, never hard-coded per branch (main and dev used to carry
+ * different values, so every dev -> main merge risked pointing production at staging).
  *
- * How it is chosen, in order:
- *   1. NEXT_PUBLIC_API_URL, if set (Vercel → Project → Settings → Environment Variables,
- *      or .env.local for local work). Use this for anything unusual, e.g.
- *      http://localhost:3010/ to run against a local backend.
- *   2. Otherwise by Vercel environment (NEXT_PUBLIC_VERCEL_ENV is set automatically
- *      on Vercel): "production" → production API, everything else (preview / dev
- *      branch deploys / local) → staging API.
+ * In order:
+ *   1. NEXT_PUBLIC_API_URL, if set: an explicit address (e.g. http://localhost:3010/
+ *      for a local backend, set in .env.local).
+ *   2. NEXT_PUBLIC_APP_ENV, worked out in next.config.js when the site is built:
+ *      "production" for builds of the main branch on any host (AWS Amplify, Vercel,
+ *      GitHub Actions / cPanel) -> production API; anything else (dev, previews,
+ *      local) -> staging API.
+ *
+ * It used to check only Vercel's NEXT_PUBLIC_VERCEL_ENV. The live site is on AWS
+ * Amplify, where that is never set, so production was calling the staging API.
  *
  * Keep the trailing slash: requests are built as `${BASE_URL}customer/...`.
  */
 const PRODUCTION_API = "https://prodlaundry.sigisolutions.net/";
-const STAGING_API = "https://prodlaundry.sigisolutions.net/";
+const STAGING_API = "https://stagelaundry.sigisolutions.net/";
 
 const withSlash = (url) => (url.endsWith("/") ? url : `${url}/`);
 
+export const APP_ENV = process.env.NEXT_PUBLIC_APP_ENV === "production" ? "production" : "staging";
+
 export const BASE_URL = process.env.NEXT_PUBLIC_API_URL
   ? withSlash(process.env.NEXT_PUBLIC_API_URL.trim())
-  : process.env.NEXT_PUBLIC_VERCEL_ENV === "production"
+  : APP_ENV === "production"
     ? PRODUCTION_API
     : STAGING_API;
 

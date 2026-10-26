@@ -1,9 +1,14 @@
 import { FALLBACK_SERVICE_NAMES, FEATURED_SERVICES, SERVICE_ICONS } from "./content";
 
-/** Lower-case, collapse "and" / "&" and whitespace for name matching. */
+/**
+ * Lower-case, treat commas / slashes as spaces, collapse "and" / "&" and whitespace for
+ * name matching. Admins type names freely: production has "Wash,Dry And Fold" where
+ * staging has "Wash", and both must match the same card.
+ */
 export function normaliseServiceName(name) {
   return String(name ?? "")
     .toLowerCase()
+    .replace(/[,/]+/g, " ")
     .replace(/\band\b/g, "&")
     .replace(/\s*&\s*/g, " & ")
     .replace(/\s+/g, " ")

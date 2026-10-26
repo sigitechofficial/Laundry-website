@@ -47,8 +47,8 @@ export const FEATURED_SERVICES = [
     cta: "Explore dry cleaning",
     tag: { icon: "clockBold", label: "Ready in 1 day" },
     icon: "hanger",
-    image: `${MEDIA}/617af81a705b.jpg`,
-    alt: "Freshly dry cleaned shirts hanging in a row",
+    image: `${MEDIA}/service-dry-cleaning-occasionwear.webp`,
+    alt: "A beaded wedding dress and velvet dinner jackets ready on a rail",
     match: ["dry clean", "dry cleaning"],
   },
   {
@@ -59,8 +59,8 @@ export const FEATURED_SERVICES = [
     cta: "Explore wash",
     tag: { icon: "starBold", label: "Most booked" },
     icon: "washer",
-    image: `${MEDIA}/0d89bb5e2011.jpg`,
-    alt: "A neatly folded stack of fresh laundry",
+    image: `${MEDIA}/service-wash-laundry.webp`,
+    alt: "Washing machines, a basket of laundry and neatly folded shirts and towels",
     match: ["wash", "wash & fold", "wash and fold"],
   },
   {
@@ -70,8 +70,8 @@ export const FEATURED_SERVICES = [
     body: "Washed and crisply ironed, ready to wear.",
     cta: "Explore",
     icon: "tshirt",
-    image: `${MEDIA}/ceb681c44602.jpg`,
-    alt: "A garment being pressed",
+    image: `${MEDIA}/service-wash-iron-shirts-bedding.webp`,
+    alt: "Freshly pressed shirts folded next to clean white bedding",
     match: ["wash & iron", "wash and iron"],
   },
   {
@@ -82,8 +82,8 @@ export const FEATURED_SERVICES = [
     cta: "Explore",
     tag: { icon: "clockBold", label: "7 days" },
     icon: "needle",
-    image: `${MEDIA}/81d1b96df40a.jpg`,
-    alt: "Tailored jackets on hangers",
+    image: `${MEDIA}/service-alteration-tailoring.webp`,
+    alt: "A tailor's sewing machine with a navy suit, threads and tape measure",
     match: ["alteration & repair", "alteration and repair", "alterations"],
   },
 ];

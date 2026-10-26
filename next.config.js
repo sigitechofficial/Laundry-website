@@ -15,6 +15,8 @@ const appEnv =
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     images: {
+        // allowed next/image qualities (Next 16 rejects others): 85 for the home service photos
+        qualities: [75, 85],
         remotePatterns: [
             {
                 protocol: 'https',

@@ -5,28 +5,21 @@ import Icon from "../ds/Icon";
 import Reveal from "../ds/Reveal";
 import { Container, SectionHead } from "../ds/Layout";
 import { ROUTES } from "../ds/siteConfig";
-import { cx } from "../ds/cx";
 
-/* Bento card. `group` drives the CTA hover state. */
+/*
+ * Featured service cards: all the same size (2 x 2 on computers and tablets, one column
+ * on phones). The shape is close to the photos' own 2:1, so they are barely cropped and
+ * never enlarged; `sizes` matches the real card width so the browser fetches a file sharp
+ * enough for retina screens. `group` drives the CTA hover state.
+ */
 const CARD =
-  "group relative min-w-0 overflow-hidden rounded-jdc-xl bg-jdc-navy max-[720px]:min-h-[236px]";
-const LAYOUT_CLASS = {
-  hero: "row-[1/span_2] max-[1080px]:col-[1/span_2] max-[1080px]:row-auto max-[720px]:min-h-[320px]",
-  wide: "col-[2/span_2] max-[1080px]:col-[1/span_2] max-[720px]:min-h-[268px]",
-  tile: "",
-};
+  "group relative h-[340px] min-w-0 overflow-hidden rounded-jdc-xl bg-jdc-navy max-[1080px]:h-[300px] max-[720px]:h-[250px]";
 const CARD_TITLE =
-  "block font-display text-[24px] font-bold leading-[1.1] tracking-[-0.02em] max-[720px]:text-[22px]";
-const CARD_TITLE_LAYOUT = { hero: "text-[32px]", wide: "", tile: "" };
-const CARD_TEXT = "mt-[8px] block max-w-[420px] text-[16px] text-[rgba(255,255,255,0.82)]";
-/* Small tiles keep just the title and CTA */
-const CARD_TEXT_LAYOUT = { hero: "", wide: "", tile: "hidden" };
-const SIZES = {
-  hero: "(max-width: 720px) 100vw, (max-width: 1080px) 100vw, 40vw",
-  wide: "(max-width: 1080px) 100vw, 60vw",
-  tile: "(max-width: 720px) 50vw, (max-width: 1080px) 50vw, 30vw",
-};
-
+  "block font-display text-[26px] font-bold leading-[1.1] tracking-[-0.02em] max-[720px]:text-[22px]";
+const CARD_TEXT = "mt-[8px] block max-w-[420px] text-[16px] text-[rgba(255,255,255,0.82)] max-[720px]:text-[14.5px]";
+// card width: half the content width (max 1248px) on computers and tablets, full on phones
+const SIZES = "(max-width: 720px) 100vw, (max-width: 1440px) 50vw, 640px";
+const QUALITY = 85;
 /**
  * Featured services bento grid plus chips for every other live service.
  * @param {{ model: ReturnType<typeof import("./serviceModel").buildServiceModel> }} props
@@ -57,9 +50,9 @@ export default function ServicesSection({ model }) {
           />
         </Reveal>
 
-        <div className="grid grid-cols-[1.25fr_1fr_1fr] grid-rows-[310px_310px] gap-[18px] max-[1080px]:grid-cols-[1fr_1fr] max-[1080px]:grid-rows-[380px_280px_280px] max-[720px]:auto-rows-auto max-[720px]:grid-rows-none max-[720px]:gap-[12px]">
+        <div className="grid grid-cols-2 gap-[18px] max-[720px]:grid-cols-1 max-[720px]:gap-[12px]">
           {featured.map((card) => (
-            <Reveal key={card.id} className={cx(CARD, LAYOUT_CLASS[card.layout])}>
+            <Reveal key={card.id} className={CARD}>
               <Link
                 href={ROUTES.pricing}
                 className="relative isolate flex h-full flex-col items-start text-jdc-white no-underline after:absolute after:inset-0 after:z-[-1] after:bg-[linear-gradient(180deg,rgba(27,34,48,0)_30%,rgba(27,34,48,0.55)_58%,rgba(27,34,48,0.94)_100%)] after:content-[''] focus-visible:rounded-jdc-xl focus-visible:[outline-offset:-3px] focus-visible:[outline:3px_solid_var(--jdc-blue)]"
@@ -68,8 +61,10 @@ export default function ServicesSection({ model }) {
                   src={card.image}
                   alt={card.alt}
                   fill
-                  sizes={SIZES[card.layout]}
+                  sizes={SIZES}
+                  quality={QUALITY}
                   className="z-[-2] object-cover"
+                  style={card.position ? { objectPosition: card.position } : undefined}
                 />
                 {card.tag ? (
                   <span className="relative m-[20px_0_14px_20px] inline-flex h-[34px] flex-none items-center gap-[7px] rounded-jdc-pill border border-solid border-[rgba(255,255,255,0.28)] bg-[rgba(255,255,255,0.16)] p-[0_14px] text-[13px] font-bold tracking-[0.02em] [backdrop-filter:blur(10px)] max-[720px]:m-[12px_0_10px_12px] max-[720px]:h-[28px] max-[720px]:gap-[6px] max-[720px]:p-[0_11px] max-[720px]:text-[12px]">
@@ -80,8 +75,8 @@ export default function ServicesSection({ model }) {
                   <span className="mb-[14px] flex h-[48px] w-[48px] items-center justify-center rounded-[14px] bg-jdc-blue max-[720px]:mb-[10px] max-[720px]:h-[40px] max-[720px]:w-[40px] max-[720px]:rounded-[12px] max-[720px]:[&_svg]:h-[20px] max-[720px]:[&_svg]:w-[20px]">
                     <Icon name={card.icon} size={24} />
                   </span>
-                  <span className={cx(CARD_TITLE, CARD_TITLE_LAYOUT[card.layout])}>{card.title}</span>
-                  <span className={cx(CARD_TEXT, CARD_TEXT_LAYOUT[card.layout])}>{card.body}</span>
+                  <span className={CARD_TITLE}>{card.title}</span>
+                  <span className={CARD_TEXT}>{card.body}</span>
                   <span className="mt-[14px] inline-flex items-center gap-[8px] text-[15px] font-bold opacity-[0.92] [transition:gap_0.25s,color_0.25s] group-hover:gap-[12px] group-hover:text-jdc-sky max-[720px]:mt-[10px] max-[720px]:text-[14px]">
                     {card.cta} <Icon name="arrowRight" size={18} />
                   </span>

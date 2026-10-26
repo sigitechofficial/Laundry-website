@@ -61,7 +61,7 @@ export const FEATURED_SERVICES = [
     icon: "washer",
     image: `${MEDIA}/service-wash-laundry.webp`,
     alt: "Washing machines, a basket of laundry and neatly folded shirts and towels",
-    match: ["wash", "wash & fold", "wash and fold"],
+    match: ["wash", "wash & fold", "wash and fold", "wash, dry & fold", "wash & dry & fold"],
   },
   {
     id: "wash-iron",
@@ -96,6 +96,8 @@ export const SERVICE_ICONS = [
   { match: ["ski", "curtain"], icon: "snowflake" },
   { match: ["leather", "jacket", "coat"], icon: "jacket" },
   { match: ["iron"], icon: "tshirt" },
+  // before "dry": "Wash, Dry and Fold" is laundry, not dry cleaning
+  { match: ["fold"], icon: "washer" },
   { match: ["dry"], icon: "hanger" },
   { match: ["alter", "repair"], icon: "needle" },
   { match: ["wash"], icon: "washer" },

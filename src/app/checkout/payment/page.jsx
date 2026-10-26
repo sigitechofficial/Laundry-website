@@ -738,40 +738,39 @@ export default function Payment() {
           <div className={ui.PAGE_BG}>
             <section className={ui.HERO_SECTION}>
               <div className={ui.WRAP}>
+                <div className={cx(ui.PG_HEAD, "mb-6 max-[980px]:mb-[18px] max-[720px]:mb-[18px]")}>
+                  <div className={ui.TITLE_ROW}>
+                    <a
+                      className={cx(ui.BACK, "mb-3.5", ui.BACK_ROUND)}
+                      href="/checkout/order"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        router.push("/checkout/order");
+                      }}
+                    >
+                      <ProtoIcon name="back" size={16} />
+                      <span className={ui.BACK_LABEL}>Back</span>
+                    </a>
+                    <h1 className={ui.H2}>
+                      {isRescheduleFlow ? (
+                        <>
+                          Rescheduling <em>your booking.</em>
+                        </>
+                      ) : (
+                        <>
+                          Add a <em>payment method.</em>
+                        </>
+                      )}
+                    </h1>
+                  </div>
+                  <p className={ui.LEAD}>
+                    {isRescheduleFlow
+                      ? "Please wait while we submit your reschedule request…"
+                      : "Nothing is taken now. You pay after we weigh your items."}
+                  </p>
+                </div>
                 <div className="mt-0 grid grid-cols-[minmax(0,1fr)_310px] [align-items:start] gap-7 min-[1200px]:grid-cols-[minmax(0,1fr)_330px] max-[980px]:flex max-[980px]:grid-cols-[minmax(0,1fr)] max-[980px]:flex-col max-[980px]:gap-[18px]">
                   <div className="min-w-0 max-[980px]:contents max-[980px]:max-w-full max-[980px]:[&>*]:w-full max-[980px]:[&>*]:max-w-full max-[980px]:[&>*]:self-stretch">
-                    <div className={cx(ui.PG_HEAD, "mb-6 max-[980px]:order-none max-[980px]:mb-0 max-[720px]:mb-0")}>
-                      <div className={ui.TITLE_ROW}>
-                        <a
-                          className={cx(ui.BACK, "mb-3.5", ui.BACK_ROUND)}
-                          href="/checkout/order"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            router.push("/checkout/order");
-                          }}
-                        >
-                          <ProtoIcon name="back" size={16} />
-                          <span className={ui.BACK_LABEL}>Back</span>
-                        </a>
-                        <h1 className={ui.H2}>
-                          {isRescheduleFlow ? (
-                            <>
-                              Rescheduling <em>your booking.</em>
-                            </>
-                          ) : (
-                            <>
-                              Add a <em>payment method.</em>
-                            </>
-                          )}
-                        </h1>
-                      </div>
-                      <p className={ui.LEAD}>
-                        {isRescheduleFlow
-                          ? "Please wait while we submit your reschedule request…"
-                          : "Nothing is taken now. You pay after we weigh your items."}
-                      </p>
-                    </div>
-
                     {!isRescheduleFlow && (
                       <div className={cx("rounded-[20px] border-[1.5px] border-jdc-line bg-white px-6 py-[22px] [box-shadow:0_10px_30px_rgba(27,34,48,0.05)] max-[980px]:mt-0 max-[980px]:min-w-0 max-[980px]:max-w-full max-[720px]:p-5", "max-[980px]:order-1")}>
                         <p className="mx-0 mb-3 mt-0 text-[14px] font-bold text-jdc-navy">How would you like to pay?</p>
@@ -887,7 +886,7 @@ export default function Payment() {
                     </div>
                   </div>
 
-                  <aside ref={asideRef} className={cx(asideFits && "sticky top-[108px]", "mt-11 flex flex-col gap-[18px] max-[980px]:static max-[980px]:contents max-[980px]:mt-0 max-[980px]:min-w-0 max-[980px]:max-w-full max-[980px]:[&>*]:w-full max-[980px]:[&>*]:max-w-full max-[980px]:[&>*]:self-stretch")}>
+                  <aside ref={asideRef} className={cx(asideFits && "sticky top-[108px]", "flex flex-col gap-[18px] max-[980px]:static max-[980px]:contents max-[980px]:min-w-0 max-[980px]:max-w-full max-[980px]:[&>*]:w-full max-[980px]:[&>*]:max-w-full max-[980px]:[&>*]:self-stretch")}>
                     <div className={cx(ui.SUM, "px-6 pb-6 pt-[26px] max-[980px]:order-2 max-[720px]:p-5")}>
                       <h3 className="mx-0 mb-1 mt-0 text-left font-display text-[20px] tracking-[-0.01em] text-jdc-navy">Order summary</h3>
                       <div className="border-b border-jdc-line py-5">

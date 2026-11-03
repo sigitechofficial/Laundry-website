@@ -137,6 +137,14 @@ export const api = createApi({
       }),
     }),
 
+    // Home page banners managed in the admin panel (placement Website or Both).
+    getWebBanners: builder.query({
+      query: () => ({
+        url: "customer/getBanners?platform=web&showOnHome=true",
+        method: "GET",
+      }),
+    }),
+
     getServiceDetails: builder.query({
       query: (params) => {
         const lat = params?.lat;
@@ -449,6 +457,7 @@ export const {
   useGetServicesQuery,
   useGetServiceByIdQuery,
   useGetServiceDetailsQuery,
+  useGetWebBannersQuery,
   useGetServiceWithPreferenceDetailsQuery,
   useCreateBookingMutation,
   useRescheduleBookingMutation,

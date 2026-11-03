@@ -8,6 +8,7 @@ import { PAGE_SCOPE } from "../ds/PageShell";
 import HomeClientWrapper from "../../utilities/Test";
 import { useGetServiceDetailsQuery } from "../../src/app/store/services/api";
 import Hero from "./Hero";
+import WebBanners from "./WebBanners";
 import ServicesSection from "./ServicesSection";
 import ServicesMarquee from "./ServicesMarquee";
 import StudioBand from "./StudioBand";
@@ -42,6 +43,7 @@ export default function HomeView() {
         <SiteHeader variant="overlay" />
         <main id="main" tabIndex={-1}>
           <Hero />
+          <WebBanners />
           <ServicesSection model={services} />
           <ServicesMarquee services={services.all} />
           <StudioBand />

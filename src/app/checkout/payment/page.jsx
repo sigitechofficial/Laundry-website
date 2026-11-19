@@ -24,13 +24,14 @@ import { BoneText } from "../../../../components/ds/Skeleton";
 import { cx } from "../../../../components/ds/cx";
 import Dialog from "../../../../components/ds/Dialog";
 import ServicesRequested from "../../../../components/booking/ServicesRequested";
+import DriverPhotosSummary from "../../../../components/booking/DriverPhotosSummary";
 import { useFitsViewport } from "../../../../components/ds/useFitsViewport";
 import { useRouter } from "next/navigation";
 import BagsItemsWarningModal from "../../../../components/BagsItemsWarningModal";
 import { getServicesMissingBagsOrItems } from "../../../../utilities/checkoutBagsItems";
 import {
-  clearPendingCollectionPhoto,
-  getPendingCollectionPhoto,
+  clearPendingCollectionPhotos,
+  getPendingCollectionPhotos,
   shrinkPhoto,
 } from "../../../../utilities/collectionPhoto";
 
@@ -503,21 +504,23 @@ export default function Payment() {
         };
       });
 
-      // Photo for the driver chosen on Place order: upload it first, then send its path
-      // with the booking. A failed upload never blocks the order.
+      // Photos for the driver chosen on Place order: upload them first (one request, up
+      // to 3), then send their paths with the booking. A failed upload never blocks the order.
       let collectionImageUrls = [];
-      const collectionPhoto = getPendingCollectionPhoto();
-      if (!isRescheduleFlow && collectionPhoto) {
+      const driverPhotos = getPendingCollectionPhotos();
+      if (!isRescheduleFlow && driverPhotos.length) {
         try {
-          const photo = await shrinkPhoto(collectionPhoto);
           const formData = new FormData();
-          formData.append("images", photo, photo.name || "collection-photo.jpg");
+          for (const original of driverPhotos) {
+            const photo = await shrinkPhoto(original);
+            formData.append("images", photo, photo.name || "driver-photo.jpg");
+          }
           const uploaded = await uploadCollectionImages(formData).unwrap();
           collectionImageUrls = Array.isArray(uploaded?.data?.imageUrls) ? uploaded.data.imageUrls : [];
         } catch {
           addToast({
-            title: "Your photo couldn't be uploaded",
-            description: "We'll place the order without it. You can add a note for the driver instead.",
+            title: driverPhotos.length === 1 ? "Your photo couldn't be uploaded" : "Your photos couldn't be uploaded",
+            description: "We'll place the order without them. You can add a note for the driver instead.",
             color: "warning",
           });
         }
@@ -677,7 +680,7 @@ export default function Payment() {
           dispatch(clearCartData());
           router.replace(doneUrlRef.current);
         } else {
-          clearPendingCollectionPhoto();
+          clearPendingCollectionPhotos();
           setPayOpen(false);
           setOrderDone(true);
           // show the confirmation briefly, then open the new order's details
@@ -1264,6 +1267,7 @@ export default function Payment() {
                             {orderData?.driverInstruction ? "Edit" : "Add"}
                           </a>
                         </p>
+                        <DriverPhotosSummary className="mt-2.5" />
                       </div>
                     </div>
                   </aside>

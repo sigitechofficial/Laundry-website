@@ -8,8 +8,8 @@ import ReusableModal from "../../../components/Modal";
 import DeliveryDateDialog from "../../../components/booking/DeliveryDateDialog";
 import DriverNotePhoto from "../../../components/booking/DriverNotePhoto";
 import {
-  getPendingCollectionPhoto,
-  setPendingCollectionPhoto,
+  getPendingCollectionPhotos,
+  setPendingCollectionPhotos,
 } from "../../../utilities/collectionPhoto";
 import Dialog from "../../../components/ds/Dialog";
 import { Spinner, addToast, useDisclosure } from "@heroui/react";
@@ -1391,8 +1391,9 @@ export default function PlaceOrderPage() {
                   </div>
                 </fieldset>
 
-                {/* note for the driver + optional photo: side by side on computers, photo below on phones */}
-                <div className="mt-8 flex items-start gap-2.5 [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:mt-[26px] [@media(min-width:901px)_and_(max-height:860px)]:mt-4 max-[720px]:mt-7 max-[720px]:flex-col max-[720px]:items-stretch">
+                {/* note for the driver + optional photos: the add button sits beside the note on
+                    computers; once photos are added they get their own row below */}
+                <div className="mt-8 flex flex-wrap items-start gap-2.5 [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:mt-[26px] [@media(min-width:901px)_and_(max-height:860px)]:mt-4 max-[720px]:mt-7 max-[720px]:flex-col max-[720px]:items-stretch">
                 <div className={cx("min-w-0 flex-1 rounded-xl border border-transparent bg-jdc-blue-tint [transition:background_0.2s,border-color_0.2s,box-shadow_0.2s]", noteIsOpen && "border-jdc-line bg-white focus-within:border-jdc-blue focus-within:[box-shadow:0_0_0_4px_rgba(2,120,254,0.14)]")} id="bkNote">
                   <button
                     type="button"
@@ -1434,13 +1435,12 @@ export default function PlaceOrderPage() {
                     }}
                   />
                 </div>
-                {/* optional photo for the driver (door, gate, where the bags are), any
+                {/* optional photos for the driver (door, gate, where the bags are), any
                     handover; uploaded with the booking on Payment */}
                 {!isRescheduleFlow && (
                   <DriverNotePhoto
-                    className="flex-none"
-                    initialFile={getPendingCollectionPhoto()}
-                    onChange={setPendingCollectionPhoto}
+                    initialFiles={getPendingCollectionPhotos()}
+                    onChange={setPendingCollectionPhotos}
                   />
                 )}
                 </div>

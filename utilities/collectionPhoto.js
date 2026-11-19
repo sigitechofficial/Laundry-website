@@ -1,24 +1,28 @@
 "use client";
 
 /**
- * Optional photo for the driver (front door, gate, where the bags are left).
+ * Optional photos for the driver (front door, gate, where the bags are left).
  *
- * Chosen on Place order, kept here while the customer moves through checkout (a File
- * cannot go in the Redux store), and uploaded on Payment just before the booking is
- * created: POST customer/uploadCollectionImages returns paths that go in
- * createBooking.collectionImageUrls. The agent sees them on the order.
+ * Chosen on Place order, kept here while the customer moves through checkout (Files
+ * cannot go in the Redux store), shown on Payment, and uploaded there just before the
+ * booking is created: POST customer/uploadCollectionImages (field "images", up to 3)
+ * returns paths that go in createBooking.collectionImageUrls. The agent sees them on
+ * the order.
  */
 
-let pendingPhoto = null;
+/** The backend keeps at most 3 per booking (MAX_COLLECTION_IMAGES). */
+export const MAX_DRIVER_PHOTOS = 3;
 
-export const getPendingCollectionPhoto = () => pendingPhoto;
+let pendingPhotos = [];
 
-export const setPendingCollectionPhoto = (file) => {
-  pendingPhoto = file || null;
+export const getPendingCollectionPhotos = () => pendingPhotos;
+
+export const setPendingCollectionPhotos = (files) => {
+  pendingPhotos = Array.isArray(files) ? files.filter(Boolean).slice(0, MAX_DRIVER_PHOTOS) : [];
 };
 
-export const clearPendingCollectionPhoto = () => {
-  pendingPhoto = null;
+export const clearPendingCollectionPhotos = () => {
+  pendingPhotos = [];
 };
 
 /**
@@ -36,7 +40,7 @@ export async function shrinkPhoto(file, maxSide = 1600, quality = 0.85) {
     canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
     bitmap.close?.();
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
-    return blob ? new File([blob], "collection-photo.jpg", { type: "image/jpeg" }) : file;
+    return blob ? new File([blob], "driver-photo.jpg", { type: "image/jpeg" }) : file;
   } catch {
     return file;
   }

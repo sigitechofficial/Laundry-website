@@ -3,21 +3,7 @@
 import { Drawer, DrawerContent, DrawerHeader, DrawerBody } from "@heroui/react";
 import { useEffect, useState } from "react";
 import DrawerItem from "./DrawerItem";
-import {
-  MdOutlineSupportAgent,
-  MdLogout,
-  MdPauseCircleOutline,
-  MdAttachMoney,
-  MdArticle,
-  MdOutlinePeople,
-  MdOutlineHistory,
-  MdOutlineAccountCircle,
-  MdOutlineNotifications,
-  MdOutlinePublic,
-} from "react-icons/md";
-import { FaRegAddressBook, FaUser } from "react-icons/fa";
-import { GrUserAdmin } from "react-icons/gr";
-import { FiLogOut } from "react-icons/fi";
+import Icon from "./ds/Icon";
 import { useRouter, useSearchParams } from "next/navigation";
 import { addToast } from "@heroui/react";
 import { useDispatch } from "react-redux";
@@ -164,21 +150,22 @@ export default function CustomDrawer({
 
   // Only destinations that exist; Payment methods / Country / Language have no page yet.
   const accountItems = [
-    { Icon: MdOutlineHistory, text: "Order history", href: "/profile?tab=order-history" },
-    { Icon: MdPauseCircleOutline, text: "On hold bookings", href: "/profile?tab=on-hold-bookings" },
-    { Icon: MdOutlineAccountCircle, text: "My account", href: "/profile?tab=my-account" },
-    { Icon: FaRegAddressBook, text: "My addresses", href: "/profile?tab=my-addresses" },
-    { Icon: MdOutlineNotifications, text: "Notifications", href: "/profile?tab=notifications" },
-    { Icon: MdOutlinePeople, text: "Invite friends", href: "/profile?tab=invite-friend" },
-    { Icon: MdOutlineSupportAgent, text: "Support", href: "/help-center" },
+    { icon: "history", text: "Order history", href: "/profile?tab=order-history" },
+    { icon: "pauseCircle", text: "On hold bookings", href: "/profile?tab=on-hold-bookings" },
+    { icon: "repeat", text: "Recurring service", href: "/profile?tab=recurring-service" },
+    { icon: "userCircle", text: "My account", href: "/profile?tab=my-account" },
+    { icon: "addressBook", text: "My addresses", href: "/profile?tab=my-addresses" },
+    { icon: "bell", text: "Notifications", href: "/profile?tab=notifications" },
+    { icon: "users", text: "Invite friends", href: "/profile?tab=invite-friend" },
+    { icon: "headset", text: "Support", href: "/help-center" },
   ];
   // Signed-in users reach the site pages from here (the ☰ opens this menu
   // at every width), so all main nav links are listed.
   const quickLinks = [
-    { Icon: MdAttachMoney, text: "Pricing", href: "/pricing" },
-    { Icon: MdOutlinePublic, text: "How it works", href: "/how-it-works" },
-    { Icon: MdArticle, text: "Blog", href: "/blog" },
-    { Icon: MdOutlineSupportAgent, text: "Contact us", href: "/contact-us" },
+    { icon: "currencyGbp", text: "Pricing", href: "/pricing" },
+    { icon: "lightbulb", text: "How it works", href: "/how-it-works" },
+    { icon: "article", text: "Blog", href: "/blog" },
+    { icon: "chat", text: "Contact us", href: "/contact-us" },
   ];
 
   return (
@@ -209,7 +196,7 @@ export default function CustomDrawer({
                 ) : token && initials ? (
                   initials
                 ) : (
-                  <FaUser aria-hidden="true" />
+                  <Icon name="user" size="1em" />
                 )}
               </span>
               <span className="min-w-0 flex-1">
@@ -238,23 +225,23 @@ export default function CustomDrawer({
           {bodyContent || (
             <nav aria-label="Account">
               {accountItems.map((item) => (
-                <DrawerItem key={item.text} Icon={item.Icon} text={item.text} onClick={() => handleNavigate(item.href)} />
+                <DrawerItem key={item.text} icon={item.icon} text={item.text} onClick={() => handleNavigate(item.href)} />
               ))}
 
               <p className="mx-2 mb-0.5 mt-3 border-t border-jdc-line px-2 pb-1.5 pt-3.5 text-xs font-bold uppercase tracking-[0.06em] text-jdc-muted">
                 Quick links
               </p>
               {quickLinks.map((item) => (
-                <DrawerItem key={item.text} Icon={item.Icon} text={item.text} onClick={() => handleNavigate(item.href)} />
+                <DrawerItem key={item.text} icon={item.icon} text={item.text} onClick={() => handleNavigate(item.href)} />
               ))}
 
               <div className="mt-1.5">
                 {token ? (
-                  <DrawerItem onClick={logoutFunc} Icon={MdLogout} text="Log out" tone="danger" />
+                  <DrawerItem onClick={logoutFunc} icon="signOut" text="Log out" tone="danger" />
                 ) : (
                   <>
-                    <DrawerItem Icon={GrUserAdmin} onClick={() => router.push("/sign-in")} text="Log in" />
-                    <DrawerItem Icon={FiLogOut} onClick={() => router.push("/sign-in")} text="Sign up" />
+                    <DrawerItem icon="signIn" onClick={() => router.push("/sign-in")} text="Log in" />
+                    <DrawerItem icon="userPlus" onClick={() => router.push("/sign-in")} text="Sign up" />
                   </>
                 )}
               </div>

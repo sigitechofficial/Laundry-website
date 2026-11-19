@@ -12,7 +12,7 @@ import {
   useGetServicesQuery,
   useLazyGetAddressesByPostcodeQuery,
 } from "@/app/store/services/api";
-import { IoSearchOutline } from "react-icons/io5";
+import Icon from "../../../../components/ds/Icon";
 import PhoneInputComp from "../../../../components/PhoneInputComp";
 import PageShell from "../../../../components/ds/PageShell";
 import PageHero from "../../../../components/ds/PageHero";
@@ -386,7 +386,7 @@ export default function PartnerRegistration() {
                         className="h-[60px] w-[60px] bg-jdc-blue rounded-[8px] flex justify-center items-center shrink-0"
                         disabled={isLoadingAddresses || !form.postalCode?.trim()}
                       >
-                        {isLoadingAddresses ? <Spinner size="sm" className="text-white" /> : <IoSearchOutline className="text-xl text-white" />}
+                        {isLoadingAddresses ? <Spinner size="sm" className="text-white" /> : <Icon name="search" size="1em" className="text-xl text-white" />}
                       </button>
                     </div>
                   </div>

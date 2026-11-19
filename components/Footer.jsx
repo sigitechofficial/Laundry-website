@@ -2,8 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { FaFacebookF } from "react-icons/fa";
 import { SiInstagram } from "react-icons/si";
-import { MdLocationPin } from "react-icons/md";
-import { IoIosArrowDown } from "react-icons/io";
+import Icon from "./ds/Icon";
 
 export default function Footer() {
   return (
@@ -149,11 +148,11 @@ export default function Footer() {
         </p>
 
         <div className="border-[1px] border-black rounded-full items-center flex gap-2 h-[52px] px-2 cursor-pointer max-sm:hidden">
-          <MdLocationPin size={20} />
+          <Icon name="mapPinRegular" size={20} />
           <p className="text-base text-black/70 whitespace-nowrap">
             London
           </p>
-          <IoIosArrowDown />
+          <Icon name="caretDown" size="1em" />
         </div>
       </div>
     </div>

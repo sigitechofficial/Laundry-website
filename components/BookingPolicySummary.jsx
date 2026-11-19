@@ -2,16 +2,16 @@
 
 import React from "react";
 import { Accordion, AccordionItem } from "@heroui/react";
-import { FiPlus, FiMinus } from "react-icons/fi";
+import Icon from "./ds/Icon";
 
 function PolicyAccordionIndicator({ isOpen }) {
   return isOpen ? (
     <div className="bg-theme-gray size-7 rounded-full flex justify-center items-center rotate-90 shrink-0">
-      <FiMinus size={16} color="black" />
+      <Icon name="minus" size={16} color="black" />
     </div>
   ) : (
     <div className="bg-theme-gray size-7 rounded-full flex justify-center items-center shrink-0">
-      <FiPlus size={16} color="black" />
+      <Icon name="plus" size={16} color="black" />
     </div>
   );
 }

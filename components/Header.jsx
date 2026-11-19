@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useReducer, useState } from "react";
-import { HiOutlineMenuAlt2 } from "react-icons/hi";
+import Icon from "./ds/Icon";
 import Link from "next/link";
-import { FaUser } from "react-icons/fa6";
 import CustomDrawer from "./Drawer";
 import { useGetProfileQuery } from "@/app/store/services/api";
 import { BASE_URL } from "../utilities/URL";
@@ -339,7 +338,7 @@ const Header = ({ type }) => {
                   } else {
                     return (
                       <div className={`size-[35px] rounded-full border shrink-0 flex justify-center items-center ${avatarRing}`}>
-                        <FaUser size="20" color={navOnBlueHero ? "#ffffff" : "lightGray"} />
+                        <Icon name="user" size={20} color={navOnBlueHero ? "#ffffff" : "lightGray"} />
                       </div>
                     );
                   }
@@ -380,7 +379,9 @@ const Header = ({ type }) => {
             className={`absolute top-5 left-4 text-theme-blue sm:left-12 tablet:hidden ${["sign-in"].includes(type) ? "hidden" : ""
               }`}
           >
-            <HiOutlineMenuAlt2
+            <Icon
+              name="menu"
+              title="Open menu"
               onClick={() =>
                 dispatchState({
                   type: "set_drawer",

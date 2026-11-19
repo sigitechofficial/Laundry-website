@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Spinner, addToast } from "@heroui/react";
-import { IoSearchOutline } from "react-icons/io5";
+import Icon from "./ds/Icon";
 import InputHeroUi from "./InputHeroUi";
 import {
   useLazyGetAddressesByPostcodeQuery,
@@ -325,7 +325,7 @@ export default function PostcodeAddressLookup({
           {isLoadingAddresses ? (
             <Spinner size="sm" className="text-white" />
           ) : (
-            <IoSearchOutline className="text-xl text-white" />
+            <Icon name="search" size="1em" className="text-xl text-white" />
           )}
         </button>
       </div>

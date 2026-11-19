@@ -5,19 +5,27 @@ import ProtoIcon from "../proto/ProtoIcon";
 import { cx } from "../ds/cx";
 import * as ui from "./ui";
 import { formatIsoDateLong } from "../../utilities/turnaroundTime";
+import { to24Hour } from "../../utilities/ConversionFunction";
 
 /**
  * "Delivery date update": the chosen services need more days than the delivery date
  * allows. Used on the Book a pickup and Add services steps (same popup, same words).
  *
- * @param {{ open: boolean, maxDays?: number, serviceLabels?: string[], minDeliveryDate?: string }} notice
+ * @param {{ open: boolean, maxDays?: number, serviceLabels?: string[], minDeliveryDate?: string,
+ *   suggested?: { deliveryDate: string, deliveryTimeFrom?: string, deliveryTimeTo?: string } }} notice
+ *   suggested: the slot "Use suggested date" applies; without it only "Choose another date" shows
  * @param {() => void} onAccept  use the earliest possible date
  * @param {() => void} onChange  pick another delivery date
  * @param {() => void} onClose
  */
-export default function DeliveryDateDialog({ notice, onAccept, onChange, onClose }) {
+export default function DeliveryDateDialog({ notice, onAccept, onChange, onKeep, onClose }) {
   const days = Number(notice?.maxDays) || 0;
   const services = notice?.serviceLabels?.length ? notice.serviceLabels.join(", ") : "Your services";
+  const suggested = notice?.suggested; // first free slot after the required days, if known
+  // the date already chosen, when it already allows enough days (offered as "Keep")
+  const current = onKeep && notice?.current?.deliveryDate ? notice.current : null;
+  const sameAsSuggested = current && suggested && current.deliveryDate === suggested.deliveryDate && current.deliveryTimeFrom === suggested.deliveryTimeFrom;
+  const slotText = (s) => `${formatIsoDateLong(s.deliveryDate)}${s.deliveryTimeFrom ? ` · ${to24Hour(s.deliveryTimeFrom)} – ${to24Hour(s.deliveryTimeTo)}` : ""}`;
   return (
     <Dialog open={Boolean(notice?.open)} onClose={onClose} labelledBy="deliveryDateTitle" width="md">
       <div className={ui.MODAL_HEAD}>
@@ -33,21 +41,55 @@ export default function DeliveryDateDialog({ notice, onAccept, onChange, onClose
           </span>
           <span>
             <b className="text-jdc-navy">{services}</b> {notice?.serviceLabels?.length === 1 ? "needs" : "need"}{" "}
-            {days ? `${days} day${days > 1 ? "s" : ""}` : "more time"}, so your delivery date is too early.
+            {days ? `${days} day${days > 1 ? "s" : ""}` : "more time"}, so delivery has to be on or after{" "}
+            <b className="text-jdc-navy">{formatIsoDateLong(notice?.minDeliveryDate)}</b>.
+            {current ? " Your delivery date already allows for this." : ""}
           </span>
         </p>
-        <p className="m-0 rounded-[14px] border border-jdc-line bg-[#F7F8FA] px-4 py-3 text-[14.5px] text-jdc-muted">
-          Earliest delivery: <b className="text-jdc-navy">{formatIsoDateLong(notice?.minDeliveryDate)}</b>
-        </p>
+        {current ? (
+          <div className="rounded-[14px] border border-jdc-line bg-[#F7F8FA] px-4 py-3">
+            <p className="m-0 text-[12px] font-bold uppercase tracking-[0.04em] text-jdc-muted">Your delivery</p>
+            <p className="m-0 mt-1 text-[15.5px] font-semibold text-jdc-navy">{slotText(current)}</p>
+          </div>
+        ) : null}
+        {suggested?.deliveryDate && !sameAsSuggested ? (
+          <div className="rounded-[14px] border border-jdc-blue-line bg-jdc-blue-tint px-4 py-3">
+            <p className="m-0 text-[12px] font-bold uppercase tracking-[0.04em] text-jdc-blue">Suggested delivery</p>
+            <p className="m-0 mt-1 text-[15.5px] font-semibold text-jdc-navy">
+              {formatIsoDateLong(suggested.deliveryDate)}
+              {suggested.deliveryTimeFrom ? (
+                <span className="font-medium text-jdc-muted">
+                  {" "}
+                  · {to24Hour(suggested.deliveryTimeFrom)} – {to24Hour(suggested.deliveryTimeTo)}
+                </span>
+              ) : null}
+            </p>
+          </div>
+        ) : null}
       </div>
       <div className={cx(ui.MODAL_FOOT, "grid gap-2.5")}>
-        <button type="button" className={cx(ui.BTN, ui.BTN_BLOCK)} onClick={onAccept} data-autofocus>
-          Use earliest date
-        </button>
-        <button type="button" className={cx(ui.BTN, ui.BTN_GHOST, "w-full justify-center")} onClick={onChange}>
+        {current ? (
+          <button type="button" className={cx(ui.BTN, ui.BTN_BLOCK)} onClick={onKeep} data-autofocus>
+            Keep {formatIsoDateLong(current.deliveryDate).replace(/,? \d{4}$/, "")}
+          </button>
+        ) : null}
+        {suggested?.deliveryDate && !sameAsSuggested ? (
+          <button
+            type="button"
+            className={cx(ui.BTN, current ? cx(ui.BTN_GHOST, "w-full justify-center") : ui.BTN_BLOCK)}
+            onClick={onAccept}
+            data-autofocus={current ? undefined : true}
+          >
+            Use suggested date
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className={cx(ui.BTN, current || suggested?.deliveryDate ? cx(ui.BTN_GHOST, "w-full justify-center") : ui.BTN_BLOCK)}
+          onClick={onChange}
+        >
           Choose another date
         </button>
-      </div>
-    </Dialog>
+      </div>    </Dialog>
   );
 }

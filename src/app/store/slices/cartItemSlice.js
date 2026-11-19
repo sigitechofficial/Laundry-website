@@ -86,6 +86,9 @@ const getInitialState = () => {
       sameBagForAllServices: orderData?.sameBagForAllServices === true,
       sameBagSourceServiceId: orderData?.sameBagSourceServiceId ?? null,
       totalBags: orderData?.totalBags ?? "",
+      // services step: the customer's answer to the delivery-date question for this
+      // order's turnaround ({ days, collectionDate, deliveryDate }); see checkout/order
+      deliveryTurnaroundAck: orderData?.deliveryTurnaroundAck ?? null,
     },
     preferences,
     // true while moving to another page (thin progress line, utilities/Test.jsx).
@@ -241,6 +244,7 @@ const cartItemSlice = createSlice({
         sameBagForAllServices: false,
         sameBagSourceServiceId: null,
         totalBags: "",
+        deliveryTurnaroundAck: null,
       };
       state.preferences = [];
       state.page = false;

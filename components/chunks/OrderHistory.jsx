@@ -3,17 +3,8 @@ import { DetailsSkeleton, OrderCardSkeleton } from "../ds/Skeleton";
 import EmptyState from "../ds/EmptyState";
 import { useStartBooking } from "../../utilities/useStartBooking";
 import React, { useState } from "react";
-import { GoArrowUp, GoClock } from "react-icons/go";
-import {
-  IoBagCheck,
-  IoClose,
-  IoCalendarOutline,
-  IoTimeOutline,
-  IoInformationCircleOutline,
-  IoLocationOutline,
-} from "react-icons/io5";
+import Icon from "../ds/Icon";
 import { PurpleButton } from "../Buttons";
-import { MdKeyboardArrowRight } from "react-icons/md";
 import {
   useBookingDetailByIdQuery,
   useGetAllOrdersQuery,
@@ -606,7 +597,7 @@ export default function OrderHistory() {
 
       <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 border-b pb-3">
         <div className="flex gap-2 items-center py-2">
-          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+          <Icon name="arrowUp" size={20} className="sm:w-[25px] sm:h-[25px]" />
           <div>
             <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
               Pick up
@@ -618,7 +609,7 @@ export default function OrderHistory() {
         </div>
 
         <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-          <GoClock size={18} className="sm:w-5 sm:h-5" />
+          <Icon name="clock" size={18} className="sm:w-5 sm:h-5" />
           {formatTo24Hour(order?.collectionTimeFrom)} -{" "}
           {formatTo24Hour(order?.collectionTimeTo)}
         </p>
@@ -626,7 +617,7 @@ export default function OrderHistory() {
 
       <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
         <div className="flex gap-2 items-center py-2">
-          <GoArrowUp size={20} className="sm:w-[25px] sm:h-[25px]" />
+          <Icon name="arrowDown" size={20} className="sm:w-[25px] sm:h-[25px]" />
           <div>
             <p className="font-sf text-sm sm:text-lg text-theme-psGray leading-tight">
               Drop off
@@ -638,7 +629,7 @@ export default function OrderHistory() {
         </div>
 
         <p className="font-youth font-bold text-sm sm:text-base flex items-center gap-2">
-          <GoClock size={18} className="sm:w-5 sm:h-5" />
+          <Icon name="clock" size={18} className="sm:w-5 sm:h-5" />
           {formatTo24Hour(order?.deliveryTimeFrom)} -{" "}
           {formatTo24Hour(order?.deliveryTimeTo)}
         </p>
@@ -917,7 +908,7 @@ export default function OrderHistory() {
             <p className="font-youth font-bold">Collection</p>
             <div className="flex gap-2 items-center">
               <div className="flex items-center justify-center">
-                <IoCalendarOutline size="16" />
+                <Icon name="calendar" size={16} />
               </div>
               <p className="text-sm font-medium">
                 {formatDate(bookingDtails?.data?.collectionDate)}
@@ -925,7 +916,7 @@ export default function OrderHistory() {
             </div>
             <div className="flex gap-2 items-start">
               <div className="flex items-center justify-center mt-0.5">
-                <IoTimeOutline size="16" />
+                <Icon name="clock" size={16} />
               </div>
               <BookingSlotTimes
                 timeFrom={bookingDtails?.data?.collectionTimeFrom}
@@ -936,7 +927,7 @@ export default function OrderHistory() {
             </div>
             <div className="flex gap-2 items-center">
               <div className="flex items-center justify-center">
-                <IoInformationCircleOutline size="16" />
+                <Icon name="info" size={16} />
               </div>
               <p className="text-sm font-medium">
                 {bookingDtails?.data?.driverInstructionOptions}
@@ -947,7 +938,7 @@ export default function OrderHistory() {
             <p className="font-youth font-bold">Delivery</p>
             <div className="flex gap-2 items-center">
               <div className="flex items-center justify-center">
-                <IoCalendarOutline size="16" />
+                <Icon name="calendar" size={16} />
               </div>
               <p className="text-sm font-medium">
                 {formatDate(bookingDtails?.data?.deliveryDate)}
@@ -955,7 +946,7 @@ export default function OrderHistory() {
             </div>
             <div className="flex gap-2 items-start">
               <div className="flex items-center justify-center mt-0.5">
-                <IoTimeOutline size="16" />
+                <Icon name="clock" size={16} />
               </div>
               <BookingSlotTimes
                 timeFrom={bookingDtails?.data?.deliveryTimeFrom}
@@ -966,7 +957,7 @@ export default function OrderHistory() {
             </div>
             <div className="flex gap-2 items-center">
               <div className="flex items-center justify-center">
-                <IoInformationCircleOutline size="16" />
+                <Icon name="info" size={16} />
               </div>
               <p className="text-sm font-medium">
                 {bookingDtails?.data?.driverInstructionOptions1}
@@ -978,7 +969,7 @@ export default function OrderHistory() {
               <p className="font-youth font-bold">Bags</p>
               <div className="flex gap-2 items-center">
                 <div className="flex items-center justify-center">
-                  <IoBagCheck size="16" />
+                  <Icon name="bagCheck" size={16} />
                 </div>
                 <p className="text-sm font-medium">
                   Total bags: {totalBagsCount}
@@ -990,7 +981,7 @@ export default function OrderHistory() {
             <p className="font-youth font-bold">Address</p>
             <div className="flex gap-2 items-center">
               <div className="flex items-center justify-center">
-                <IoLocationOutline size="16" />
+                <Icon name="mapPinRegular" size={16} />
               </div>
               <p className="text-sm font-medium">
                 {bookingDtails?.data?.dropOffAddress?.streetAddress}
@@ -1043,8 +1034,9 @@ export default function OrderHistory() {
                   : null}
               </p>
             </div>
-            <MdKeyboardArrowRight
-              size="25"
+            <Icon
+              name="caretRightThin"
+              size={25}
               className={`transition-transform duration-200 ${isOrderItemsExpanded ? "rotate-90" : "rotate-0"}`}
             />
           </button>
@@ -1075,6 +1067,9 @@ export default function OrderHistory() {
                             item?.categoryprice ?? item?.subCategory?.price
                           );
                           const hasQty = Number.isFinite(quantity) && quantity > 0;
+                          // the counts the customer entered when booking ("Number of bags / items")
+                          const bagCount = Number(item?.bags);
+                          const hasBags = Number.isFinite(bagCount) && bagCount > 0;
                           const hasPrice = Number.isFinite(unitPrice);
                           const lineTotal =
                             hasQty && hasPrice ? unitPrice * quantity : unitPrice;
@@ -1106,6 +1101,20 @@ export default function OrderHistory() {
                                     Selected service
                                   </p>
                                 )}
+                                {hasBags || hasQty ? (
+                                  <p className="flex flex-wrap gap-1.5 pt-0.5">
+                                    {hasBags ? (
+                                      <span className="rounded-full bg-jdc-mist px-2 py-0.5 text-[12px] font-semibold text-jdc-navy">
+                                        {bagCount} {bagCount === 1 ? "bag" : "bags"}
+                                      </span>
+                                    ) : null}
+                                    {hasQty ? (
+                                      <span className="rounded-full bg-jdc-mist px-2 py-0.5 text-[12px] font-semibold text-jdc-navy">
+                                        {quantity} {quantity === 1 ? "item" : "items"}
+                                      </span>
+                                    ) : null}
+                                  </p>
+                                ) : null}
                                 {item?.date && (
                                   <p className="text-xs text-theme-psGray">
                                     Added: {formatDate(item.date)}
@@ -1117,11 +1126,7 @@ export default function OrderHistory() {
                               </div>
 
                               <div className="text-right shrink-0">
-                                {hasQty && (
-                                  <p className="text-xs text-theme-psGray">
-                                    Qty: {quantity}
-                                  </p>
-                                )}
+
                                 {itemPromotionLine &&
                                 formatItemAmount(itemPromotionLine.originalAmount, bookingCurrencySymbol) &&
                                 formatItemAmount(itemPromotionLine.finalAmount, bookingCurrencySymbol) ? (
@@ -2378,7 +2383,7 @@ export default function OrderHistory() {
                 onClick={onManageOrderModalClose}
                 className="bg-gray-200 hover:bg-gray-300 rounded-full cursor-pointer duration-150 size-10 flex justify-center items-center"
               >
-                <IoClose size={24} className="text-gray-700" />
+                <Icon name="x" size={24} className="text-gray-700" />
               </button>
             </div>
 

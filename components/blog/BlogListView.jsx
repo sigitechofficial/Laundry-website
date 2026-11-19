@@ -7,6 +7,7 @@ import PageHero from "../ds/PageHero";
 import PageShell from "../ds/PageShell";
 import Reveal from "../ds/Reveal";
 import { Container } from "../ds/Layout";
+import { Bone } from "../ds/Skeleton";
 import { useGetBlogsQuery } from "../../src/app/store/services/api";
 import { formatPostDate, postHref, toBlogList } from "./blogModel";
 
@@ -22,7 +23,6 @@ export default function BlogListView() {
   // the backend answers 404 when there are no articles: that is "empty", not an error
   const isError = failed && error?.status !== 404;
   const posts = toBlogList(data);
-  const [featured, ...rest] = posts;
 
   return (
     <PageShell header="overlay">
@@ -40,8 +40,16 @@ export default function BlogListView() {
         <Container>
           {isLoading ? (
             <div className={GRID} aria-busy="true" aria-label="Loading articles">
-              {Array.from({ length: 3 }, (_, i) => (
-                <div key={i} className={`${CARD} h-[380px] bg-[linear-gradient(90deg,var(--jdc-white)_0%,var(--jdc-mist)_50%,var(--jdc-white)_100%)] [background-size:200%_100%] animate-jdc-shimmer`} />
+              {/* same shape as a real card, so nothing moves when the articles arrive */}
+              {Array.from({ length: 6 }, (_, i) => (
+                <div key={i} className={`${CARD} bg-jdc-white`}>
+                  <Bone className="aspect-[16/10] w-full rounded-none" />
+                  <span className="flex flex-col gap-[10px] pt-[22px] px-6 pb-6 max-[720px]:pt-4 max-[720px]:px-[18px] max-[720px]:pb-[18px] max-[720px]:gap-2">
+                    <span className="h-[2.5em] text-[21px] max-[720px]:text-[18px]"><Bone className="h-[0.9em] w-4/5" /></span>
+                    <span className="h-[4.65em] text-[15px]"><Bone className="h-[0.9em] w-full" /><Bone className="mt-2 h-[0.9em] w-3/4" /></span>
+                    <span className="mt-auto flex items-center justify-between border-t border-t-jdc-line pt-[14px]"><Bone className="h-4 w-36" /><Bone className="size-[34px] rounded-full" /></span>
+                  </span>
+                </div>
               ))}
             </div>
           ) : isError && !posts.length ? (
@@ -57,53 +65,42 @@ export default function BlogListView() {
               <Button href="/help-center">Visit the help centre</Button>
             </div>
           ) : (
-            <>
-              <Reveal>
-                <Link href={postHref(featured.id)} className="grid grid-cols-[1.2fr_1fr] mb-7 overflow-hidden border border-jdc-line rounded-jdc-xl bg-jdc-white text-inherit no-underline [transition:box-shadow_0.2s] max-[1080px]:grid-cols-[1fr]">
-                  <span className="relative min-h-[340px] overflow-hidden bg-jdc-mist max-[1080px]:min-h-0 max-[1080px]:aspect-[16/10]">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={featured.image} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                    <span className="absolute top-4 left-4 inline-flex items-center gap-[6px] py-[7px] px-[13px] rounded-jdc-pill bg-[rgba(27,34,48,0.78)] [backdrop-filter:blur(8px)] border border-[rgba(255,255,255,0.22)] text-jdc-white text-[12.5px] font-bold [&_svg]:text-jdc-sky">
-                      <Icon name="starBold" size={14} />
-                      Featured
-                    </span>
-                  </span>
-                  <span className="flex flex-col justify-center gap-[14px] p-10 max-[1080px]:p-7 max-[720px]:p-[22px]">
-                    <h2 className="m-0 font-display text-[32px] leading-[1.1] tracking-[-0.02em] text-jdc-navy max-[720px]:text-[24px]">{featured.title}</h2>
-                    <p className="m-0 text-[17px] text-jdc-muted max-[720px]:text-[15.5px]">{featured.excerpt}</p>
-                    <PostMeta post={featured} />
-                    <span className="inline-flex items-center gap-2 mt-[6px] font-bold text-jdc-blue">
-                      Read the article <Icon name="arrowRight" size={16} />
-                    </span>
-                  </span>
-                </Link>
-              </Reveal>
-
-              {rest.length ? (
-                <ul className={GRID}>
-                  {rest.map((post) => (
-                    <Reveal as="li" key={post.id}>
-                      <PostCard post={post} />
-                    </Reveal>
-                  ))}
-                </ul>
-              ) : null}
-            </>
-          )}
+            // every article is the same card (same width, height, image and text lines);
+            // the newest one keeps a "Featured" badge on its picture
+            <ul className={GRID}>
+              {posts.map((post, i) => (
+                <Reveal as="li" key={post.id}>
+                  <PostCard post={post} featured={i === 0} />
+                </Reveal>
+              ))}
+            </ul>          )}
         </Container>
       </section>
     </PageShell>
   );
 }
 
-export function PostCard({ post }) {
+/*
+ * Article card. Every card is the same size whatever the article: the picture has a fixed
+ * shape, the title always takes 2 lines and the excerpt 3 (longer text ends with "…"),
+ * and the date row sits at the bottom.
+ */
+export function PostCard({ post, featured = false }) {
   return (
-    <Link href={postHref(post.id)} className={`${CARD} bg-jdc-white`}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={post.image} alt="" loading="lazy" className="w-full aspect-[16/10] object-cover bg-jdc-mist" />
+    <Link href={postHref(post.id)} className={`${CARD} bg-jdc-white`} title={post.title}>
+      <span className="relative block aspect-[16/10] w-full overflow-hidden bg-jdc-mist">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={post.image} alt="" loading={featured ? "eager" : "lazy"} className="absolute inset-0 h-full w-full object-cover" />
+        {featured ? (
+          <span className="absolute left-3.5 top-3.5 inline-flex items-center gap-1.5 rounded-jdc-pill bg-jdc-navy px-3 py-1.5 text-[12px] font-bold text-jdc-white [&_svg]:text-jdc-sky">
+            <Icon name="starBold" size={13} />
+            Featured
+          </span>
+        ) : null}
+      </span>
       <span className="flex-1 flex flex-col gap-[10px] pt-[22px] px-6 pb-6 max-[720px]:pt-4 max-[720px]:px-[18px] max-[720px]:pb-[18px] max-[720px]:gap-2">
-        <h3 className="m-0 font-display text-[21px] leading-[1.25] text-jdc-navy max-[720px]:text-[18px]">{post.title}</h3>
-        <p className="flex-1 m-0 text-[15px] text-jdc-muted">{post.excerpt}</p>
+        <h3 className="m-0 line-clamp-2 h-[2.5em] font-display text-[21px] leading-[1.25] text-jdc-navy max-[720px]:text-[18px]">{post.title}</h3>
+        <p className="m-0 line-clamp-3 h-[4.65em] text-[15px] leading-[1.55] text-jdc-muted">{post.excerpt}</p>
         <span className="flex items-center justify-between gap-[10px] mt-auto pt-[14px] border-t border-t-jdc-line">
           <PostMeta post={post} />
           <span className="flex-none w-[34px] h-[34px] rounded-[50%] flex items-center justify-center bg-jdc-mist text-jdc-navy" aria-hidden="true">

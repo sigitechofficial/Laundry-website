@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { MdMyLocation, MdOutlineMap } from "react-icons/md";
+import Icon from "./ds/Icon";
 
 export function isLiveTrackingStatus(bookingStatusId) {
   const id = Number(bookingStatusId);
@@ -45,7 +45,7 @@ export default function LiveTrackingAction({
         onClick={onTrack}
         className={`w-full h-12 rounded-xl bg-theme-blue text-white font-sf font-semibold text-[15px] flex items-center justify-center gap-2 hover:opacity-90 transition-opacity ${className}`}
       >
-        <MdMyLocation size={20} />
+        <Icon name="gpsFix" size={20} />
         Track driver on map
       </button>
     );
@@ -55,7 +55,7 @@ export default function LiveTrackingAction({
     <div
       className={`w-full rounded-xl border border-gray-200 bg-gray-50 px-3.5 py-3.5 flex gap-2.5 ${className}`}
     >
-      <MdOutlineMap size={22} className="text-gray-500 shrink-0 mt-0.5" />
+      <Icon name="mapTrifold" size={22} className="text-gray-500 shrink-0 mt-0.5" />
       <div className="min-w-0">
         <p className="font-sf font-semibold text-sm text-gray-700">
           Track driver on map

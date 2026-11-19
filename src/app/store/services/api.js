@@ -25,7 +25,7 @@ export const api = createApi({
       return headers;
     },
   }),
-  tagTypes: ['Profile', 'Orders'], // Define cache tags
+  tagTypes: ['Profile', 'Orders', 'RecurringPlans'], // Define cache tags
   endpoints: (builder) => ({
     userLogin: builder.mutation({
       query: (body) => ({
@@ -193,6 +193,16 @@ export const api = createApi({
       }),
       invalidatesTags: ['Orders'],
     }),
+    // "Collect from Outside" photos (FormData, field "images"): returns data.imageUrls
+    // for createBooking.collectionImageUrls. Longer timeout: a photo on mobile data.
+    uploadCollectionImages: builder.mutation({
+      query: (formData) => ({
+        url: "customer/uploadCollectionImages",
+        method: "POST",
+        body: formData,
+        timeout: 60000,
+      }),
+    }),
     rescheduleBooking: builder.mutation({
       query: (body) => ({
         url: "customer/rescheduleBooking",
@@ -228,6 +238,17 @@ export const api = createApi({
         url: `customer/promotions/offers?zoneId=${encodeURIComponent(zoneId)}`,
         method: "GET",
       }),
+    }),
+    // Recurring service: plans created when an order is booked with a frequency
+    // (Weekly / Every 2 weeks / Every 4 weeks). Each new order is created automatically.
+    getRecurringPlans: builder.query({
+      query: () => ({ url: "customer/recurringPlans", method: "GET" }),
+      providesTags: ["RecurringPlans"],
+    }),
+    // action: "pause" | "resume" | "cancel" (cancel = turn off for good)
+    updateRecurringPlan: builder.mutation({
+      query: ({ planId, action }) => ({ url: "customer/recurringPlan", method: "POST", body: { planId, action } }),
+      invalidatesTags: ["RecurringPlans"],
     }),
     getAllOrders: builder.query({
       query: () => ({
@@ -460,6 +481,7 @@ export const {
   useGetWebBannersQuery,
   useGetServiceWithPreferenceDetailsQuery,
   useCreateBookingMutation,
+  useUploadCollectionImagesMutation,
   useRescheduleBookingMutation,
   useGetAllAddressQuery,
   useGetChargesQuery,
@@ -467,6 +489,8 @@ export const {
   useGetPromotionOffersQuery,
   useGetCustomerCreditQuery,
   useGetAllOrdersQuery,
+  useGetRecurringPlansQuery,
+  useUpdateRecurringPlanMutation,
   useCreateIntentMutation,
   useGetPaymentMethodsQuery,
   useBookingDetailByIdQuery,

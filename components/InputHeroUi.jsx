@@ -2,7 +2,7 @@
 
 import { Input } from "@heroui/react";
 import React from "react";
-import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai";
+import Icon from "./ds/Icon";
 
 /*
  * Legacy text input API on HeroUI, restyled to the design system
@@ -88,7 +88,7 @@ export default function InputField({
             className="absolute right-2.5 top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full text-jdc-muted transition-colors hover:bg-jdc-paper hover:text-jdc-blue"
             aria-label={isPasswordVisible ? "Hide password" : "Show password"}
           >
-            {isPasswordVisible ? <AiOutlineEyeInvisible size={20} /> : <AiOutlineEye size={20} />}
+            <Icon name={isPasswordVisible ? "eyeSlash" : "eye"} size={20} />
           </button>
         ) : (
           endContent

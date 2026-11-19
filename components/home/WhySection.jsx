@@ -32,6 +32,8 @@ export default function WhySection() {
                   alt={tile.alt}
                   fill
                   sizes="(max-width: 1080px) 50vw, 25vw"
+                  quality={85}
+                  style={tile.position ? { objectPosition: tile.position } : undefined}
                 />
                 <span className="absolute bottom-[14px] left-[14px] flex h-[48px] w-[48px] items-center justify-center rounded-[14px] bg-jdc-blue text-jdc-white max-[720px]:bottom-[9px] max-[720px]:left-[9px] max-[720px]:h-[34px] max-[720px]:w-[34px] max-[720px]:rounded-[10px] max-[720px]:[&_svg]:h-[18px] max-[720px]:[&_svg]:w-[18px]">
                   <Icon name={tile.icon} size={22} />

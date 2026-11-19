@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { GoogleMap, Marker, Polyline } from "@react-google-maps/api";
 import { Spinner } from "@heroui/react";
-import { MdMyLocation, MdZoomOutMap } from "react-icons/md";
+import Icon from "./ds/Icon";
 import { useLazyGetLiveTrackingQuery } from "@/app/store/services/api";
 import { decodePolyline } from "../utilities/decodePolyline";
 import { useGoogleMaps } from "../utilities/GoogleMapsProvider";
@@ -403,7 +403,7 @@ export default function LiveTrackingMap({ bookingId, orderTrackId, onClose }) {
   if (error || mapsError) {
     return (
       <div className="w-full h-[70vh] min-h-[420px] flex flex-col items-center justify-center px-8 text-center bg-white">
-        <MdZoomOutMap size={48} className="text-gray-300 mb-4" />
+        <Icon name="arrowsOut" size={48} className="text-gray-300 mb-4" />
         <h4 className="font-youth font-bold text-xl text-gray-900">
           Tracking unavailable
         </h4>
@@ -489,7 +489,7 @@ export default function LiveTrackingMap({ bookingId, orderTrackId, onClose }) {
           className="w-11 h-11 rounded-xl bg-white shadow flex items-center justify-center text-theme-blue"
           aria-label="Recenter on driver"
         >
-          <MdMyLocation size={22} />
+          <Icon name="gpsFix" size={22} />
         </button>
         <button
           type="button"
@@ -497,7 +497,7 @@ export default function LiveTrackingMap({ bookingId, orderTrackId, onClose }) {
           className="w-11 h-11 rounded-xl bg-white shadow flex items-center justify-center text-theme-blue"
           aria-label="Fit route"
         >
-          <MdZoomOutMap size={22} />
+          <Icon name="arrowsOut" size={22} />
         </button>
       </div>
 

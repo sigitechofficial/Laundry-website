@@ -25,10 +25,14 @@ import {
 } from "../../../../utilities/bookingSlotsApi";
 import {
   buildDeliveryUpdateForMinDate,
+  getMaxTurnaroundDays,
+  getMinDeliveryDate,
   getTurnaroundConflict,
+  parseTimeRequiredDays,
 } from "../../../../utilities/turnaroundTime";
+import SlotSheet from "../../../../components/booking/SlotSheet";
+import ServicesRequested from "../../../../components/booking/ServicesRequested";
 import { formatDate, to24Hour } from "../../../../utilities/ConversionFunction";
-import { groupServicePrefs } from "../../../../utilities/serviceChips";
 import PageShell from "../../../../components/ds/PageShell";
 import ServiceBar from "../../../../components/booking/ServiceBar";
 import ProtoIcon from "../../../../components/proto/ProtoIcon";
@@ -700,6 +704,25 @@ export default function Order() {
     }
   };
 
+  // Some services take longer (admin "time required", e.g. duvets 3 days, alterations 7).
+  // When the delivery date is too early for the longest one, Continue asks the customer:
+  // use the suggested slot (first free one after those days) or choose another day, from
+  // that date onwards. Either way they then go on to payment.
+  const [deliverySheetOpen, setDeliverySheetOpen] = useState(false);
+  const minAllowedDelivery = useMemo(
+    () =>
+      getMinDeliveryDate(
+        orderData?.collectionData?.collectionDate,
+        getMaxTurnaroundDays(serviceList, cartServiceIds).maxDays || 0
+      ),
+    [orderData?.collectionData?.collectionDate, serviceList, cartServiceIds]
+  );
+  // only days the services allow are offered in the delivery picker
+  const deliveryDaysAllowed = useMemo(
+    () => slotsDeliveryForTurnaround.filter((d) => d.date >= minAllowedDelivery && d.timeSlots?.length),
+    [slotsDeliveryForTurnaround, minAllowedDelivery]
+  );
+
   // Going on to Payment: the button that was pressed shows a spinner (not the top
   // progress line) until the Payment page opens.
   const [goingToPay, setGoingToPay] = useState(false);
@@ -707,75 +730,106 @@ export default function Order() {
     setGoingToPay(true);
     router.push("/checkout/payment");
   };
+  // Longest turnaround in the order, and whether the customer has already answered the
+  // delivery question for it (stored on the order, not sent to the API). Asked again only
+  // when the services change so that more days are needed.
+  const orderTurnaroundDays = useMemo(
+    () => getMaxTurnaroundDays(serviceList, cartServiceIds).maxDays || 0,
+    [serviceList, cartServiceIds]
+  );
+  // counts only for the same collection + delivery dates (new times on Book a pickup ask again)
+  const ack = orderData?.deliveryTurnaroundAck;
+  const deliveryAnswered =
+    orderTurnaroundDays > 0 &&
+    Number(ack?.days) >= orderTurnaroundDays &&
+    ack?.collectionDate === orderData?.collectionData?.collectionDate &&
+    ack?.deliveryDate === orderData?.deliveryData?.deliveryDate;
+  const markDeliveryAnswered = (deliveryDate = orderData?.deliveryData?.deliveryDate) =>
+    dispatch(
+      setOrderData({
+        deliveryTurnaroundAck: {
+          days: orderTurnaroundDays,
+          collectionDate: orderData?.collectionData?.collectionDate,
+          deliveryDate,
+        },
+      })
+    );
+
+  // after the date question is answered, carry on with what Continue was doing
+  const continueAfterDelivery = (update) => {
+    if (isRescheduleFlow) void handleRescheduleSubmit(update || undefined);
+    else proceedToPayment();
+  };
 
   const handleContinue = async () => {
-    if (isRescheduleFlow) {
-      if (turnaroundCheck.conflict) {
-        setTurnaroundModal({
-          open: true,
-          minDeliveryDate: turnaroundCheck.minDeliveryDate,
-          maxDays: turnaroundCheck.maxDays,
-          serviceLabels: turnaroundCheck.serviceLabels,
-        });
-        setPendingContinueAfterTurnaround(true);
-        return;
-      }
-      await handleRescheduleSubmit();
-      return;
-    }
-
-    if (turnaroundCheck.conflict) {
+    // Ask whenever a service needs extra days and the customer hasn't answered yet
+    // (always when the current date is too early).
+    if (turnaroundCheck.conflict || (orderTurnaroundDays > 0 && !deliveryAnswered)) {
+      const { serviceLabels } = getMaxTurnaroundDays(serviceList, cartServiceIds);
+      const suggested = buildDeliveryUpdateForMinDate(
+        slotsDeliveryForTurnaround,
+        orderData?.collectionData?.collectionDate,
+        orderData?.collectionData?.collectionTimeTo,
+        minAllowedDelivery
+      );
+      const d = orderData?.deliveryData;
       setTurnaroundModal({
         open: true,
-        minDeliveryDate: turnaroundCheck.minDeliveryDate,
-        maxDays: turnaroundCheck.maxDays,
-        serviceLabels: turnaroundCheck.serviceLabels,
+        minDeliveryDate: minAllowedDelivery,
+        maxDays: orderTurnaroundDays,
+        serviceLabels,
+        suggested, // { deliveryDate, deliveryTimeFrom, deliveryTimeTo, ... } or null
+        // the date already chosen, when it already allows enough days
+        current:
+          !turnaroundCheck.conflict && d?.deliveryDate
+            ? { deliveryDate: d.deliveryDate, deliveryTimeFrom: d.deliveryTimeFrom, deliveryTimeTo: d.deliveryTimeTo }
+            : null,
       });
       setPendingContinueAfterTurnaround(true);
       return;
     }
-
-    proceedToPayment();
+    if (isRescheduleFlow) await handleRescheduleSubmit();
+    else proceedToPayment();
   };
 
-  const handleAcceptSuggestedDelivery = () => {
-    const collectionDate = orderData?.collectionData?.collectionDate;
-    const collectionTimeTo = orderData?.collectionData?.collectionTimeTo;
-    const update = buildDeliveryUpdateForMinDate(
-      slotsDeliveryForTurnaround,
-      collectionDate,
-      collectionTimeTo,
-      turnaroundModal.minDeliveryDate
-    );
-    if (update) {
-      dispatch(setDeliveryData(update));
-    }
+  const handleKeepCurrentDelivery = () => {
+    markDeliveryAnswered();
     setTurnaroundModal((prev) => ({ ...prev, open: false }));
     if (pendingContinueAfterTurnaround) {
       setPendingContinueAfterTurnaround(false);
-      if (isRescheduleFlow) {
-        void handleRescheduleSubmit(update || undefined);
-      } else {
-        proceedToPayment();
-      }
+      continueAfterDelivery();
     }
   };
 
+  const handleAcceptSuggestedDelivery = () => {
+    const update = turnaroundModal.suggested;
+    if (update) dispatch(setDeliveryData(update));
+    markDeliveryAnswered(update?.deliveryDate);
+    setTurnaroundModal((prev) => ({ ...prev, open: false }));
+    if (pendingContinueAfterTurnaround) {
+      setPendingContinueAfterTurnaround(false);
+      continueAfterDelivery(update);
+    }
+  };
+
+  // "Choose another date": the delivery picker here, from the earliest allowed day.
+  // Continue stays pending, so confirming a slot carries on to payment.
   const handleChangeDeliveryDateFromTurnaround = () => {
     setTurnaroundModal((prev) => ({ ...prev, open: false }));
+    if (deliveryDaysAllowed.length) {
+      setDeliverySheetOpen(true);
+      return;
+    }
+    // no free slot in the next 3 weeks here: back to Book a pickup to choose there
     setPendingContinueAfterTurnaround(false);
     if (typeof window !== "undefined") {
       sessionStorage.setItem("openDeliveryDateModal", "1");
       if (turnaroundModal.minDeliveryDate) {
-        sessionStorage.setItem(
-          "minDeliveryDate",
-          turnaroundModal.minDeliveryDate
-        );
+        sessionStorage.setItem("minDeliveryDate", turnaroundModal.minDeliveryDate);
       }
     }
     router.push("/place-order");
   };
-
   function closePreferenceModal() {
     if (!currentServiceId) {
       setModal({ ...modal, modType: "" });
@@ -1028,6 +1082,7 @@ export default function Order() {
                               type={selectedEntry ? "check" : "plus"}
                               serviceId={item?.id}
                               prefs={selectedEntry?.preferencesDisplay}
+                              turnaround={parseTimeRequiredDays(item?.timeRequired)}
                             />
                           );
                         })
@@ -1077,7 +1132,16 @@ export default function Order() {
                         </p>
                       </div>
                       <div className={ui.SUM_BLOCK}>
-                        <p className={ui.SUM_SUB}>Delivery</p>
+                        <p className={cx(ui.SUM_SUB, "flex items-center justify-between")}>
+                          Delivery
+                          <button
+                            type="button"
+                            className={cx(ui.SUM_EDIT, "normal-case tracking-normal")}
+                            onClick={() => setDeliverySheetOpen(true)}
+                          >
+                            Change
+                          </button>
+                        </p>
                         <p className={ui.SUM_ROW}>
                           <ProtoIcon name="calendar" size={16} />
                           <span>{formatDate(orderData?.deliveryData?.deliveryDate) || "Not set"}</span>
@@ -1139,82 +1203,11 @@ export default function Order() {
                       </div>
                     </div>
 
-                    <div className={ui.SUM}>
-                      <div className={cx(ui.SUM_HEAD, "mb-0.5")}>
-                        <ProtoIcon name="basket" size={18} />
-                        <b>Services requested</b>
-                        <span className={ui.REQ_COUNT}>{preferencesData?.length || 0}</span>
-                      </div>
-                      <div className={ui.REQ_LIST}>
-                        {preferencesData?.length > 0 ? (
-                          <>
-                            {preferencesData.map((item, idx) => (
-                              <div key={item?.serviceId ?? idx} className={ui.REQ_ITEM}>
-                                <div className={ui.REQ_HEAD}>
-                                  <span className={ui.REQ_NAME}>{item?.serviceName || "Selected"}</span>
-                                  <button
-                                    type="button"
-                                    className={ui.REQ_X}
-                                    aria-label={`Remove ${item?.serviceName || "service"}`}
-                                    onClick={() => dispatch(removePreference(item?.serviceId))}
-                                  >
-                                    ×
-                                  </button>
-                                </div>
-                                {(Array.isArray(item?.preferencesDisplay) && item.preferencesDisplay.length > 0) ||
-                                item?.additionalInstructions ? (
-                                  <div className={ui.REQ_PREFS}>
-                                    {groupServicePrefs(item?.preferencesDisplay).map((group, gIdx) => (
-                                      <div key={`${idx}-${gIdx}`} className={ui.REQ_GROUP}>
-                                        {group.title && (
-                                          <div className={ui.REQ_GROUP_HEAD}>
-                                            <span>{group.title}</span>
-                                            {group.detail && <span className={ui.REQ_GROUP_DETAIL}>{group.detail}</span>}
-                                          </div>
-                                        )}
-                                        {group.rows.length > 0 && (
-                                          <div className={ui.REQ_ROWS}>
-                                            {group.rows.map((row, rIdx) => (
-                                              <div key={rIdx} className={ui.REQ_ROW}>
-                                                <span className={ui.REQ_ROW_L}>{row.label}</span>
-                                                <span className={ui.REQ_ROW_V}>{row.value}</span>
-                                              </div>
-                                            ))}
-                                          </div>
-                                        )}
-                                        {group.note && (
-                                          <p className={ui.REQ_GROUP_NOTE}>
-                                            <span className="text-jdc-muted">Note: </span>
-                                            {group.note}
-                                          </p>
-                                        )}
-                                      </div>
-                                    ))}
-                                    {item?.additionalInstructions && (
-                                      <div className={ui.REQ_PREF}>
-                                        <span className={ui.REQ_PREF_L}>Instructions</span>
-                                        <span className={ui.REQ_PREF_V}>{item?.additionalInstructions}</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                ) : null}
-                              </div>
-                            ))}
-                            {sharedBagsApply && parseQuantityCount(orderData?.totalBags) > 0 && (
-                              <div className={ui.REQ_ITEM}>
-                                <div className={cx(ui.REQ_PREFS, "mt-0")}>
-                                  <div className={ui.REQ_PREF}>
-                                    <span className={ui.REQ_PREF_L}>Number of bags (all services)</span>
-                                    <span className={ui.REQ_PREF_V}>{parseQuantityCount(orderData?.totalBags)}</span>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        ) : (
-                          <p className={ui.REQ_EMPTY}>No service selected yet. Pick one on the left to get started.</p>
-                        )}
-                      </div>
+                    <ServicesRequested
+                      items={preferencesData || []}
+                      sharedBags={sharedBagsApply ? parseQuantityCount(orderData?.totalBags) : 0}
+                      onRemove={(id) => dispatch(removePreference(id))}
+                    >
                       <p className={ui.REQ_NOTE}>
                         <ProtoIcon name="shield" size={16} />
                         <span>No charge now &mdash; you pay after your items are weighed and confirmed.</span>
@@ -1236,7 +1229,7 @@ export default function Order() {
                         Continue to checkout
                         {goingToPay ? null : <ProtoIcon name="arrow" size={18} />}
                       </button>
-                    </div>
+                    </ServicesRequested>
                   </aside>
                 </div>
               </div>
@@ -1777,9 +1770,38 @@ export default function Order() {
         )}
       </ReusableModal>
 
+      <SlotSheet
+        open={deliverySheetOpen}
+        title="Delivery slot"
+        days={deliveryDaysAllowed}
+        timesFor={(date) => deliveryDaysAllowed.find((d) => d.date === date)?.timeSlots || []}
+        value={{ date: orderData?.deliveryData?.deliveryDate, start: orderData?.deliveryData?.deliveryTimeFrom }}
+        fmt={to24Hour}
+        onClose={() => {
+          setDeliverySheetOpen(false);
+          setPendingContinueAfterTurnaround(false);
+        }}
+        onConfirm={(day, slot) => {
+          dispatch(
+            setDeliveryData({
+              deliveryDate: day?.date,
+              availableTimeSlots: day?.timeSlots || [],
+              deliveryTimeFrom: slot?.start,
+              deliveryTimeTo: slot?.end,
+            })
+          );
+          setDeliverySheetOpen(false);
+          markDeliveryAnswered(day?.date);
+          if (pendingContinueAfterTurnaround) {
+            setPendingContinueAfterTurnaround(false);
+            continueAfterDelivery({ deliveryDate: day?.date, availableTimeSlots: day?.timeSlots || [], deliveryTimeFrom: slot?.start, deliveryTimeTo: slot?.end });
+          }
+        }}
+      />
       <DeliveryDateDialog
         notice={turnaroundModal}
         onAccept={handleAcceptSuggestedDelivery}
+        onKeep={handleKeepCurrentDelivery}
         onChange={handleChangeDeliveryDateFromTurnaround}
         onClose={() => {
           setTurnaroundModal((prev) => ({ ...prev, open: false }));

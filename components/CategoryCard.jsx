@@ -18,7 +18,8 @@ function badgeFor(name) {
 
 const ICON_GREY = "text-[#8A93A6]";
 
-export default function CategoryCard({ h, p, onClick, type, prefs }) {
+// turnaround: days the service needs (admin "time required"); 0 / empty shows nothing
+export default function CategoryCard({ h, p, onClick, type, prefs, turnaround = 0 }) {
   const added = type === "check";
   const chips = added ? serviceCardChips(prefs) : [];
   const badge = badgeFor(h);
@@ -56,6 +57,12 @@ export default function CategoryCard({ h, p, onClick, type, prefs }) {
         ) : null}
         <span className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2">
           <span className="mt-0 inline-block rounded-jdc-pill bg-none p-0 text-[13px] font-semibold text-jdc-muted">By item</span>
+          {turnaround > 0 ? (
+            <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-jdc-muted [&>svg]:text-[#8A93A6]">
+              <ProtoIcon name="clock" size={14} />
+              {turnaround} {turnaround === 1 ? "day" : "days"}
+            </span>
+          ) : null}
         </span>
         <span className={cx("mt-2.5 flex flex-wrap gap-1.5", (chips.length === 0) && "hidden")} hidden={chips.length === 0}>
           {chips.map((c) => (

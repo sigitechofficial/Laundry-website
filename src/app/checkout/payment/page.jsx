@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   useApplyCouponMutation,
   useCreateBookingMutation,
+  useUploadCollectionImagesMutation,
   useGetCustomerActivePoliciesQuery,
   useGetChargesQuery,
   useRescheduleBookingMutation,
@@ -22,10 +23,16 @@ import * as ui from "../../../../components/booking/ui";
 import { BoneText } from "../../../../components/ds/Skeleton";
 import { cx } from "../../../../components/ds/cx";
 import Dialog from "../../../../components/ds/Dialog";
+import ServicesRequested from "../../../../components/booking/ServicesRequested";
 import { useFitsViewport } from "../../../../components/ds/useFitsViewport";
 import { useRouter } from "next/navigation";
 import BagsItemsWarningModal from "../../../../components/BagsItemsWarningModal";
 import { getServicesMissingBagsOrItems } from "../../../../utilities/checkoutBagsItems";
+import {
+  clearPendingCollectionPhoto,
+  getPendingCollectionPhoto,
+  shrinkPhoto,
+} from "../../../../utilities/collectionPhoto";
 
 const parseQuantityCount = (value) => {
   const parsed = parseInt(String(value ?? "").replace(/\D/g, ""), 10);
@@ -43,6 +50,7 @@ export default function Payment() {
   const clientTimeZone =
     Intl.DateTimeFormat?.().resolvedOptions?.().timeZone || "UTC";
   const [createBooking] = useCreateBookingMutation();
+  const [uploadCollectionImages] = useUploadCollectionImagesMutation();
   const [rescheduleBooking] = useRescheduleBookingMutation();
   const [applyCoupon, { isLoading: isApplyingCoupon }] = useApplyCouponMutation();
   const [promoCode, setPromoCode] = useState("");
@@ -495,8 +503,29 @@ export default function Payment() {
         };
       });
 
+      // Photo for the driver chosen on Place order: upload it first, then send its path
+      // with the booking. A failed upload never blocks the order.
+      let collectionImageUrls = [];
+      const collectionPhoto = getPendingCollectionPhoto();
+      if (!isRescheduleFlow && collectionPhoto) {
+        try {
+          const photo = await shrinkPhoto(collectionPhoto);
+          const formData = new FormData();
+          formData.append("images", photo, photo.name || "collection-photo.jpg");
+          const uploaded = await uploadCollectionImages(formData).unwrap();
+          collectionImageUrls = Array.isArray(uploaded?.data?.imageUrls) ? uploaded.data.imageUrls : [];
+        } catch {
+          addToast({
+            title: "Your photo couldn't be uploaded",
+            description: "We'll place the order without it. You can add a note for the driver instead.",
+            color: "warning",
+          });
+        }
+      }
+
       const bookingData = {
         collectionDate: orderData?.collectionData?.collectionDate,
+        ...(collectionImageUrls.length ? { collectionImageUrls } : {}),
         collectionTimeTo: to24Hour(orderData?.collectionData?.collectionTimeTo),
         collectionTimeFrom: to24Hour(
           orderData?.collectionData?.collectionTimeFrom
@@ -648,6 +677,7 @@ export default function Payment() {
           dispatch(clearCartData());
           router.replace(doneUrlRef.current);
         } else {
+          clearPendingCollectionPhoto();
           setPayOpen(false);
           setOrderDone(true);
           // show the confirmation briefly, then open the new order's details
@@ -887,7 +917,7 @@ export default function Payment() {
                   </div>
 
                   <aside ref={asideRef} className={cx(asideFits && "sticky top-[108px]", "flex flex-col gap-[18px] max-[980px]:static max-[980px]:contents max-[980px]:min-w-0 max-[980px]:max-w-full max-[980px]:[&>*]:w-full max-[980px]:[&>*]:max-w-full max-[980px]:[&>*]:self-stretch")}>
-                    <div className={cx(ui.SUM, "px-6 pb-6 pt-[26px] max-[980px]:order-2 max-[720px]:p-5")}>
+                    <div className={cx(ui.SUM, "px-6 pb-6 pt-[26px] max-[980px]:order-3 max-[720px]:p-5")}>
                       <h3 className="mx-0 mb-1 mt-0 text-left font-display text-[20px] tracking-[-0.01em] text-jdc-navy">Order summary</h3>
                       <div className="border-b border-jdc-line py-5">
                         <p className="mx-0 mb-3 mt-0 flex items-baseline gap-2 text-[14.5px] font-bold text-jdc-navy [&>span]:text-[12.5px] [&>span]:font-medium [&>span]:text-jdc-muted">How often?</p>
@@ -1127,6 +1157,15 @@ export default function Payment() {
                         <span>You pay nothing now &mdash; the total is confirmed after your items are checked and weighed.</span>
                       </p>
                     </div>
+
+                    {/* what the customer is paying for (phones: before the order summary and Place order) */}
+                    <ServicesRequested
+                      items={preferencesData || []}
+                      sharedBags={useSharedBags ? parseQuantityCount(orderData?.totalBags) : 0}
+                      editHref="/checkout/order"
+                      collapsible
+                      className="max-[980px]:order-2 max-[720px]:p-5"
+                    />
 
                     <div className={cx(ui.SUM, "max-[980px]:order-3 max-[720px]:p-5")}>
                       <div className={ui.SUM_HEAD}>

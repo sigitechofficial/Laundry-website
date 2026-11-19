@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Modal, ModalContent, ModalHeader, ModalBody, ModalFooter } from "@heroui/react";
-import { IoClose } from "react-icons/io5";
-import { FaArrowLeftLong } from "react-icons/fa6";
+import Icon from "./ds/Icon";
 
 /*
  * HeroUI popup used by the older account screens (order history, delete account,
@@ -126,13 +125,13 @@ const ReusableModal = ({
             <ModalBody className="p-0 overflow-hidden">
               {onBack && (
                 <button type="button" aria-label="Back" onClick={onBack} className={`${ICON_BTN} left-3`}>
-                  <FaArrowLeftLong size={20} />
+                  <Icon name="arrowLeft" size={20} />
                 </button>
               )}
 
               {onClose && (
                 <button type="button" aria-label="Close" onClick={handleClose} className={`${ICON_BTN} right-3`}>
-                  <IoClose size={30} />
+                  <Icon name="x" size={30} />
                 </button>
               )}
               {children}

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { Spinner } from "@heroui/react";
-import { IoSearchOutline } from "react-icons/io5";
+import Icon from "./ds/Icon";
 import { useLazyGetAddressesByPostcodeQuery } from "../src/app/store/services/api";
 import {
   filterAddresses,
@@ -88,7 +88,7 @@ export default function AddressFilterLookup({
     <div className={`flex flex-col gap-3 ${className}`}>
       <div className="relative border-2 border-theme-gray-2/25 rounded-lg w-full min-h-14 pl-3 pr-1 py-1 shrink-0">
         <div className="absolute top-1/2 -translate-y-1/2 left-3 z-10 pointer-events-none">
-          <IoSearchOutline className="text-2xl text-theme-gray-2" />
+          <Icon name="search" size="1em" className="text-2xl text-theme-gray-2" />
         </div>
 
         <input

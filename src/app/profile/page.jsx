@@ -5,14 +5,7 @@ import PageShell from "../../../components/ds/PageShell";
 import { cx } from "../../../components/ds/cx";
 import { BACK_LABEL, BACK_ROUND, TITLE_ROW } from "../../../components/booking/ui";
 import { useState } from "react";
-import {
-  MdPauseCircleOutline,
-  MdOutlinePeople,
-  MdOutlineHistory,
-  MdOutlineAccountCircle,
-  MdOutlineNotifications,
-} from "react-icons/md";
-import { FaUser } from "react-icons/fa";
+import Icon from "../../../components/ds/Icon";
 import ProtoIcon from "../../../components/proto/ProtoIcon";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -29,6 +22,7 @@ import OrderHistory from "../../../components/chunks/OrderHistory";
 import Notifications from "../../../components/chunks/Notifications";
 import Invite from "../../../components/chunks/Invite";
 import MyAddresses from "../../../components/chunks/MyAddresses";
+import RecurringService from "../../../components/chunks/RecurringService";
 import { setPage } from "../store/slices/cartItemSlice";
 import { useDispatch } from "react-redux";
 import OnHoldbookings from "../../../components/chunks/OnHoldbookings";
@@ -369,16 +363,17 @@ function Profile() {
   }, [data]);
 
   // No tab, or an unknown one, in the URL: show the account details rather than an empty panel.
-  const KNOWN_TABS = ["my-account", "my-addresses", "order-history", "on-hold-bookings", "notifications", "invite-friend"];
+  const KNOWN_TABS = ["my-account", "my-addresses", "order-history", "on-hold-bookings", "recurring-service", "notifications", "invite-friend"];
   const activeTab = KNOWN_TABS.includes(currentTab) ? currentTab : "my-account";
 
   const TABS = [
-    { id: "my-account", label: "My account", Icon: MdOutlineAccountCircle },
-    { id: "my-addresses", label: "My addresses", Icon: MdOutlineAccountCircle },
-    { id: "order-history", label: "Order history", Icon: MdOutlineHistory },
-    { id: "on-hold-bookings", label: "On hold bookings", Icon: MdPauseCircleOutline },
-    { id: "notifications", label: "Notifications", Icon: MdOutlineNotifications },
-    { id: "invite-friend", label: "Invite friends", Icon: MdOutlinePeople },
+    { id: "my-account", label: "My account", icon: "userCircle" },
+    { id: "my-addresses", label: "My addresses", icon: "addressBook" },
+    { id: "order-history", label: "Order history", icon: "history" },
+    { id: "on-hold-bookings", label: "On hold bookings", icon: "pauseCircle" },
+    { id: "recurring-service", label: "Recurring service", icon: "repeat" },
+    { id: "notifications", label: "Notifications", icon: "bell" },
+    { id: "invite-friend", label: "Invite friends", icon: "users" },
   ];
 
   const displayName =
@@ -402,7 +397,7 @@ function Profile() {
         {/* single-column tabs use a narrower centred page, so there is no empty space beside them */}
         <div
           className={
-            activeTab === "my-account"
+            activeTab === "my-account" || activeTab === "recurring-service"
               ? "max-w-[900px] mx-auto my-0"
               : activeTab === "on-hold-bookings"
                   ? "max-w-[1180px] mx-auto my-0"
@@ -437,6 +432,8 @@ function Profile() {
                   ? "Our team found a problem with an item. We will not start cleaning until you decide what to do."
                   : activeTab === "my-addresses"
                     ? "Addresses saved from your bookings."
+                  : activeTab === "recurring-service"
+                    ? "Orders that repeat automatically, with the same services, on the schedule you chose at checkout."
                   : activeTab === "notifications"
                     ? "Updates about your orders and account."
                     : "Give friends money off their first order, and get credit when they book."}
@@ -455,7 +452,7 @@ function Profile() {
                   ) : initials ? (
                     initials
                   ) : (
-                    <FaUser aria-hidden="true" />
+                    <Icon name="user" size="1em" />
                   )}
                 </label>
                 <input
@@ -555,6 +552,8 @@ function Profile() {
                 <OnHoldbookings />
               ) : activeTab === "my-addresses" ? (
                 <MyAddresses />
+              ) : activeTab === "recurring-service" ? (
+                <RecurringService />
               ) : null}
             </div>
           )}

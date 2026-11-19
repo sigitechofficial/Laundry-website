@@ -1,13 +1,13 @@
 "use client";
 
-import { IoChevronForward } from "react-icons/io5";
+import Icon from "./ds/Icon";
 
 /*
  * Account menu row, restyled to the design system (tinted icon tile,
  * subtle hover). Props unchanged, plus optional tone="danger".
  * Previous version: see git history (before the 2026 redesign)
  */
-export default function DrawerItem({ Icon, text, onClick, tone }) {
+export default function DrawerItem({ icon, text, onClick, tone }) {
   const danger = tone === "danger";
   return (
     <button
@@ -22,11 +22,11 @@ export default function DrawerItem({ Icon, text, onClick, tone }) {
           danger ? "bg-[#FDECEA] text-jdc-danger" : "bg-[#F1F3F7] text-[#6B7385]"
         }`}
       >
-        <Icon size={19} aria-hidden="true" />
+        <Icon name={icon} size={19} />
       </span>
       <span className="min-w-0 flex-1">{text}</span>
       {danger ? null : (
-        <IoChevronForward size={16} className="shrink-0 text-[#C7CEDA] transition-colors group-hover:text-[#6B7385]" aria-hidden="true" />
+        <Icon name="caretRightThin" size={16} className="shrink-0 text-[#C7CEDA] transition-colors group-hover:text-[#6B7385]" />
       )}
     </button>
   );

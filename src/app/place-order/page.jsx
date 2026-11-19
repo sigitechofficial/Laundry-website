@@ -3,13 +3,16 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { takeBookingDraft } from "../../../utilities/useStartBooking";
 import { ensureGuestSession } from "../../../utilities/guestSession";
 import { ButtonYouth70018 } from "../../../components/Buttons";
-import { PiArrowRight } from "react-icons/pi";
-import { FaChevronLeft } from "react-icons/fa";
+import Icon from "../../../components/ds/Icon";
 import ReusableModal from "../../../components/Modal";
 import DeliveryDateDialog from "../../../components/booking/DeliveryDateDialog";
+import DriverNotePhoto from "../../../components/booking/DriverNotePhoto";
+import {
+  getPendingCollectionPhoto,
+  setPendingCollectionPhoto,
+} from "../../../utilities/collectionPhoto";
 import Dialog from "../../../components/ds/Dialog";
 import { Spinner, addToast, useDisclosure } from "@heroui/react";
-import { TbLocation } from "react-icons/tb";
 import { useRouter } from "next/navigation";
 import {
   fetchBookingSlots,
@@ -1112,6 +1115,14 @@ export default function PlaceOrderPage() {
           minDeliveryDate: check.minDeliveryDate,
           maxDays: check.maxDays,
           serviceLabels: check.serviceLabels,
+          // the slot "Use suggested date" applies (shown in the popup)
+          suggested: buildDeliveryUpdateForMinDate(
+            slotsDelivery,
+            collectionData?.collectionDate,
+            collectionData?.collectionTimeTo,
+            check.minDeliveryDate,
+            parseTimeToMinutes
+          ),
         });
         setProceedAfterTurnaroundAccept(true);
         return;
@@ -1121,13 +1132,7 @@ export default function PlaceOrderPage() {
   };
 
   const handleAcceptTurnaroundOnPlaceOrder = () => {
-    const update = buildDeliveryUpdateForMinDate(
-      slotsDelivery,
-      collectionData?.collectionDate,
-      collectionData?.collectionTimeTo,
-      turnaroundModal.minDeliveryDate,
-      parseTimeToMinutes
-    );
+    const update = turnaroundModal.suggested;
     if (update) {
       setDeliveryData((prev) => ({ ...prev, ...update }));
     }
@@ -1222,13 +1227,13 @@ export default function PlaceOrderPage() {
                   router.push("/");
                 }}
               >
-                <FaChevronLeft aria-hidden="true" /> Back
+                <Icon name="caretLeft" size="1em" /> Back
               </button>
               <h1 className="mx-0 mb-0 mt-3.5 font-display text-[clamp(28px,3vw,38px)] font-extrabold leading-[1.08] tracking-[-0.02em] text-jdc-navy">Ready for your next pickup?</h1>
               <p className="mx-0 mb-[26px] mt-2 text-[16px] text-jdc-muted">Start a new order and we&apos;ll collect from your door.</p>
               <button type="button" className="mt-2 flex w-full cursor-pointer items-center gap-[18px] rounded-jdc-lg border border-jdc-line bg-jdc-white p-[22px] text-left transition-[border-color] duration-200 hover:border-jdc-blue" onClick={() => setStep("get-started")}>
                 <span className="flex h-14 w-14 flex-none items-center justify-center rounded-2xl bg-[#F1F3F7] text-[#6B7385]">
-                  <TbLocation size={26} aria-hidden="true" />
+                  <Icon name="navigation" size={26} />
                 </span>
                 <span className="min-w-0 flex-1 [&>small]:block [&>small]:text-[12.5px] [&>small]:font-bold [&>small]:uppercase [&>small]:tracking-[0.12em] [&>small]:text-jdc-blue [&>span]:mt-0.5 [&>span]:block [&>span]:text-[14.5px] [&>span]:text-jdc-muted [&>strong]:mt-0.5 [&>strong]:block [&>strong]:font-display [&>strong]:text-[22px] [&>strong]:text-jdc-navy">
                   <small>New order</small>
@@ -1236,7 +1241,7 @@ export default function PlaceOrderPage() {
                   <span>Choose your address and a one-hour window.</span>
                 </span>
                 <span className="flex h-11 w-11 flex-none items-center justify-center rounded-[50%] bg-jdc-blue text-jdc-white" aria-hidden="true">
-                  <PiArrowRight size={20} />
+                  <Icon name="arrowRightThin" size={20} />
                 </span>
               </button>
             </div>
@@ -1386,7 +1391,9 @@ export default function PlaceOrderPage() {
                   </div>
                 </fieldset>
 
-                <div className={cx("mt-8 rounded-xl border border-transparent bg-jdc-blue-tint [transition:background_0.2s,border-color_0.2s,box-shadow_0.2s] [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:mt-[26px] [@media(min-width:901px)_and_(max-height:860px)]:mt-4 max-[720px]:mt-7", noteIsOpen && "border-jdc-line bg-white focus-within:border-jdc-blue focus-within:[box-shadow:0_0_0_4px_rgba(2,120,254,0.14)]")} id="bkNote">
+                {/* note for the driver + optional photo: side by side on computers, photo below on phones */}
+                <div className="mt-8 flex items-start gap-2.5 [@media(min-width:901px)_and_(min-height:861px)_and_(max-height:960px)]:mt-[26px] [@media(min-width:901px)_and_(max-height:860px)]:mt-4 max-[720px]:mt-7 max-[720px]:flex-col max-[720px]:items-stretch">
+                <div className={cx("min-w-0 flex-1 rounded-xl border border-transparent bg-jdc-blue-tint [transition:background_0.2s,border-color_0.2s,box-shadow_0.2s]", noteIsOpen && "border-jdc-line bg-white focus-within:border-jdc-blue focus-within:[box-shadow:0_0_0_4px_rgba(2,120,254,0.14)]")} id="bkNote">
                   <button
                     type="button"
                     className={cx("flex h-14 w-full cursor-pointer items-center justify-center gap-[9px] rounded-xl border-0 bg-none text-[15px] font-bold text-jdc-blue [@media(min-width:901px)_and_(max-height:860px)]:h-12", noteIsOpen && "hidden")}
@@ -1426,6 +1433,16 @@ export default function PlaceOrderPage() {
                       }
                     }}
                   />
+                </div>
+                {/* optional photo for the driver (door, gate, where the bags are), any
+                    handover; uploaded with the booking on Payment */}
+                {!isRescheduleFlow && (
+                  <DriverNotePhoto
+                    className="flex-none"
+                    initialFile={getPendingCollectionPhoto()}
+                    onChange={setPendingCollectionPhoto}
+                  />
+                )}
                 </div>
 
                 <button className={cx(BTN, BTN_BLOCK, "mt-6 h-[58px] rounded-xl text-[16.5px] [@media(min-width:901px)_and_(max-height:860px)]:mt-3.5 [@media(min-width:901px)_and_(max-height:860px)]:h-[52px]")} type="submit" disabled={continueDisabled}>
@@ -1575,7 +1592,7 @@ export default function PlaceOrderPage() {
                 <div className="border-t border-gray-100 pt-4 space-y-4">
                 <div className="flex items-center gap-5">
                   <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
-                    <TbLocation size={20} />
+                    <Icon name="navigation" size={20} />
                   </div>
 
                   <div
@@ -1596,7 +1613,7 @@ export default function PlaceOrderPage() {
                     return (
                       <div key={add?.id} className="flex items-center gap-5">
                         <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
-                          <TbLocation size={20} />
+                          <Icon name="navigation" size={20} />
                         </div>
 
                         <div
@@ -1761,7 +1778,7 @@ export default function PlaceOrderPage() {
                 <div className="border-t border-gray-100 pt-4">
                 <div className="flex items-center gap-5">
                   <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
-                    <TbLocation size={20} />
+                    <Icon name="navigation" size={20} />
                   </div>
 
                   <div
@@ -1959,7 +1976,7 @@ export default function PlaceOrderPage() {
                 <div className="border-t border-gray-100 pt-4">
                 <div className="flex items-center gap-5">
                   <div className="size-10 rounded-full shrink-0 bg-theme-gray flex justify-center items-center cursor-pointer">
-                    <TbLocation size={20} />
+                    <Icon name="navigation" size={20} />
                   </div>
 
                   <div

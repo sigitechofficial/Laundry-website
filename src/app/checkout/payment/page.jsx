@@ -1065,11 +1065,14 @@ export default function Payment() {
                         ) : null}
                         {promotionOffers.length > 0 ? (
                           <p className="mx-0 mb-0 mt-2.5 text-[13px] leading-[1.45] text-jdc-muted">
-                            <b>Offers on this order: </b>
+                            <b>{promotionOffers.length > 1 ? "Offers you could get: " : "Offers on this order: "}</b>
                             {promotionOffers
                               .map((offer) => [offer.name, offer.label].filter(Boolean).join(": "))
                               .join(" · ")}
-                            . Applied automatically when the shop finalises your invoice.
+                            {/* Offers that don't combine: only the one that saves most is used (backend stackingResolver). */}
+                            {promotionOffers.length > 1
+                              ? ". We apply the best saving for your order when the shop finalises your invoice."
+                              : ". Applied automatically when the shop finalises your invoice."}
                           </p>
                         ) : null}
                       </div>

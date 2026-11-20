@@ -3,10 +3,21 @@
  * Dates are ISO yyyy-mm-dd strings (local calendar days).
  */
 
+/**
+ * Days a service needs, from its "time required" text: "24-48 hours", "48-72 hours",
+ * "2 days" or a bare day count. Takes the largest number (the top of a range) and turns
+ * hours into whole days, rounding up. Same rule as the backend (utils/turnaroundTime.js),
+ * so the delivery dates offered here match what the backend accepts.
+ * Never join the digits together: "24-48 hours" is 2 days, not 2448.
+ */
 export function parseTimeRequiredDays(value) {
   if (value == null || value === "") return 0;
-  const n = parseInt(String(value).replace(/\D/g, ""), 10);
-  return Number.isFinite(n) && n > 0 ? n : 0;
+  const str = String(value).trim().toLowerCase();
+  const nums = (str.match(/\d+(?:\.\d+)?/g) || []).map(Number).filter((n) => Number.isFinite(n) && n > 0);
+  if (!nums.length) return 0;
+  const maxNum = Math.max(...nums);
+  if (/hour|hr\b|hrs\b/.test(str)) return Math.max(1, Math.ceil(maxNum / 24));
+  return Math.ceil(maxNum);
 }
 
 export function addDaysToIsoDate(isoDate, days) {
@@ -14,7 +25,7 @@ export function addDaysToIsoDate(isoDate, days) {
   const parts = isoDate.split("-").map(Number);
   if (parts.length < 3) return "";
   const d = new Date(parts[0], parts[1] - 1, parts[2]);
-  d.setDate(d.getDate() + Number(days) || 0);
+  d.setDate(d.getDate() + (Number(days) || 0));
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");

@@ -6,6 +6,7 @@ import {
   useRescheduleBookingMutation,
   useGetServicesQuery,
   useGetServiceWithPreferenceDetailsQuery,
+  useGetServiceDetailsQuery,
   api,
 } from "@/app/store/services/api";
 import { addToast, useDisclosure } from "@heroui/react";
@@ -58,6 +59,7 @@ import {
   shouldShowWashBleedDisclaimer,
   WASH_BLEED_DISCLAIMER_TEXT,
 } from "../../../../utilities/washBleedDisclaimer";
+import { currencyFromResponse, formatPrice } from "../../../../utilities/formatPrice";
 
 const parseQuantityCount = (value) => {
   const parsed = parseInt(String(value ?? "").replace(/\D/g, ""), 10);
@@ -328,6 +330,11 @@ export default function Order() {
       refetchOnMountOrArgChange: true,
     }
   );
+
+  // Preference prices come from the catalogue of the zone at these coordinates; serviceDetail
+  // for the same coordinates resolves the same zone and names its currency ("" when unknown).
+  const { data: catalogData } = useGetServiceDetailsQuery({ lat: collectionLat, lng: collectionLng });
+  const catalogCurrency = useMemo(() => currencyFromResponse(catalogData), [catalogData]);
 
   const servicePreferencesData = preferencesResponse?.data?.preferencesData;
   const preferenceServiceMeta = preferencesResponse?.data;
@@ -1401,7 +1408,7 @@ export default function Order() {
                                 Boolean(washInstructionPanelOpen[instrKey]) ||
                                 Boolean((settings.preferenceInstruction ?? "").trim());
                               const priceText = [
-                                value.price != null ? `£${value.price}` : null,
+                                value.price != null ? formatPrice(value.price, catalogCurrency) : null,
                                 value.weight != null ? `${value.weight}kg` : null,
                               ]
                                 .filter(Boolean)

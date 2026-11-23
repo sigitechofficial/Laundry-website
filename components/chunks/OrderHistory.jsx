@@ -30,6 +30,7 @@ import BookingPolicySummary, {
   CancellationSummaryCard,
 } from "../BookingPolicySummary";
 import { getFailedAttemptType } from "../../utilities/bookingAttemptStatus";
+import { bookingCurrencySymbol as bookingCurrencySymbolOf } from "../../utilities/formatPrice";
 import LiveTrackingAction from "../LiveTrackingAction";
 import LiveTrackingMap from "../LiveTrackingMap";
 
@@ -502,7 +503,8 @@ export default function OrderHistory() {
     return `${String(Number(h)).padStart(2, "0")}:${m}`;
   };
 
-  const formatItemAmount = (value, currencySymbol = "$") => {
+  // currencySymbol: the booking's (bookingCurrencySymbolOf); "" shows the bare amount.
+  const formatItemAmount = (value, currencySymbol) => {
     const numericValue = Number.parseFloat(value);
     if (!Number.isFinite(numericValue)) return null;
     return `${currencySymbol}${numericValue.toFixed(2)}`;
@@ -651,10 +653,7 @@ export default function OrderHistory() {
     )
       ? bookingDtails.data.customerSelectedServices
       : [];
-    const bookingCurrencySymbol =
-      bookingDtails?.data?.paymentSummary?.currencySymbol ||
-      bookingDtails?.data?.zone?.currencyUnitZ?.symbol ||
-      "$";
+    const bookingCurrencySymbol = bookingCurrencySymbolOf(bookingDtails?.data);
     const paymentSummary = bookingDtails?.data?.paymentSummary;
     const hasPaymentSummary = Boolean(paymentSummary?.orderSummary);
     const isCashBooking =

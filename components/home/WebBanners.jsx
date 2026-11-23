@@ -30,7 +30,10 @@ function badgeText(b) {
   const value = Number(b.discountValue);
   if (!Number.isFinite(value) || value <= 0) return null;
   const amount = Number.isInteger(value) ? String(value) : value.toFixed(2);
-  return b.offerType === "percentage" ? `${amount}% off` : `£${amount} off`;
+  if (b.offerType === "percentage") return `${amount}% off`;
+  // A flat banner not linked to a promotion carries no currency in the API (linked ones
+  // come with offerLabel, built in the promotion's currency), so the amount has no symbol.
+  return `${amount} off`;
 }
 
 function toSlides(data) {

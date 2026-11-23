@@ -192,7 +192,7 @@ export default function PriceDetailView() {
                                     qty > 0 && "border-jdc-blue"
                                   )}>
                                   <span className="flex-1 min-w-0 text-[15.5px] font-semibold text-jdc-navy max-[720px]:text-[14.5px]">{item.name}</span>
-                                  <b className="flex-none text-[15px] text-jdc-navy whitespace-nowrap">{item.price !== null ? price(item.price) : "On request"}</b>
+                                  <b className="flex-none text-[15px] text-jdc-navy whitespace-nowrap">{item.price !== null ? price(item.price) : (item.priceNote ?? "On request")}</b>
                                   {item.price !== null ? (
                                     <Stepper
                                       qty={qty}

@@ -1,6 +1,7 @@
 "use client";
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { BASE_URL } from "../../../../utilities/URL";
+import { signInQueryFn } from "../../../../utilities/installId";
 
 export const api = createApi({
   reducerPath: "api",
@@ -27,12 +28,10 @@ export const api = createApi({
   }),
   tagTypes: ['Profile', 'Orders', 'RecurringPlans'], // Define cache tags
   endpoints: (builder) => ({
+    // Sign-in endpoints carry this browser's deviceId (utilities/installId.js): the
+    // backend keys the session by it. dvToken stays optional (push address only).
     userLogin: builder.mutation({
-      query: (body) => ({
-        url: "customer/loginUser",
-        method: "POST",
-        body,
-      }),
+      queryFn: signInQueryFn("customer/loginUser"),
       invalidatesTags: ['Profile'], // Invalidate profile cache on login
     }),
     resetPassword: builder.mutation({
@@ -64,18 +63,10 @@ export const api = createApi({
       }),
     }),
     registerUser: builder.mutation({
-      query: (body) => ({
-        url: "customer/registerCustomer",
-        method: "POST",
-        body,
-      }),
+      queryFn: signInQueryFn("customer/registerCustomer"),
     }),
     verifyOTPRegister: builder.mutation({
-      query: (body) => ({
-        url: "customer/verifyOTpSignUp",
-        method: "POST",
-        body,
-      }),
+      queryFn: signInQueryFn("customer/verifyOTpSignUp"),
     }),
 
     getProfile: builder.query({

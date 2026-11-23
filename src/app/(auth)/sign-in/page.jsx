@@ -43,6 +43,7 @@ import { useDispatch } from "react-redux";
 import { setPage } from "@/app/store/slices/cartItemSlice";
 import { MiniLoader } from "../../../../components/Loader";
 import { requestDeviceToken } from "../../../../utilities/requestFCMToken";
+import { getInstallId } from "../../../../utilities/installId";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -225,7 +226,7 @@ export default function SignInPage() {
           email: userData?.email,
           password: userData?.password,
           signedFrom: "",
-          dvToken: tokenToUse || "",
+          dvToken: tokenToUse || "", // the api's userLogin adds this browser's deviceId
         };
         
         console.log("🔵 Login Request Payload:", loginPayload);
@@ -1132,6 +1133,7 @@ export default function SignInPage() {
             email: googleEmail,
           password: "",
           signedFrom: "google",
+            deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
             dvToken: tokenToUse || "",
         }),
       });
@@ -1228,6 +1230,7 @@ export default function SignInPage() {
         email: googleEmail,
         password: "",
         signedFrom: "google",
+        deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
         dvToken: tokenToUse || "",
         firstName: googleFirstName || "",
         lastName: googleLastName || "",
@@ -1470,6 +1473,7 @@ export default function SignInPage() {
             email: facebookEmail,
             password: "",
             signedFrom: "facebook",
+            deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
             dvToken: tokenToUse || "",
           }),
         });
@@ -1562,6 +1566,7 @@ export default function SignInPage() {
           email: facebookEmail,
           password: "",
           signedFrom: "facebook",
+          deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
           dvToken: tokenToUse || "",
           firstName: facebookFirstName || "",
           lastName: facebookLastName || "",
@@ -1785,6 +1790,7 @@ export default function SignInPage() {
             email: appleEmail,
             password: "",
             signedFrom: "apple",
+            deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
             dvToken: tokenToUse || "",
           }),
         });
@@ -1873,6 +1879,7 @@ export default function SignInPage() {
           email: appleEmail,
           password: "",
           signedFrom: "apple",
+          deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
           dvToken: tokenToUse || "",
           firstName: appleFirstName || "",
           lastName: appleLastName || "",

@@ -10,6 +10,7 @@
     "start:production": "cross-env NODE_ENV=production NEXT_PUBLIC_ENVIRONMENT=production next start -H 0.0.0.0 -p 2323",
     "serve": "npm run build:production && npm run start:production",
     "lint": "next lint",
+    "test": "node --test utilities/*.test.mjs",
     "export": "next export",
     "tunnel": "npx ngrok http 2323",
     "tunnel:localtunnel": "npx localtunnel --port 2323",

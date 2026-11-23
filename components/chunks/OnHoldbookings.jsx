@@ -31,6 +31,7 @@ import {
 import ProtoIcon from "../proto/ProtoIcon";
 import { cx } from "../ds/cx";
 import { BASE_URL } from "../../utilities/URL";
+import { bookingCurrencySymbol } from "../../utilities/formatPrice";
 import Dialog from "../ds/Dialog";
 import { DetailsSkeleton, OrderCardSkeleton } from "../ds/Skeleton";
 import EmptyState from "../ds/EmptyState";
@@ -118,7 +119,7 @@ function toOrder(booking, flagRows, detail) {
   });
   const flaggedNames = new Set(flags.map((f) => f.name));
   const addr = d.pickupAddress || d.pickUpAddress || {};
-  const symbol = d?.paymentSummary?.currencySymbol || d?.zone?.currencyUnitZ?.symbol || "£";
+  const symbol = bookingCurrencySymbol(d);
   const amount = Number.parseFloat(d.orderAmount ?? booking?.orderAmount);
   return {
     id: booking.id,

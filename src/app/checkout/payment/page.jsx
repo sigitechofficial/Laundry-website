@@ -29,6 +29,7 @@ import { useFitsViewport } from "../../../../components/ds/useFitsViewport";
 import { useRouter } from "next/navigation";
 import BagsItemsWarningModal from "../../../../components/BagsItemsWarningModal";
 import { getServicesMissingBagsOrItems } from "../../../../utilities/checkoutBagsItems";
+import { currencySymbol as currencySymbolOf } from "../../../../utilities/formatPrice";
 import {
   clearPendingCollectionPhotos,
   getPendingCollectionPhotos,
@@ -91,7 +92,7 @@ export default function Payment() {
   );
   const zoneId = addressData?.data?.zoneId;
   // prices come from the charges for the pickup address; until then show placeholders
-  // instead of £0.00 that then jumps to the real amount
+  // instead of 0.00 that then jumps to the real amount
   const chargesReady = Boolean(addressData?.data);
   const { data: activePoliciesData } = useGetCustomerActivePoliciesQuery(zoneId, {
     skip: zoneId == null,
@@ -120,7 +121,8 @@ export default function Payment() {
     orderData?.timeZone ||
     clientTimeZone;
 
-  const currencySymbol = addressData?.data?.currency?.symbol ?? "£";
+  // The pickup zone's currency (fetchZoneAndCharges); "" until it is known.
+  const currencySymbol = currencySymbolOf(addressData?.data?.currency);
 
   // Example: Get all charge values (replace with your real data)
   const minimumOrderCharge =

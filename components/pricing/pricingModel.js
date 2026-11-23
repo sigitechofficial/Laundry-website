@@ -2,6 +2,8 @@ import { iconForService, normaliseServiceName } from "../home/serviceModel";
 import { parseTimeRequiredDays } from "../../utilities/turnaroundTime";
 import { SERVICE_BLURBS } from "./content";
 
+export const PRICED_BY_REPAIR = "Priced by repair";
+
 const toNumber = (v) => {
   const n = typeof v === "number" ? v : parseFloat(v);
   return Number.isFinite(n) ? n : null;
@@ -37,7 +39,14 @@ export function buildPricingModel(serviceData) {
           description: c.category.description?.trim() || "",
           items: (c.subCategories ?? [])
             .filter((sc) => sc && sc.status !== false)
-            .map((sc) => ({ id: sc.id, name: String(sc.name ?? "").trim(), price: toNumber(sc.price) })),
+            .map((sc) => {
+              const price = toNumber(sc.price);
+              // A £0 item (an alteration garment) is priced by the repairs the
+              // shop picks: no price, no estimate stepper, and not a "from" price.
+              return price === 0
+                ? { id: sc.id, name: String(sc.name ?? "").trim(), price: null, priceNote: PRICED_BY_REPAIR }
+                : { id: sc.id, name: String(sc.name ?? "").trim(), price };
+            }),
         }))
         .filter((c) => c.items.length > 0 || c.description);
 

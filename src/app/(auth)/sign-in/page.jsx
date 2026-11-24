@@ -138,7 +138,6 @@ export default function SignInPage() {
           console.log("🔵 Firebase token received:", token ? "✅ Success" : "❌ Failed");
           
           if (token) {
-            console.log("🔵 Token value:", token.substring(0, 20) + "...");
             setDevToken(token);
             localStorage.setItem("devToken", token);
             return token;
@@ -238,12 +237,10 @@ export default function SignInPage() {
           dvToken: tokenToUse || "", // the api's userLogin adds this browser's deviceId
         };
         
-        console.log("🔵 Login Request Payload:", loginPayload);
         console.log("🔵 Device Token:", tokenToUse ? "✅ Available" : "❌ Empty");
         
         const res = await userLogin(loginPayload).unwrap();
 
-        console.log("🔵 Login Response:", res);
 
         if (res?.status === "1") {
           localStorage.removeItem("otpId");

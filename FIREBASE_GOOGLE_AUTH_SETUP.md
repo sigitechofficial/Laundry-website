@@ -14,7 +14,7 @@ This guide will walk you through setting up Google Authentication in Firebase an
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
 2. Click **"Add Project"** (or select an existing project)
-3. Enter your project name (e.g., "laundry-app-bf43c")
+3. Enter your project name (e.g., "justdrycleansltd")
 4. Follow the setup wizard:
    - Disable Google Analytics (optional) or enable it if needed
    - Click **"Create Project"**
@@ -50,12 +50,12 @@ This guide will walk you through setting up Google Authentication in Firebase an
 
 ```javascript
 const firebaseConfig = {
-  apiKey: "AIzaSyDdZLCsf0CQN_DIkE0mAOmRv9_pvlRq2qg",
-  authDomain: "laundry-app-bf43c.firebaseapp.com",
-  projectId: "laundry-app-bf43c",
-  storageBucket: "laundry-app-bf43c.appspot.com",
-  messagingSenderId: "880600214434",
-  appId: "1:880600214434:web:1c36e828fbcb66ff5ee0fb",
+  apiKey: "AIzaSyApYXQsPo4aMFo3tEsOg1enAo707Bxq5pQ",
+  authDomain: "justdrycleansltd.firebaseapp.com",
+  projectId: "justdrycleansltd",
+  storageBucket: "justdrycleansltd.firebasestorage.app",
+  messagingSenderId: "475975874912",
+  appId: "1:475975874912:web:de3b0055f6467d0762c605",
   measurementId: "G-PXSBBGRXRF" // Optional, only if Analytics is enabled
 };
 ```
@@ -197,12 +197,12 @@ Here's what you need from Firebase:
 
 | Key | Where to Find | Example |
 |-----|---------------|---------|
-| `apiKey` | Firebase Console → Project Settings → Your apps | `AIzaSyDdZLCsf0CQN_DIkE0mAOmRv9_pvlRq2qg` |
-| `authDomain` | Firebase Console → Project Settings → Your apps | `laundry-app-bf43c.firebaseapp.com` |
-| `projectId` | Firebase Console → Project Settings → General | `laundry-app-bf43c` |
-| `storageBucket` | Firebase Console → Project Settings → Your apps | `laundry-app-bf43c.appspot.com` |
-| `messagingSenderId` | Firebase Console → Project Settings → Your apps | `880600214434` |
-| `appId` | Firebase Console → Project Settings → Your apps | `1:880600214434:web:1c36e828fbcb66ff5ee0fb` |
+| `apiKey` | Firebase Console → Project Settings → Your apps | `AIzaSyApYXQsPo4aMFo3tEsOg1enAo707Bxq5pQ` |
+| `authDomain` | Firebase Console → Project Settings → Your apps | `justdrycleansltd.firebaseapp.com` |
+| `projectId` | Firebase Console → Project Settings → General | `justdrycleansltd` |
+| `storageBucket` | Firebase Console → Project Settings → Your apps | `justdrycleansltd.firebasestorage.app` |
+| `messagingSenderId` | Firebase Console → Project Settings → Your apps | `475975874912` |
+| `appId` | Firebase Console → Project Settings → Your apps | `1:475975874912:web:de3b0055f6467d0762c605` |
 | `measurementId` | Firebase Console → Project Settings → Your apps (optional) | `G-PXSBBGRXRF` |
 
 ---

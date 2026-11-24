@@ -65,7 +65,7 @@ MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQg...
 
 2. **Select Your Project**
 
-   - Click on **laundry-app-bf43c** (or your project name)
+   - Click on **justdrycleansltd** (or your project name)
 
 3. **Navigate to Authentication**
 

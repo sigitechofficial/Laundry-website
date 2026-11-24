@@ -50,7 +50,7 @@ To complete Apple Sign-In setup, you need:
     - **Return URLs**: Add these URLs:
       ```
       https://prodlaundry.sigisolutions.net
-      https://laundry-app-bf43c.firebaseapp.com/__/auth/handler
+      https://justdrycleansltd.firebaseapp.com/__/auth/handler
       ```
 11. Click **Save** → **Continue** → **Save**
 12. **Copy the Service ID** (e.g., `com.sigisolutions.laundryapp`) - you'll need it in Step 4
@@ -76,7 +76,7 @@ To complete Apple Sign-In setup, you need:
 ### Step 4: Configure Firebase Console
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Select your project: **laundry-app-bf43c**
+2. Select your project: **justdrycleansltd**
 3. Navigate to **Authentication** → **Sign-in method**
 4. Click on **Apple**
 5. Toggle **"Enable"** to **ON** (if not already)

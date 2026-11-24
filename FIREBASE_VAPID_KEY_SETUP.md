@@ -11,7 +11,7 @@ The `dvToken` (device token) is empty because the VAPID key might be incorrect o
 ### Step 1: Go to Firebase Console
 
 1. Open [Firebase Console](https://console.firebase.google.com/)
-2. Select your project: **laundry-app-bf43c**
+2. Select your project: **justdrycleansltd**
 
 ### Step 2: Navigate to Cloud Messaging
 
@@ -25,7 +25,7 @@ The `dvToken` (device token) is empty because the VAPID key might be incorrect o
 1. Look for **Web Push certificates** section
 2. Find the **Key pair** field
 3. Click **Copy** next to the key
-4. The key will look like: `BHqdkpwqEH9B9Rnw_lsvJz9cfuNyo-c8wPXLLexm6X9E0gryGLxztXXvGfqazZL7frP2D6GL9B1MO9JObNiYrRE`
+4. The key will look like: `BFohnl1Bjomlc23ckMV-X79dFQS-asckaSFyGFxPnGsTjzQeZXdgBAhiTZysp181XDGZ6vEnsNgbN7eVPoBXtYI`
 
 **Option B: If VAPID key doesn't exist:**
 1. Click **Generate key pair** button
@@ -59,7 +59,7 @@ If Cloud Messaging is not enabled:
 ### Step 1: Enable Cloud Messaging API
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Select your Firebase project: **laundry-app-bf43c**
+2. Select your Firebase project: **justdrycleansltd**
 3. Navigate to **APIs & Services** → **Library**
 4. Search for **Firebase Cloud Messaging API**
 5. Click on it and click **Enable**
@@ -81,12 +81,12 @@ Check that `public/firebase-messaging-sw.js` exists and contains:
 importScripts("https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js");
 
 firebase.initializeApp({
-  apiKey: "AIzaSyDdZLCsf0CQN_DIkE0mAOmRv9_pvlRq2qg",
-  authDomain: "laundry-app-bf43c.firebaseapp.com",
-  projectId: "laundry-app-bf43c",
-  storageBucket: "laundry-app-bf43c",
-  messagingSenderId: "880600214434",
-  appId: "1:880600214434:web:1c36e828fbcb66ff5ee0fb",
+  apiKey: "AIzaSyApYXQsPo4aMFo3tEsOg1enAo707Bxq5pQ",
+  authDomain: "justdrycleansltd.firebaseapp.com",
+  projectId: "justdrycleansltd",
+  storageBucket: "justdrycleansltd.firebasestorage.app",
+  messagingSenderId: "475975874912",
+  appId: "1:475975874912:web:de3b0055f6467d0762c605",
 });
 
 const messaging = firebase.messaging();

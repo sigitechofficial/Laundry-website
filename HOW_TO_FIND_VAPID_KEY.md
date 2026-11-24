@@ -7,7 +7,7 @@
 2. Sign in with your Google account
 
 ### Step 2: Select Your Project
-1. Click on your project: **laundry-app-bf43c**
+1. Click on your project: **justdrycleansltd**
 2. Wait for the project dashboard to load
 
 ### Step 3: Open Project Settings
@@ -32,7 +32,7 @@
 
 ### Step 6: Copy the VAPID Key
 1. You'll see a field labeled **"Key pair"** or **"Web Push certificate"**
-2. The key will look like: `BHqdkpwqEH9B9Rnw_lsvJz9cfuNyo-c8wPXLLexm6X9E0gryGLxztXXvGfqazZL7frP2D6GL9B1MO9JObNiYrRE`
+2. The key will look like: `BFohnl1Bjomlc23ckMV-X79dFQS-asckaSFyGFxPnGsTjzQeZXdgBAhiTZysp181XDGZ6vEnsNgbN7eVPoBXtYI`
 3. Click the **Copy** button next to it
 4. **Important**: If you don't see a key, click **"Generate key pair"** button
 
@@ -42,7 +42,7 @@
 
 ```
 Firebase Console
-  └── Select Project: laundry-app-bf43c
+  └── Select Project: justdrycleansltd
       └── ⚙️ Project settings (gear icon)
           └── Cloud Messaging tab
               └── Web Push certificates section
@@ -58,7 +58,7 @@ Firebase Console
 
 1. **Enable Cloud Messaging API first:**
    - Go to [Google Cloud Console](https://console.cloud.google.com/)
-   - Select project: **laundry-app-bf43c**
+   - Select project: **justdrycleansltd**
    - Navigate to **APIs & Services** → **Library**
    - Search for **"Firebase Cloud Messaging API"**
    - Click on it and click **Enable**
@@ -73,7 +73,7 @@ Firebase Console
 
 The VAPID key is a long string that looks like:
 ```
-BHqdkpwqEH9B9Rnw_lsvJz9cfuNyo-c8wPXLLexm6X9E0gryGLxztXXvGfqazZL7frP2D6GL9B1MO9JObNiYrRE
+BFohnl1Bjomlc23ckMV-X79dFQS-asckaSFyGFxPnGsTjzQeZXdgBAhiTZysp181XDGZ6vEnsNgbN7eVPoBXtYI
 ```
 
 It typically:
@@ -98,7 +98,7 @@ If you don't see a VAPID key:
 ## Quick Checklist
 
 - [ ] Opened Firebase Console
-- [ ] Selected project: laundry-app-bf43c
+- [ ] Selected project: justdrycleansltd
 - [ ] Clicked ⚙️ Project settings
 - [ ] Clicked Cloud Messaging tab
 - [ ] Found Web Push certificates section
@@ -114,7 +114,7 @@ After copying the VAPID key:
 1. Open `utilities/requestFCMToken.js`
 2. Find line 88-89:
    ```javascript
-   vapidKey: "BHqdkpwqEH9B9Rnw_lsvJz9cfuNyo-c8wPXLLexm6X9E0gryGLxztXXvGfqazZL7frP2D6GL9B1MO9JObNiYrRE",
+   vapidKey: "BFohnl1Bjomlc23ckMV-X79dFQS-asckaSFyGFxPnGsTjzQeZXdgBAhiTZysp181XDGZ6vEnsNgbN7eVPoBXtYI",
    ```
 3. Replace the key with your copied VAPID key
 4. Save the file

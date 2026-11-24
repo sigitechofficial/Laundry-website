@@ -8,6 +8,7 @@ import { decodePolyline } from "../utilities/decodePolyline";
 import { useGoogleMaps } from "../utilities/GoogleMapsProvider";
 import {
   getLiveTrackingDatabase,
+  resolveLiveTrackingDatabaseUrl,
   signInForLiveTracking,
   ref,
   onValue,
@@ -282,7 +283,7 @@ export default function LiveTrackingMap({ bookingId, orderTrackId, onClose }) {
       const token = data.firebaseAuthToken
         ? String(data.firebaseAuthToken)
         : null;
-      const databaseURL = data.databaseURL ? String(data.databaseURL) : null;
+      const databaseURL = resolveLiveTrackingDatabaseUrl(data);
       const rtdbPath = data.rtdbPath ? String(data.rtdbPath) : null;
 
       const canSubscribe =

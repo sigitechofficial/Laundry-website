@@ -17,7 +17,7 @@ This guide will walk you through setting up Apple Sign In in Firebase. The error
 ### Step 1: Enable Apple in Firebase Console
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Select your project: **laundry-app-bf43c**
+2. Select your project: **justdrycleansltd**
 3. Navigate to **Authentication** → **Sign-in method**
 4. Find **Apple** in the list of providers
 5. Click on **Apple**
@@ -56,7 +56,7 @@ This guide will walk you through setting up Apple Sign In in Firebase. The error
     - **Domains and Subdomains**: Add your domain (e.g., `yourdomain.com`)
     - **Return URLs**: Add:
       - `https://yourdomain.com` (your website URL)
-      - `https://laundry-app-bf43c.firebaseapp.com/__/auth/handler` (Firebase redirect URI)
+      - `https://justdrycleansltd.firebaseapp.com/__/auth/handler` (Firebase redirect URI)
 11. Click **Save** → **Continue** → **Save**
 
 ### Step 3: Create a Key for Sign In with Apple
@@ -74,7 +74,7 @@ This guide will walk you through setting up Apple Sign In in Firebase. The error
 ### Step 4: Configure Apple in Firebase Console
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Select your project: **laundry-app-bf43c**
+2. Select your project: **justdrycleansltd**
 3. Navigate to **Authentication** → **Sign-in method**
 4. Click on **Apple**
 5. Toggle **"Enable"** to **ON**

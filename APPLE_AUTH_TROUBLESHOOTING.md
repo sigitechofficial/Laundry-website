@@ -9,7 +9,7 @@ If Apple Sign-In is enabled in Firebase Console but you're still getting this er
 ## Step 1: Verify Firebase Configuration
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Select your project: **laundry-app-bf43c**
+2. Select your project: **justdrycleansltd**
 3. Navigate to **Authentication** → **Sign-in method**
 4. Click on **Apple**
 5. Check if these fields are filled:
@@ -83,9 +83,9 @@ Check that your Firebase config in `utilities/firebase.js` matches your Firebase
 
 ```javascript
 const firebaseConfig = {
-  apiKey: "AIzaSyDdZLCsf0CQN_DIkE0mAOmRv9_pvlRq2qg",
-  authDomain: "laundry-app-bf43c.firebaseapp.com",
-  projectId: "laundry-app-bf43c",
+  apiKey: "AIzaSyApYXQsPo4aMFo3tEsOg1enAo707Bxq5pQ",
+  authDomain: "justdrycleansltd.firebaseapp.com",
+  projectId: "justdrycleansltd",
   // ... rest of config
 };
 ```

@@ -25,6 +25,14 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
+/**
+ * The Firebase project this site's push tokens and live-tracking sign-in belong to, read from
+ * the initialized app (never hard-coded elsewhere). Sent to the backend as `firebaseProjectId`
+ * with every push-token registration and live-tracking session request, so the backend sends
+ * through, and issues tokens for, the right project.
+ */
+const firebaseProjectId = app.options.projectId;
+
 const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
@@ -65,6 +73,8 @@ const getMessagingInstance = async () => {
 };
 
 export {
+  app,
+  firebaseProjectId,
   auth,
   googleProvider,
   facebookProvider,

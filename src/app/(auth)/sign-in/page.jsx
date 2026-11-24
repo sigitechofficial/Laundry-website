@@ -22,6 +22,7 @@ import {
   googleProvider,
   facebookProvider,
   appleProvider,
+  firebaseProjectId,
 } from "../../../../utilities/firebase";
 import {
   useChangePasswordResetMutation,
@@ -1134,6 +1135,7 @@ export default function SignInPage() {
           password: "",
           signedFrom: "google",
             deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
+            firebaseProjectId, // project of dvToken (utilities/firebase.js)
             dvToken: tokenToUse || "",
         }),
       });
@@ -1231,6 +1233,7 @@ export default function SignInPage() {
         password: "",
         signedFrom: "google",
         deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
+        firebaseProjectId, // project of dvToken (utilities/firebase.js)
         dvToken: tokenToUse || "",
         firstName: googleFirstName || "",
         lastName: googleLastName || "",
@@ -1474,6 +1477,7 @@ export default function SignInPage() {
             password: "",
             signedFrom: "facebook",
             deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
+            firebaseProjectId, // project of dvToken (utilities/firebase.js)
             dvToken: tokenToUse || "",
           }),
         });
@@ -1567,6 +1571,7 @@ export default function SignInPage() {
           password: "",
           signedFrom: "facebook",
           deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
+          firebaseProjectId, // project of dvToken (utilities/firebase.js)
           dvToken: tokenToUse || "",
           firstName: facebookFirstName || "",
           lastName: facebookLastName || "",
@@ -1791,6 +1796,7 @@ export default function SignInPage() {
             password: "",
             signedFrom: "apple",
             deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
+            firebaseProjectId, // project of dvToken (utilities/firebase.js)
             dvToken: tokenToUse || "",
           }),
         });
@@ -1880,6 +1886,7 @@ export default function SignInPage() {
           password: "",
           signedFrom: "apple",
           deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
+          firebaseProjectId, // project of dvToken (utilities/firebase.js)
           dvToken: tokenToUse || "",
           firstName: appleFirstName || "",
           lastName: appleLastName || "",

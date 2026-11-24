@@ -46,6 +46,14 @@ import { MiniLoader } from "../../../../components/Loader";
 import { requestDeviceToken } from "../../../../utilities/requestFCMToken";
 import { getInstallId } from "../../../../utilities/installId";
 
+/**
+ * The backend refused a social sign-in outright: the Firebase ID token could not be verified
+ * (401), the email belongs to a shop/driver/staff or deleted account (409), or verification is
+ * unavailable (503). The sign-up form cannot fix any of these.
+ */
+const isSocialSignInRefused = (res) =>
+  res?.statusCode === 401 || res?.statusCode === 409 || res?.statusCode === 503;
+
 export default function SignInPage() {
   const router = useRouter();
   const dispatch = useDispatch();
@@ -130,7 +138,6 @@ export default function SignInPage() {
           console.log("🔵 Firebase token received:", token ? "✅ Success" : "❌ Failed");
           
           if (token) {
-            console.log("🔵 Token value:", token.substring(0, 20) + "...");
             setDevToken(token);
             localStorage.setItem("devToken", token);
             return token;
@@ -230,12 +237,10 @@ export default function SignInPage() {
           dvToken: tokenToUse || "", // the api's userLogin adds this browser's deviceId
         };
         
-        console.log("🔵 Login Request Payload:", loginPayload);
         console.log("🔵 Device Token:", tokenToUse ? "✅ Available" : "❌ Empty");
         
         const res = await userLogin(loginPayload).unwrap();
 
-        console.log("🔵 Login Response:", res);
 
         if (res?.status === "1") {
           localStorage.removeItem("otpId");
@@ -658,10 +663,22 @@ export default function SignInPage() {
           tokenToUse = await getDeviceToken();
         }
         
+        // The second social call proves the sign-in again with the Firebase user's ID token
+        // (the backend takes the email from it, not from the form).
+        const firebaseIdToken = auth.currentUser ? await auth.currentUser.getIdToken() : "";
+        if (!firebaseIdToken) {
+          addToast({
+            title: "Sign-In Expired",
+            description: "Please sign in with " + register.signedFrom.charAt(0).toUpperCase() + register.signedFrom.slice(1) + " again.",
+            color: "danger",
+          });
+          return;
+        }
         const loginRes = await userLogin({
           email: register?.email,
           password: "", // Empty password for social auth
           signedFrom: register?.signedFrom,
+          firebaseIdToken,
           dvToken: tokenToUse || "",
           firstName: register?.firstName || "",
           lastName: register?.lastName || "",
@@ -1057,21 +1074,13 @@ export default function SignInPage() {
         creationTime: user.metadata?.creationTime,
         lastSignInTime: user.metadata?.lastSignInTime,
       });
-      console.log("🎫 Access Token:", result.credential?.accessToken);
-      console.log("🎫 ID Token:", await user.getIdToken().catch(() => "Not available"));
       console.log("🔑 Provider ID:", user.providerId);
       console.log("📝 All User Properties:", Object.keys(user));
-
-      // Log provider-specific data
-      if (result.credential) {
-        console.log("🎫 Credential Object:", result.credential);
-      }
 
       // Log additional info from Google
       console.log("📊 Additional Info:", {
         isAnonymous: user.isAnonymous,
         tenantId: user.tenantId,
-        refreshToken: user.refreshToken,
       });
 
       // Step 2: Extract available data from Google
@@ -1136,6 +1145,8 @@ export default function SignInPage() {
           signedFrom: "google",
             deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
             firebaseProjectId, // project of dvToken (utilities/firebase.js)
+            // Proves this sign-in: the backend verifies it and takes the email from it.
+            firebaseIdToken: await user.getIdToken(),
             dvToken: tokenToUse || "",
         }),
       });
@@ -1186,6 +1197,13 @@ export default function SignInPage() {
           router.replace("/place-order");
           setGoogleAuthLoader(false);
           return;
+        } else if (isSocialSignInRefused(checkUserData)) {
+          addToast({
+            title: "Sign-In Failed",
+            description: checkUserData?.message || "We could not verify this sign-in. Please try again.",
+            color: "danger",
+          });
+          return;
         } else {
           // User doesn't exist - show signup form
           setRegister({
@@ -1234,13 +1252,14 @@ export default function SignInPage() {
         signedFrom: "google",
         deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
         firebaseProjectId, // project of dvToken (utilities/firebase.js)
+        // Proves this sign-in: the backend verifies it and takes the email from it.
+        firebaseIdToken: await user.getIdToken(),
         dvToken: tokenToUse || "",
         firstName: googleFirstName || "",
         lastName: googleLastName || "",
         phoneNum: "",
       };
       
-      console.log("🔵 Login request payload:", loginPayload);
       console.log("🔵 Login request payload dvToken:", loginPayload.dvToken ? "✅ Sent" : "❌ EMPTY - NOT SENT");
 
       const loginResponse = await fetch(BASE_URL + "customer/loginUser", {
@@ -1261,7 +1280,6 @@ export default function SignInPage() {
         firstName: googleFirstName,
         lastName: googleLastName,
       });
-      console.log("📥 Login Response:", loginData);
       console.log("🔵 ============================================");
 
       // Step 4: Handle login response
@@ -1305,6 +1323,14 @@ export default function SignInPage() {
 
         dispatch(setPage(true));
         router.replace("/place-order");
+      } else if (isSocialSignInRefused(loginData)) {
+        // Not verified (401: e.g. expired sign-in), email of another account type (409) or
+        // verification unavailable (503): show why; the sign-up form would not help.
+        addToast({
+          title: "Sign-In Failed",
+          description: loginData?.message || "We could not verify this sign-in. Please try again.",
+          color: "danger",
+        });
       } else if (loginData?.statusCode === 400 && loginData?.data?.missingFields) {
         // Missing required fields - show signup form with pre-filled Google data
         console.log("⚠️ Missing required fields:", loginData?.data?.missingFields);
@@ -1399,21 +1425,13 @@ export default function SignInPage() {
         creationTime: user.metadata?.creationTime,
         lastSignInTime: user.metadata?.lastSignInTime,
       });
-      console.log("🎫 Access Token:", result.credential?.accessToken);
-      console.log("🎫 ID Token:", await user.getIdToken().catch(() => "Not available"));
       console.log("🔑 Provider ID:", user.providerId);
       console.log("📝 All User Properties:", Object.keys(user));
-
-      // Log provider-specific data
-      if (result.credential) {
-        console.log("🎫 Credential Object:", result.credential);
-      }
 
       // Log additional info from Facebook
       console.log("📊 Additional Info:", {
         isAnonymous: user.isAnonymous,
         tenantId: user.tenantId,
-        refreshToken: user.refreshToken,
       });
 
       // Step 2: Extract available data from Facebook
@@ -1478,6 +1496,8 @@ export default function SignInPage() {
             signedFrom: "facebook",
             deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
             firebaseProjectId, // project of dvToken (utilities/firebase.js)
+            // Proves this sign-in: the backend verifies it and takes the email from it.
+            firebaseIdToken: await user.getIdToken(),
             dvToken: tokenToUse || "",
           }),
         });
@@ -1524,6 +1544,13 @@ export default function SignInPage() {
           dispatch(setPage(true));
           router.replace("/place-order");
           setFacebookAuthLoader(false);
+          return;
+        } else if (isSocialSignInRefused(checkUserData)) {
+          addToast({
+            title: "Sign-In Failed",
+            description: checkUserData?.message || "We could not verify this sign-in. Please try again.",
+            color: "danger",
+          });
           return;
         } else {
           // User doesn't exist - show signup form
@@ -1572,6 +1599,8 @@ export default function SignInPage() {
           signedFrom: "facebook",
           deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
           firebaseProjectId, // project of dvToken (utilities/firebase.js)
+          // Proves this sign-in: the backend verifies it and takes the email from it.
+          firebaseIdToken: await user.getIdToken(),
           dvToken: tokenToUse || "",
           firstName: facebookFirstName || "",
           lastName: facebookLastName || "",
@@ -1588,7 +1617,6 @@ export default function SignInPage() {
         firstName: facebookFirstName,
         lastName: facebookLastName,
       });
-      console.log("📥 Login Response:", loginData);
       console.log("🔵 ============================================");
 
       // Step 4: Handle login response
@@ -1624,6 +1652,14 @@ export default function SignInPage() {
 
         dispatch(setPage(true));
         router.replace("/place-order");
+      } else if (isSocialSignInRefused(loginData)) {
+        // Not verified (401: e.g. expired sign-in), email of another account type (409) or
+        // verification unavailable (503): show why; the sign-up form would not help.
+        addToast({
+          title: "Sign-In Failed",
+          description: loginData?.message || "We could not verify this sign-in. Please try again.",
+          color: "danger",
+        });
       } else if (loginData?.statusCode === 400 && loginData?.data?.missingFields) {
         // Missing required fields - show signup form with pre-filled Facebook data
         console.log("⚠️ Missing required fields:", loginData?.data?.missingFields);
@@ -1718,21 +1754,13 @@ export default function SignInPage() {
         creationTime: user.metadata?.creationTime,
         lastSignInTime: user.metadata?.lastSignInTime,
       });
-      console.log("🎫 Access Token:", result.credential?.accessToken);
-      console.log("🎫 ID Token:", await user.getIdToken().catch(() => "Not available"));
       console.log("🔑 Provider ID:", user.providerId);
       console.log("📝 All User Properties:", Object.keys(user));
-
-      // Log provider-specific data
-      if (result.credential) {
-        console.log("🎫 Credential Object:", result.credential);
-      }
 
       // Log additional info from Apple
       console.log("📊 Additional Info:", {
         isAnonymous: user.isAnonymous,
         tenantId: user.tenantId,
-        refreshToken: user.refreshToken,
       });
 
       // Step 2: Extract available data from Apple
@@ -1797,6 +1825,8 @@ export default function SignInPage() {
             signedFrom: "apple",
             deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
             firebaseProjectId, // project of dvToken (utilities/firebase.js)
+            // Proves this sign-in: the backend verifies it and takes the email from it.
+            firebaseIdToken: await user.getIdToken(),
             dvToken: tokenToUse || "",
           }),
         });
@@ -1839,6 +1869,13 @@ export default function SignInPage() {
           dispatch(setPage(true));
           router.replace("/place-order");
           setAppleAuthLoader(false);
+          return;
+        } else if (isSocialSignInRefused(checkUserData)) {
+          addToast({
+            title: "Sign-In Failed",
+            description: checkUserData?.message || "We could not verify this sign-in. Please try again.",
+            color: "danger",
+          });
           return;
         } else {
           // User doesn't exist - show signup form
@@ -1887,6 +1924,8 @@ export default function SignInPage() {
           signedFrom: "apple",
           deviceId: getInstallId(), // session id of this browser (utilities/installId.js)
           firebaseProjectId, // project of dvToken (utilities/firebase.js)
+          // Proves this sign-in: the backend verifies it and takes the email from it.
+          firebaseIdToken: await user.getIdToken(),
           dvToken: tokenToUse || "",
           firstName: appleFirstName || "",
           lastName: appleLastName || "",
@@ -1903,7 +1942,6 @@ export default function SignInPage() {
         firstName: appleFirstName,
         lastName: appleLastName,
       });
-      console.log("📥 Login Response:", loginData);
       console.log("🔵 ============================================");
 
       // Step 4: Handle login response
@@ -1944,6 +1982,14 @@ export default function SignInPage() {
 
         dispatch(setPage(true));
         router.replace("/place-order");
+      } else if (isSocialSignInRefused(loginData)) {
+        // Not verified (401: e.g. expired sign-in), email of another account type (409) or
+        // verification unavailable (503): show why; the sign-up form would not help.
+        addToast({
+          title: "Sign-In Failed",
+          description: loginData?.message || "We could not verify this sign-in. Please try again.",
+          color: "danger",
+        });
       } else if (loginData?.statusCode === 400 && loginData?.data?.missingFields) {
         // Missing required fields - show signup form with pre-filled Apple data
         console.log("⚠️ Missing required fields:", loginData?.data?.missingFields);

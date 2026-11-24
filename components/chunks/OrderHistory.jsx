@@ -805,7 +805,10 @@ export default function OrderHistory() {
       const rowCounts = new Map();
       const countRow = (key) => rowCounts.set(key, (rowCounts.get(key) || 0) + 1);
       selectedServices.forEach((item) => {
+        // A row with an item is keyed by the item; a whole-service row (no item, e.g.
+        // an un-itemised alteration) by its service, matching promotion lineType 'service'.
         if (item?.subCategoryId != null) countRow(`item:${item.subCategoryId}`);
+        else if (item?.serviceId != null) countRow(`service:${item.serviceId}`);
         (Array.isArray(item?.addOns) ? item.addOns : []).forEach((addOn) => {
           const addOnId = addOn?.addOnServiceId ?? addOn?.addOnService?.id;
           if (addOnId != null) countRow(`addon:${addOnId}`);
@@ -813,7 +816,8 @@ export default function OrderHistory() {
       });
       promotionSummary.lines.forEach((line) => {
         if (!line || line.itemId == null) return;
-        const lineType = line.lineType === "addon" ? "addon" : "item";
+        const lineType =
+          line.lineType === "addon" ? "addon" : line.lineType === "service" ? "service" : "item";
         const key = `${lineType}:${line.itemId}`;
         const discount = Number.parseFloat(line.discount);
         if (!Number.isFinite(discount) || discount <= 0) return;
@@ -1073,10 +1077,10 @@ export default function OrderHistory() {
                           const lineTotal =
                             hasQty && hasPrice ? unitPrice * quantity : unitPrice;
                           const addOns = Array.isArray(item?.addOns) ? item.addOns : [];
-                          const itemPromotionLine = getPromotionLine(
-                            "item",
-                            item?.subCategoryId
-                          );
+                          const itemPromotionLine =
+                            item?.subCategoryId != null
+                              ? getPromotionLine("item", item.subCategoryId)
+                              : getPromotionLine("service", item?.serviceId);
 
                           return (
                             <div

@@ -94,3 +94,21 @@ test("sign-in queryFn adds deviceId to the body; storage failure becomes a serve
     delete globalThis.window;
   }
 });
+
+test("sign-in queryFn sends extra fields (the push token's firebaseProjectId) with deviceId", async () => {
+  const calls = [];
+  const baseQuery = async (args) => { calls.push(args); return { data: { status: "1" } }; };
+  globalThis.window = { localStorage: new MemoryStorage(), sessionStorage: new MemoryStorage() };
+  try {
+    const queryFn = signInQueryFn("customer/loginUser", { firebaseProjectId: "project-a" });
+    await queryFn({ email: "a@b.c", dvToken: "tok" }, {}, {}, baseQuery);
+    assert.equal(calls[0].body.dvToken, "tok");
+    assert.equal(calls[0].body.firebaseProjectId, "project-a");
+    assert.ok(isValidInstallId(calls[0].body.deviceId));
+
+    await signInQueryFn("customer/loginUser")({ email: "a@b.c" }, {}, {}, baseQuery);
+    assert.equal("firebaseProjectId" in calls[1].body, false, "no extra fields unless given");
+  } finally {
+    delete globalThis.window;
+  }
+});

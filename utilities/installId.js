@@ -80,11 +80,12 @@ export function getInstallId({ win = typeof window !== "undefined" ? window : un
 }
 
 /**
- * RTK Query `queryFn` for a sign-in endpoint: adds this browser's `deviceId` to the body.
+ * RTK Query `queryFn` for a sign-in endpoint: adds this browser's `deviceId` to the body,
+ * plus `extraFields` (e.g. the `firebaseProjectId` the push token `dvToken` belongs to).
  * When no id can be kept, returns an error in the backend's shape ({ status: "0", message,
  * error }) so the sign-in screen shows it like any server refusal.
  */
-export function signInQueryFn(url) {
+export function signInQueryFn(url, extraFields = {}) {
   return async (body, _api, _extraOptions, baseQuery) => {
     let deviceId;
     try {
@@ -93,6 +94,6 @@ export function signInQueryFn(url) {
       const message = e instanceof InstallIdUnavailableError ? e.message : String(e);
       return { error: { status: 400, data: { status: "0", message, error: message, data: {} } } };
     }
-    return baseQuery({ url, method: "POST", body: { ...body, deviceId } });
+    return baseQuery({ url, method: "POST", body: { ...body, ...extraFields, deviceId } });
   };
 }

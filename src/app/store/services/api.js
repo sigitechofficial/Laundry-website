@@ -2,6 +2,11 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import { BASE_URL } from "../../../../utilities/URL";
 import { signInQueryFn } from "../../../../utilities/installId";
+import { firebaseProjectId } from "../../../../utilities/firebase";
+
+// Every call that registers this browser's push token (dvToken) names the Firebase project
+// the token belongs to, so the backend sends through that project.
+const PUSH_TOKEN_PROJECT = { firebaseProjectId };
 
 export const api = createApi({
   reducerPath: "api",
@@ -29,9 +34,10 @@ export const api = createApi({
   tagTypes: ['Profile', 'Orders', 'RecurringPlans'], // Define cache tags
   endpoints: (builder) => ({
     // Sign-in endpoints carry this browser's deviceId (utilities/installId.js): the
-    // backend keys the session by it. dvToken stays optional (push address only).
+    // backend keys the session by it. dvToken stays optional (push address only), and
+    // firebaseProjectId names the Firebase project that token belongs to.
     userLogin: builder.mutation({
-      queryFn: signInQueryFn("customer/loginUser"),
+      queryFn: signInQueryFn("customer/loginUser", PUSH_TOKEN_PROJECT),
       invalidatesTags: ['Profile'], // Invalidate profile cache on login
     }),
     resetPassword: builder.mutation({
@@ -63,10 +69,10 @@ export const api = createApi({
       }),
     }),
     registerUser: builder.mutation({
-      queryFn: signInQueryFn("customer/registerCustomer"),
+      queryFn: signInQueryFn("customer/registerCustomer", PUSH_TOKEN_PROJECT),
     }),
     verifyOTPRegister: builder.mutation({
-      queryFn: signInQueryFn("customer/verifyOTpSignUp"),
+      queryFn: signInQueryFn("customer/verifyOTpSignUp", PUSH_TOKEN_PROJECT),
     }),
 
     getProfile: builder.query({
@@ -294,15 +300,19 @@ export const api = createApi({
         };
       },
     }),
-    /** Bootstrap live map session (Firebase custom token + RTDB path). */
+    /**
+     * Bootstrap live map session (Firebase custom token + RTDB path). firebaseProjectId tells
+     * the backend which project to issue the custom token and databaseUrl for.
+     */
     getLiveTracking: builder.query({
       query: (arg) => {
         const bookingId =
           typeof arg === "object" && arg !== null
             ? arg.bookingId ?? arg.id
             : arg;
+        const params = new URLSearchParams({ firebaseProjectId });
         return {
-          url: `customer/live-tracking/${bookingId}`,
+          url: `customer/live-tracking/${bookingId}?${params.toString()}`,
           method: "GET",
         };
       },

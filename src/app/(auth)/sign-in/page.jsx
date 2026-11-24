@@ -1280,7 +1280,6 @@ export default function SignInPage() {
         firstName: googleFirstName,
         lastName: googleLastName,
       });
-      console.log("📥 Login Response:", loginData);
       console.log("🔵 ============================================");
 
       // Step 4: Handle login response
@@ -1618,7 +1617,6 @@ export default function SignInPage() {
         firstName: facebookFirstName,
         lastName: facebookLastName,
       });
-      console.log("📥 Login Response:", loginData);
       console.log("🔵 ============================================");
 
       // Step 4: Handle login response
@@ -1944,7 +1942,6 @@ export default function SignInPage() {
         firstName: appleFirstName,
         lastName: appleLastName,
       });
-      console.log("📥 Login Response:", loginData);
       console.log("🔵 ============================================");
 
       // Step 4: Handle login response
